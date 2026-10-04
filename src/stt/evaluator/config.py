@@ -21,7 +21,7 @@ class GenerationConfig(SectionModel):
     num_beams: int = Field(default=1, ge=1, description="DEFAULT 1 (greedy).")
     max_new_tokens: int | None = Field(default=None, ge=1, description="DEFAULT none = the model's label limit.")
     max_tokens_per_audio_sec: float | None = Field(
-        default=None, gt=0, description="DEFAULT none = off (to be set from the first runs). Cap on the output length per second of audio."
+        default=8.0, gt=0, description="DEFAULT 8.0 (owner, O67; recheck on the work data). Cap on the output length per second of audio; needs the duration attribute of each item. null = off."
     )
 
 

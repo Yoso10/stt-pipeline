@@ -13,9 +13,10 @@ eval:
     num_beams: 1
     # Empty = the model's label limit.
     max_new_tokens: null
-    # Empty = off. A cap on the output length per second of audio guards against endless repetition (needs the `duration` attribute of
-    # each item). Set it from the first runs: see COMPONENTS.md (C7) for the measured tokens per second of the Daf Yomi data.
-    max_tokens_per_audio_sec: null
+    # DEFAULT 8.0 (owner decision, O67; recheck on the work data): a cap on the output length per second of audio guards against endless
+    # repetition (the largest reference rate of the Daf Yomi data is 7.3 tokens per second). Needs the `duration` attribute of each item.
+    # null = off (the cap is then only the model's label limit).
+    max_tokens_per_audio_sec: 8.0
   # Files per generation batch (lower it when memory is short).
   batch_size: 4
   thresholds:

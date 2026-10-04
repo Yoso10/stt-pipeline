@@ -165,8 +165,12 @@ class MetricTests(unittest.TestCase):
         with self.assertRaises(EvaluatorError) as ctx:
             make_decode_settings(config, model(), [item("a", "x")])
         self.assertIn("duration", str(ctx.exception))
-        self.assertIsNone(make_decode_settings(EvalConfig(), model(), [item("a", "x")]).token_caps)
-        self.assertEqual(make_decode_settings(EvalConfig(), model(), []).max_new_tokens, model().tokenizer.max_label_tokens)
+        off = EvalConfig.model_validate({"generation": {"max_tokens_per_audio_sec": None}})
+        self.assertIsNone(make_decode_settings(off, model(), [item("a", "x")]).token_caps)
+        with self.assertRaises(EvaluatorError):  # the DEFAULT 8.0 needs the duration attribute (O67)
+            make_decode_settings(EvalConfig(), model(), [item("a", "x")])
+        self.assertEqual(EvalConfig().generation.max_tokens_per_audio_sec, 8.0)
+        self.assertEqual(make_decode_settings(off, model(), []).max_new_tokens, model().tokenizer.max_label_tokens)
 
     def test_attributes_and_ids_pass_through_and_the_fake_needs_no_model_call(self) -> None:
         transcriber = FakeTranscriber({"a": "אחת"})

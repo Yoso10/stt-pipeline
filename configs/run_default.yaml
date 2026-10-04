@@ -1,0 +1,25 @@
+# How to run: example `run` section; every value shown is the DEFAULT. Extend it:
+#     extends: run_default.yaml
+#     $env:PYTHONPATH = "src"
+#     python -c "from pathlib import Path; from stt.config import SectionRegistry, load_config; from stt.runmanager import RunConfig; print(load_config(Path('configs/run_default.yaml'), registry=SectionRegistry({'run': RunConfig})).section('run', RunConfig).experiments_dir)"
+# Every experiment is a numbered folder under `experiments_dir` (exp_0001, exp_0002, ...). Look at one with:
+#     python -m stt.runmanager show exp_0001 --dir experiments
+extends: base.yaml
+
+run:
+  # The experiments folder. Keep the path SHORT on Windows (for example C:\stt\experiments).
+  experiments_dir: experiments
+  # The experiment this one extends (its config is the base of the stored difference), for example exp_0003. Empty = against the defaults.
+  parent: null
+  # Digits of the number: exp_0001.
+  id_digits: 4
+  # config_full.yaml is read-only after it is written.
+  config_readonly: true
+  # The running process touches run.lock this often; a heartbeat older than lock_stale_minutes makes the lock stale and the run fails
+  # with the instruction to delete the file by hand (never removed automatically).
+  lock_heartbeat_seconds: 30
+  lock_stale_minutes: 10
+  log:
+    # DEBUG | INFO | WARNING | ERROR. Everything is always written to logs/run.log at file_level.
+    console_level: INFO
+    file_level: DEBUG
