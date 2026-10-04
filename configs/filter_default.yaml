@@ -1,0 +1,40 @@
+# How to run: example `filter` section. Without any `rules` entry the DEFAULTS apply (permissive: min_duration 1.0 s,
+# max_duration 30.0 s, min_text_chars 2 on eval_text; the quality rules and max_label_tokens are OFF). Extend it:
+#     extends: filter_default.yaml
+#     $env:PYTHONPATH = "src"
+#     python -c "from pathlib import Path; from stt.config import SectionRegistry, load_config; from stt.samplefilter import FilterConfig; print(load_config(Path('configs/filter_default.yaml'), registry=SectionRegistry({'filter': FilterConfig})).section('filter', FilterConfig).mode)"
+# Only the rules you list are changed; the others keep their defaults. Thresholds below are EXAMPLES, not decisions.
+extends: base.yaml
+
+filter:
+  # report (DEFAULT): count what WOULD be removed and keep everything | apply: remove. The long-clip rule only takes effect in apply mode.
+  mode: report
+  # A split that would keep less than this fraction FAILS (safety gate). Do not lower it just to pass: read the report.
+  min_kept_ratio: 0.4
+  rules:
+    min_duration:
+      enabled: true
+      threshold: 1.0            # seconds
+      # applies_to: ["*"]        # structural rules: all splits (DEFAULT); quality rules: ["train"] (DEFAULT)
+    max_duration:
+      enabled: true
+      threshold: 30.0           # seconds, the Whisper window
+    min_text_chars:
+      enabled: true
+      threshold: 2              # characters of the measured text
+      measure_on: eval_text     # eval_text (DEFAULT) | train_text (recipe for non-speech markers, O47)
+    # Quality rules are off until a threshold is set. `field` names the sample field they read (a key of the
+    # DataSource `extra` fields); it has no default in code because it depends on the dataset.
+    # min_quality_score:
+    #   threshold: 0.2
+    #   field: meta_quality_score
+    # max_bad_segments:
+    #   threshold: 4
+    #   field: meta_bad_segments
+    # require_golden:
+    #   enabled: true
+    #   field: meta_golden_segments
+    # Optional label-length rule (open issue O34; the default keeps this in the FeaturePipeline). It needs a token
+    # counter passed by the composition root and measures train_text.
+    # max_label_tokens:
+    #   threshold: 440
