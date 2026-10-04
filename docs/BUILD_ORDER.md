@@ -7,6 +7,7 @@ How to use: the agent builds ONE component per task, in this order. Every task e
 - `requirements.txt` (pipeline) and `requirements-tools.txt` (home-side tools only), environment files, folder skeleton (`src/`, `tests/`, `configs/`, `docs/`, `tools/`).
 - Clean-environment install test at home with Python 3.12 (O1), including mp3 decoding on Windows (O9).
 - `tools/fetch_wheels.py`: offline wheel bundle and a clean offline install test; `requirements.lock`.
+- `tools/fetch_model.py` and `tools/fetch_data.py` (home-side tools, see PRD_tools): tested on the small model `openai/whisper-tiny`. The Daf Yomi dataset (about 800 MB) is downloaded only when the owner says so, because the first real run needs it.
 - Copy the docs from the project into `docs/`.
 
 ## Wave 1: first end-to-end run
@@ -18,7 +19,7 @@ Order: C3b Subsampler, C8 HyperparamSearcher, C9 Selector, C10 ModelRegistry, Or
 Exit check: `smoke` of the full `run` (search, selection, registration); a real search on a screening subset.
 
 ## Wave 3: reporting, export and the rest
-Order: C14 ReportBuilder (full), C11 ModelExporter, Orchestrator commands `report`, `export`, `registry`, `cleanup`, `config-docs`, `tools/make_manifest.py`, `tools/fetch_model.py`, `tools/fetch_data.py`, final documents check (`docs/COMPONENTS.md` complete, `docs/CONFIG_REFERENCE.md` generated, `docs/RUNBOOK.md` verified against the real CLI).
+Order: C14 ReportBuilder (full), C11 ModelExporter, Orchestrator commands `report`, `export`, `registry`, `cleanup`, `config-docs`, `tools/make_manifest.py`, final documents check (`docs/COMPONENTS.md` complete, `docs/CONFIG_REFERENCE.md` generated, `docs/RUNBOOK.md` verified against the real CLI).
 Exit check: the owner reviews the first real report; attributes, look and hint thresholds are adjusted together with the agent (O54).
 
 ## Rules for every task

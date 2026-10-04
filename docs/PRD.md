@@ -40,7 +40,7 @@ Standalone home-side tools (the only code allowed to use the network): fetch mod
 | C11 | ModelExporter | 3 | Convert a registered model into a target format, verify the result, and record the export. |
 | C12 | RunManager | 1 | Create and manage numbered experiment folders (config snapshots, diffs, status, lock, logs, and the reports written into them). |
 | C13 | Orchestrator and CLI | 1 | Wire the components together and run the whole pipeline, or any single stage of it, from one command with full automation and a clear exit code. |
-| T | Standalone tools | 3 | Prepare, outside the pipeline and with network access allowed ONLY here, everything the offline pipeline needs: models, data, packages, the tiny test model and the code manifest. |
+| T | Standalone tools | 0 to 3 | Prepare, outside the pipeline and with network access allowed ONLY here, everything the offline pipeline needs: models, data, packages, the tiny test model and the code manifest. |
 
 ---
 ## PRD Component 0: Config
