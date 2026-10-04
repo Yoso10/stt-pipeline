@@ -1,0 +1,43 @@
+# How to run: example `text` section; every value shown is the DEFAULT. Copy it into your configuration file or extend it:
+#     extends: text_default.yaml
+#     $env:PYTHONPATH = "src"
+#     python -c "from pathlib import Path; from stt.config import SectionRegistry, load_config; from stt.textnormalizer import TextConfig; print(load_config(Path('configs/text_default.yaml'), registry=SectionRegistry({'text': TextConfig})).section('text', TextConfig).eval_version)"
+# Characters are written with YAML escapes (\uXXXX) so that invisible characters can be seen. A changed eval profile
+# (steps, punctuation, brackets, quotes) needs a NEW eval_version: WER of different versions is not comparable.
+extends: base.yaml
+
+text:
+  # Version of the eval profile (the measuring stick), recorded in every experiment.
+  eval_version: 1
+  profiles:
+    train:
+      # Gentle cleaning: only what is certainly not speech. Punctuation and geresh are KEPT.
+      steps: [unicode_clean, strip_timestamps, unify_quotes, remove_bracket_markup, collapse_whitespace]
+      # bracket_mode: keep        # optional per-profile override (recipe for a non-speech marker: train keep, eval with_content)
+    eval:
+      # Aggressive cleaning: every difference that is not about words. Step order matters (timestamps before punctuation).
+      steps: [unicode_clean, strip_timestamps, remove_punctuation, unify_quotes, remove_nikud, remove_bracket_markup, lowercase_latin, collapse_whitespace]
+  train:
+    # strip is the only mode in v1; keep (timestamps in the label) is a documented later extension (O3, O48).
+    timestamps: strip
+  bracket:
+    # Pairs of opening and closing characters.
+    pairs: [["[", "]"], ["(", ")"]]
+    # chars_only (DEFAULT, O25): remove the bracket characters, keep the content | with_content: remove the pair and its content | keep.
+    mode: chars_only
+  punctuation:
+    # Removed by the remove_punctuation step: . , ; : ! ? ellipsis, quotes and geresh variants, maqaf, hyphen, en dash, em dash.
+    chars: ".,;:!?…\"'“”‘’׳״־-–—"
+    # Replaced by a space instead of removed: the Hebrew maqaf.
+    space_chars: "־"
+  quotes:
+    # Variants mapped to one form: ' and the right single quote -> geresh; " and curly double quotes -> gershayim.
+    map: {"'": "׳", "’": "׳", "\"": "״", "“": "״", "”": "״"}
+  unicode:
+    # Removed by unicode_clean: zero-width and direction-control characters, soft hyphen, byte order mark, Arabic letter mark.
+    invisible_chars: "​‌‍‎‏‪‫‬‭‮⁠⁦⁧⁨⁩­﻿؜"
+  # Whisper-style timestamp token; ONE capture group with the time in seconds.
+  timestamp_pattern: '<\|(\d+(?:\.\d+)?)\|>'
+  inventory:
+    # How many characters (most frequent first) the report lists.
+    top_n: 50

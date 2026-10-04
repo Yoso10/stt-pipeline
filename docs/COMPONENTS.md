@@ -69,13 +69,18 @@ How to use: one entry per component. The agent writes or updates the entry at th
   - `split.dir`, `split.version`, `split.reuse` [DEFAULT: true], `split.export_csv` [DEFAULT: false]
 
 ## C2 TextNormalizer
-- Status: not built (wave 1)
+- Status: built (wave 1); run once on the 8723 real labels
 - Purpose: Produce for every sample a training label text and an evaluation reference text from the raw transcript, by applying configurable, ordered normalization steps, and report what was found in the text.
-- How to use: (to be written when built: exact command or call, and one example)
-- Inputs and outputs: see the brief in `docs/PRD.md`
-- Known limits: (to be written when built)
-- Tests: (to be filled in when built)
-- Config keys (planned):
+- How to use (project root, PowerShell, `$env:PYTHONPATH = "src"; $env:PYTHONIOENCODING = "utf-8"`; needs the extracted audio of C1; about 20 seconds):
+  ```
+  python -c "from pathlib import Path; from stt.config import SectionRegistry, load_config; from stt.datasource import DataConfig, create_data_source; from stt.textnormalizer import TextConfig, TextNormalizer; c = load_config(Path('configs/data_gmara.yaml'), registry=SectionRegistry({'data': DataConfig, 'text': TextConfig})); s = create_data_source(c.section('data', DataConfig), Path('data/load_out')).load().samples; r = TextNormalizer(c.section('text', TextConfig)).normalize(s); print(r.report.summary()); print(r.samples[0].train_text); print(r.samples[0].eval_text)"
+  ```
+  Output: `samples 8723, eval_version 1`, the two step lists, the flag counts, and the character inventory (code point, Unicode name, counts in the raw text and in each profile), then the first label as `train_text` and as `eval_text`. For a plain string (the Evaluator does this for references and for model outputs): `from stt.textnormalizer import TextConfig, build_profile; f = build_profile(config.section("text", TextConfig), "eval"); f("<|0.5|>שלום, עולם. <|2.0|>")` gives `שלום עולם`. Example YAML with every key and its DEFAULT: `configs/text_default.yaml`. To see more than 50 characters in the inventory set `text.inventory.top_n`.
+- Inputs and outputs: `list[AudioSample]` (C1) -> `NormalizeResult(samples, report)`. `NormalizedSample`: `sample` (unchanged, raw text stays in `sample.text`), `train_text`, `eval_text`, `timestamp_segments` (parsed before stripping; None when there are no tokens or they are malformed), `flags`. Flags: `had_timestamps`, `bad_timestamps`, `had_brackets`, `had_digits`, `had_latin`, `had_nikud`, `empty_after_normalization` (computed on the text with the timestamp tokens masked). `NormalizeReport`: flag counts, texts changed per profile, ids that became empty, the character inventory (every character that is not a Hebrew letter, a digit or whitespace; raw counts ignore the timestamp tokens), the eval version and the step lists. Samples are never dropped and keep the input order. Errors: `TextNormalizerError` (exit code 2) for an unknown step or profile (the registered names are listed); `text.train.timestamps: keep` fails at Config validation.
+- Steps (registry, selected by name from the profile lists): `unicode_clean`, `strip_timestamps`, `remove_punctuation`, `unify_quotes`, `remove_nikud`, `remove_bracket_markup` (`chars_only`, `with_content`, `keep`), `lowercase_latin`, `collapse_whitespace`. A new step is a new class plus one line in `registry.py`. The profile applies its steps until the text stops changing (so it is idempotent even when removing characters creates a new pattern).
+- Known limits: v1 strips timestamps only (no `keep`). No spelling correction, abbreviation expansion or number normalization. No text-duplicate check between splits (O19: figures were measured once, see OPEN_ISSUES). In `eval_text` the geresh is removed, so `גמ׳` becomes `גמ` and `ה׳` becomes `ה` (owner decision 29). The default punctuation list also removes hyphens and dashes (replaced by nothing, except the maqaf which becomes a space); none occurs in the Daf Yomi data. Changing the eval profile needs a new `text.eval_version`.
+- Tests: `tests/test_textnormalizer.py` (36 tests: the 11 acceptance tests of the brief, a random idempotence test, offline).
+- Config keys (section `text`; `text.punctuation.space_chars`, `text.unicode.invisible_chars` and `text.timestamp_pattern` were added, see DECISIONS 34):
   - `text.eval_version` [DEFAULT: 1]
   - `text.profiles.train.steps` [DEFAULT: `unicode_clean`, `strip_timestamps`, `unify_quotes`, `remove_bracket_markup`, `collapse_whitespace`]
   - `text.profiles.eval.steps` [DEFAULT: `unicode_clean`, `strip_timestamps`, `remove_punctuation`, `unify_quotes`, `remove_nikud`, `remove_bracket_markup`, `lowercase_latin`, `collapse_whitespace`]
