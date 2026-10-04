@@ -1,0 +1,61 @@
+# How to run: the complete configuration of the smoke run (synthetic data, tiny random-weight test model, a few training steps). Use it with:
+#     $env:PYTHONPATH = "src"
+#     python -m stt smoke
+# The command writes the synthetic clips into smoke.work_dir, points data.source.path, model.path and train.hyperparams.max_steps at the smoke
+# settings, and runs prepare, train and evaluate. It checks the MECHANICS (files, status, markers, exit codes), not the quality of the model.
+extends: base.yaml
+
+smoke:
+  # Number of synthetic clips (each is its own group so the Splitter can split them), their length, and the training steps.
+  n_samples: 12
+  duration_sec: 3
+  steps: 3
+  # The tiny test model made by tools/make_test_model.py, and the folder of the synthetic data (inside the git-ignored data/ folder).
+  model_dir: tests/assets/tiny_whisper
+  work_dir: data/smoke
+
+pipeline:
+  stages: [prepare, train, evaluate]
+  skip_completed: true
+  eval_split: val
+  test_split: test
+
+run:
+  experiments_dir: experiments
+  prevent_sleep: true
+
+data:
+  source:
+    type: csv
+    path: data/smoke
+  columns:
+    audio: audio
+    text: text
+    group: group
+
+split:
+  # 12 clips are far below the real gates (30 samples, 2 groups per split): relaxed here on purpose, only for the smoke run.
+  min_samples_per_split: 1
+  min_groups_per_split: 1
+  ratio_tolerance: 0.1
+
+model:
+  path: tests/assets/tiny_whisper
+
+train:
+  cpu_threads: 2
+  hyperparams:
+    batch_size: 2
+    grad_accum_steps: 1
+    warmup_steps: 0
+    max_steps: 3
+    learning_rate: 1.0e-4
+  log_every_steps: 1
+  eval_every_steps: 3
+  save_every_steps: 3
+
+eval:
+  batch_size: 2
+  review:
+    n_random: 2
+    n_worst: 1

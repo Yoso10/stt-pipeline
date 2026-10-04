@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import logging
 import math
+import re
+import shutil
 import time
 from collections.abc import Callable
 from pathlib import Path
@@ -90,6 +92,8 @@ class TrainerCore:
                 "Check the split and the SampleFilter report."
             )
         check_hyperparams(request.hyperparams)
+        if request.model_name is not None and not re.fullmatch(r"[A-Za-z0-9_.-]+", request.model_name):
+            raise TrainerConfigError(f"TrainRequest.model_name '{request.model_name}' may only contain letters, digits, '_', '.' and '-' (it becomes a folder name).")
         policy = self._freeze.create(config.freeze_policy)  # unknown names fail here, before any folder is made
         sink_names = list(config.sinks)
         self._sinks.require(sink_names)  # unknown names fail here too
@@ -154,7 +158,12 @@ class TrainerCore:
                 "max_grad_norm": h.max_grad_norm,
             },
         }
-        model_dir = build_model_dir(by_step[chosen_step], request.model.info.path, request.output_dir / MODEL, info)
+        name = MODEL if request.model_name is None else f"{request.model_name}_step_{chosen_step:05d}"
+        if request.model_name is not None:
+            for old in request.output_dir.glob(f"{request.model_name}_step_*"):  # the model of an earlier part of a resumed run is replaced
+                if old.name != name and (old / INFO_NAME).is_file():
+                    shutil.rmtree(old, ignore_errors=True)
+        model_dir = build_model_dir(by_step[chosen_step], request.model.info.path, request.output_dir / name, info)
         logger.info("Run ended (%s). Model of step %d saved in %s (%s).", reason, chosen_step, model_dir, INFO_NAME)
         return TrainResult(
             model_dir=model_dir,

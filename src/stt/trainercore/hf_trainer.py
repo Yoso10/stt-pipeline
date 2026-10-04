@@ -104,6 +104,10 @@ class _ControlCallback(TrainerCallback):  # type: ignore[misc]
         if cap is not None and now - self._t0 >= cap:
             logger.info("The time cap of %.0f s is reached at step %d: saving and stopping.", cap, state.global_step)
             self._stop("time_limit", control, save=True)
+        stop_flag = self._job.request.stop_flag
+        if stop_flag is not None and stop_flag():
+            logger.info("A stop was requested at step %d: saving a checkpoint and stopping.", state.global_step)
+            self._stop("stopped_by_callback", control, save=True)
         if control.should_save and not self._weights_finite():
             self._abort_nan(state.global_step, control)
 

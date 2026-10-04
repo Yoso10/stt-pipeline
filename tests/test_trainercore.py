@@ -240,6 +240,43 @@ class StopTests(TrainerTestCase):
         self.assertIsNone(result.best_val_loss)
         self.assertEqual(result.best_step, result.history[-1].step)
 
+    def test_stop_flag_saves_a_checkpoint_stops_and_a_resume_continues(self) -> None:
+        steps_seen: list[int] = []
+
+        class Probe:
+            def __init__(self, context: SinkContext) -> None:
+                pass
+
+            def write(self, record: StepMetrics) -> None:
+                steps_seen.append(record.step)
+
+        flag = lambda: bool(steps_seen) and max(steps_seen) >= 3  # noqa: E731  (becomes true after the log of step 3, so the stop comes after step 4)
+        registry = SinkRegistry({"csv": CsvMetricsSink, "probe": Probe})
+        config = conf(hyperparams={"max_steps": 8}, sinks=["csv", "probe"], eval_every_steps=100, save_every_steps=100)
+        first = TrainerCore(config, sink_registry=registry).train(self.request(config, stop_flag=flag))
+        self.assertEqual((first.stopped_reason, first.history[-1].step), ("stopped_by_callback", 4))
+        self.assertEqual(sorted(p.name for p in (self.out / "checkpoints").iterdir()), ["checkpoint-4"])
+        resumed = self.run_training(conf(hyperparams={"max_steps": 8}, eval_every_steps=100, save_every_steps=100, resume=True))
+        self.assertEqual((resumed.stopped_reason, resumed.history[-1].step), ("max_steps", 8))
+
+    def test_model_name_gives_the_model_folder_its_name_with_the_step(self) -> None:
+        result = self.run_training(model_name="exp_0004_trial_001")
+        self.assertEqual(result.model_dir, self.out / "exp_0004_trial_001_step_00004")
+        loaded = create_loader(ModelConfig(path=result.model_dir)).load()
+        self.assertEqual(loaded.info.name, "exp_0004_trial_001_step_00004")
+        self.assertFalse((self.out / "model").exists())
+        with self.assertRaises(TrainerConfigError):
+            self.out = self.tmp / "other"
+            self.run_training(model_name="bad/name")
+        self.assertFalse((self.tmp / "other").exists())
+
+    def test_a_resumed_run_replaces_the_model_folder_of_the_earlier_part(self) -> None:
+        first = self.run_training(conf(hyperparams={"max_steps": 6}), on_eval=lambda r: r.step >= 2, model_name="exp_0001_trial_001")
+        self.assertEqual(first.model_dir.name, "exp_0001_trial_001_step_00002")
+        second = self.run_training(conf(hyperparams={"max_steps": 6}, resume=True), model_name="exp_0001_trial_001")
+        self.assertEqual(second.model_dir.name, "exp_0001_trial_001_step_00006")
+        self.assertEqual(sorted(p.name for p in self.out.iterdir() if p.name.startswith("exp_")), ["exp_0001_trial_001_step_00006"])
+
     def test_nan_loss_stops_keeps_the_last_good_checkpoint_and_fails(self) -> None:
         loaded = load_model()
         real = self.request(conf(hyperparams={"max_steps": 8}), loaded=loaded)

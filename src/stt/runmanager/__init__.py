@@ -15,7 +15,7 @@ from stt.runmanager.errors import RunManagerError
 from stt.runmanager.handle import ExperimentHandle
 from stt.runmanager.lock import RunLock
 from stt.runmanager.logsetup import LogSetup
-from stt.runmanager.naming import model_folder_name
+from stt.runmanager.naming import model_folder_name, model_name_prefix
 from stt.runmanager.store import ExperimentStore
 from stt.runmanager.types import (
     STAGE_STATUSES,
@@ -54,4 +54,5 @@ __all__ = [
     "diff_configs",
     "flatten",
     "model_folder_name",
+    "model_name_prefix",
 ]

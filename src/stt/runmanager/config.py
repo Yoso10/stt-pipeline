@@ -37,3 +37,4 @@ class RunConfig(SectionModel):
     lock_heartbeat_seconds: float = Field(default=30.0, gt=0, description="DEFAULT 30. The running process touches run.lock this often.")
     lock_stale_minutes: float = Field(default=10.0, gt=0, description="DEFAULT 10. A heartbeat older than this makes the lock stale: the run fails with the removal instruction.")
     log: LogConfig = LogConfig()
+    prevent_sleep: bool = Field(default=True, description="DEFAULT true. The Orchestrator keeps Windows awake during run, search and train (standard library only, no admin rights).")

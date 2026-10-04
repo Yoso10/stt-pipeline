@@ -1,0 +1,19 @@
+# How to run: example `pipeline` section; every value shown is the DEFAULT. Extend it:
+#     extends: pipeline_default.yaml
+#     $env:PYTHONPATH = "src"
+#     python -c "from pathlib import Path; from stt.config import SectionRegistry, load_config; from stt.orchestrator import PipelineConfig; from stt.runmanager import RunConfig; print(load_config(Path('configs/pipeline_default.yaml'), registry=SectionRegistry({'run': RunConfig, 'pipeline': PipelineConfig})).section('pipeline', PipelineConfig))"
+# `run.prevent_sleep` (the RunManager's `run` section) switches the Windows sleep prevention of long commands on or off.
+extends: base.yaml
+
+pipeline:
+  # The minimal chain. The brief's later default adds search, select_and_register, export and report (later waves).
+  stages: [prepare, train, evaluate]
+  # A stage with a valid completion marker (and an unchanged config slice) is skipped on a rerun.
+  skip_completed: true
+  # The split the evaluate stage scores (model choice and checks use Val).
+  eval_split: val
+  # The Test split. The evaluate stage REFUSES it: the Test is scored once, for the winner, through the Selector (Wave 2).
+  test_split: test
+
+run:
+  prevent_sleep: true

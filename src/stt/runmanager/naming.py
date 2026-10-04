@@ -26,7 +26,17 @@ def model_folder_name(experiment_id: str, kind: Kind, trial: int | None = None, 
         return f"{experiment_id}_baseline"
     if kind not in ("trial", "final"):
         raise RunManagerError(f"Unknown model kind '{kind}'. Known kinds: baseline, trial, final.")
-    if trial is None or step is None or trial < 0 or step < 0:
-        raise RunManagerError(f"A '{kind}' model folder name needs a trial number and a step (both zero or more), got trial={trial} step={step}.")
-    prefix = f"{experiment_id}_final_trial" if kind == "final" else f"{experiment_id}_trial"
-    return f"{prefix}_{trial:03d}_step_{step:05d}"
+    if step is None or step < 0:
+        raise RunManagerError(f"A '{kind}' model folder name needs a step (zero or more), got step={step}.")
+    return f"{model_name_prefix(experiment_id, kind, trial)}_step_{step:05d}"
+
+
+def model_name_prefix(experiment_id: str, kind: Kind, trial: int | None = None) -> str:
+    """The name without the step, for example `exp_0004_trial_003`: the value of `TrainRequest.model_name` (the TrainerCore appends `_step_<step>`)."""
+    if kind == "baseline":
+        return f"{experiment_id}_baseline"
+    if kind not in ("trial", "final"):
+        raise RunManagerError(f"Unknown model kind '{kind}'. Known kinds: baseline, trial, final.")
+    if trial is None or trial < 0:
+        raise RunManagerError(f"A '{kind}' model name needs a trial number (zero or more), got trial={trial}.")
+    return f"{experiment_id}_final_trial_{trial:03d}" if kind == "final" else f"{experiment_id}_trial_{trial:03d}"

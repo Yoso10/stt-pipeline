@@ -84,6 +84,10 @@ class TrainRequest:
 
     `source_config_ref` (optional, an addition to the brief) is written into `pipeline_model_info.json` of the model folder; the
     RunManager will pass the path of the experiment's config or diff file.
+
+    `model_name` (optional, owner approved 2026-10-05, O70) is the prefix of the returned model folder: the folder is `<output_dir>/<model_name>_step_<step:05d>`,
+    for example `exp_0004_trial_001_step_00100`; None keeps the folder name `model`. `stop_flag` (optional, O65) is checked after every step: when it returns
+    True the run saves a checkpoint and stops with `stopped_by_callback`, so a later call with `train.resume` true continues it.
     """
 
     model: LoadedModel
@@ -94,6 +98,8 @@ class TrainRequest:
     output_dir: Path
     on_eval: Callable[[StepMetrics], bool] | None = None
     source_config_ref: str | None = None
+    model_name: str | None = None
+    stop_flag: Callable[[], bool] | None = None
 
 
 @dataclass(frozen=True)
