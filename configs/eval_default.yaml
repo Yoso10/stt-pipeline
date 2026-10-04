@@ -1,0 +1,39 @@
+# How to run: example `eval` section; every value shown is the DEFAULT. Extend it:
+#     extends: eval_default.yaml
+#     $env:PYTHONPATH = "src"
+#     python -c "from pathlib import Path; from stt.config import SectionRegistry, load_config; from stt.evaluator import EvalConfig; print(load_config(Path('configs/eval_default.yaml'), registry=SectionRegistry({'eval': EvalConfig})).section('eval', EvalConfig).significance)"
+# WER is computed on `eval_text` (the eval profile of the `text` section); results of different `text.eval_version` are not comparable.
+extends: base.yaml
+
+eval:
+  # Registered: wer (required, the primary metric), cer.
+  metrics: [wer, cer]
+  generation:
+    # 1 = greedy (DEFAULT).
+    num_beams: 1
+    # Empty = the model's label limit.
+    max_new_tokens: null
+    # Empty = off. A cap on the output length per second of audio guards against endless repetition (needs the `duration` attribute of
+    # each item). Set it from the first runs: see COMPONENTS.md (C7) for the measured tokens per second of the Daf Yomi data.
+    max_tokens_per_audio_sec: null
+  # Files per generation batch (lower it when memory is short).
+  batch_size: 4
+  thresholds:
+    # The share of files with a WER under each value is reported as "how many files are usable".
+    wer_below: [0.10, 0.20]
+  significance:
+    method: paired_group_bootstrap
+    confidence: 0.90
+    one_sided: true
+    n_resamples: 2000
+    # The improvement must exceed this absolute WER.
+    min_effect_abs: 0.0
+    # Fewer groups than this give the verdict insufficient_groups.
+    min_groups: 5
+  review:
+    # Files to listen to: the worst ones and random ones.
+    n_random: 20
+    n_worst: 10
+  sanity:
+    # Empty = off (a small model has a very high Hebrew WER). When set, a baseline WER above it fails the run.
+    max_baseline_wer: null
