@@ -1,0 +1,22 @@
+# How to run: example `features` section; every value shown is the DEFAULT. Extend it:
+#     extends: features_default.yaml
+#     $env:PYTHONPATH = "src"
+#     python -c "from pathlib import Path; from stt.config import SectionRegistry, load_config; from stt.featurepipeline import FeaturesConfig; print(load_config(Path('configs/features_default.yaml'), registry=SectionRegistry({'features': FeaturesConfig})).section('features', FeaturesConfig).max_dropped_ratio)"
+# The sampling rate, the audio window, the mel bins and the label limit are read from the loaded model, not set here.
+extends: base.yaml
+
+features:
+  # Threads used to fill the cache (0 = one at a time; DEFAULT 0 because of Windows multiprocessing, O2).
+  num_workers: 0
+  cache:
+    # false (DEFAULT): features are computed on demand, no files. true: computed once and stored in `dir`.
+    enabled: false
+    # dir: data/feature_cache     # required when enabled (git-ignored data/ folder, never inside src/ or tests/)
+  # The run fails when more than this fraction of labels is removed for being longer than the model limit.
+  max_dropped_ratio: 0.05
+  # mean (DEFAULT): stereo is averaged to mono.
+  downmix: mean
+  # false (DEFAULT): keep the input order. true: seeded random order.
+  shuffle: false
+  # Empty = use runtime.seed.
+  seed: null

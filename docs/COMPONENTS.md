@@ -144,17 +144,23 @@ How to use: one entry per component. The agent writes or updates the entry at th
 - Config keys (section `model`): `model.path` (required), `model.loader` [DEFAULT `hf_whisper`], `model.language` [DEFAULT `he`], `model.task` [DEFAULT `transcribe`], `model.dtype` [DEFAULT `float32`]. Python 3.12 with torch 2.14.1 (CPU) was confirmed (O1).
 
 ## C4 FeaturePipeline
-- Status: not built (wave 1)
+- Status: built (wave 1); run once on the real train split (6973 samples)
 - Purpose: Convert kept samples into model-ready examples (input features from the audio, label ids from `train_text`) and provide the batch collator.
-- How to use: (to be written when built: exact command or call, and one example)
-- Inputs and outputs: see the brief in `docs/PRD.md`
-- Known limits: (to be written when built)
-- Tests: (to be filled in when built)
-- Config keys (planned):
+- How to use (project root, PowerShell, `$env:PYTHONPATH = "src"`; needs the extracted audio of C1 and `models/whisper-tiny`; about 30 seconds):
+  ```
+  python -c "from pathlib import Path; from stt.config import SectionRegistry, load_config; from stt.datasource import DataConfig, create_data_source; from stt.splitter import SplitConfig, resolve_split; from stt.textnormalizer import TextConfig, TextNormalizer; from stt.modelloader import ModelConfig, create_loader; from stt.featurepipeline import FeaturesConfig, FeaturePipeline; c = load_config(Path('configs/data_gmara.yaml'), overrides=['model.path=models/whisper-tiny'], registry=SectionRegistry({'data': DataConfig, 'split': SplitConfig, 'text': TextConfig, 'model': ModelConfig, 'features': FeaturesConfig})); s = create_data_source(c.section('data', DataConfig), Path('data/load_out')).load().samples; sp = resolve_split(c.section('split', SplitConfig), c.runtime.seed, s); n = {x.sample.id: x for x in TextNormalizer(c.section('text', TextConfig)).normalize(s).samples}; m = create_loader(c.section('model', ModelConfig)).load(); p = FeaturePipeline(c.section('features', FeaturesConfig), m); r = p.build([n[x.id] for x in sp.splits['train']], 'train'); print(r.report.summary()); print(r.dataset[0].input_features.shape, p.build_collator()([r.dataset[0], r.dataset[1]])['labels'].shape)"
+  ```
+  Output: `split train: seen 6973, built 6973, removed for label length 0`, `resampled to 16000 Hz: 0, downmixed to mono: 0`, the label-length line, then `(80, 3000) torch.Size([2, N])`. In a run the section is `features` (class `FeaturesConfig`); example YAML: `configs/features_default.yaml`.
+- Inputs and outputs: the kept `NormalizedSample`s of one split (C1b) plus a `LoadedModel` (C5; only its feature extractor and tokenizer are used) -> `FeatureResult(dataset, report)`. `dataset` is a lazy plain dataset (`len`, `dataset[i]` -> `FeatureExample(sample_id, input_features, labels)`); `input_features` is a float32 numpy array (mel bins, frames) = (80, 3000) for the OpenAI models (about 0.96 MB each); `labels` are the full label ids from `tokenizer.encode_label(train_text)` (prefix tokens, text, end token). `FeaturePipeline.build_collator()` returns the batch maker (Hugging Face adapter, the only module that imports torch): `batch = collate(examples)` is a dict `{"input_features": float32 (batch, 80, 3000), "labels": int64 (batch, longest)}`, labels padded with -100, the leading decoder start token removed (the model adds it when it shifts the labels), batch order = example order. `FeatureReport`: seen, built, removed for label length (ids listed), resampled, downmixed, label-length distribution (ids: min, mean, p95, max), the limits applied (audio 30 s, labels 448, both read from the model), cache counts. Errors: `FeaturePipelineError` (exit code 3).
+- Rules kept: the rate, the window, the mel bins and the label limit are read from the model; other sampling rates are converted with scipy `resample_poly` and counted, stereo is averaged and counted (counted from the file headers, no decoding at build); audio longer than the window is NEVER truncated (the run fails with the count, the longest clip and the fix: SampleFilter `max_duration` in `apply` mode); labels over the limit are removed, listed and gated by `features.max_dropped_ratio`; empty `train_text`, unreadable audio, a missing audio library or zero examples fail; the audio files are only read. Cache (`features.cache.enabled`): one `.npy` per sample in `<dir>/<extractor signature>/`, keyed by sample id, audio path and the audio file's size and modification time; a changed extractor gives a new folder, a damaged file is rebuilt, an unwritable folder is skipped. `features.num_workers` threads fill the cache (0 = one at a time).
+- Known limits: the cache is large: one example is 0.96 MB, so the train split of the Daf Yomi data needs about 6.7 GB of disk. Without the cache the features are recomputed at every epoch (about 21 ms per item). The threads speed up only the cache fill, not reading items one by one (the trainer's own data loader decides that). No augmentation, no shuffling unless `features.shuffle` is true.
+- Tests: `tests/test_featurepipeline.py` (32 tests: the 9 acceptance tests of the brief plus laziness, cache invalidation, damaged and unwritable cache, threads, the collator with the model, config; the stored tiny model and synthetic wav files, offline).
+- Config keys (section `features`; `features.shuffle` and `features.seed` were added, see DECISIONS 38):
   - `features.num_workers` [DEFAULT: 0]
   - `features.cache.enabled` [DEFAULT: false], `features.cache.dir`
   - `features.max_dropped_ratio` [DEFAULT: 0.05]: safety gate for dropped labels
   - `features.downmix` [DEFAULT: `mean`]
+  - `features.shuffle` [DEFAULT: false], `features.seed` [DEFAULT: none = `runtime.seed`]
   - `text.train.timestamps` (owned by TextNormalizer; read here)
   - from ModelLoader's output (not Config): sampling rate, window length, mel bins, label limit
 
