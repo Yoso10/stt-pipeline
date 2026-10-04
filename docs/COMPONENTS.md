@@ -130,21 +130,18 @@ How to use: one entry per component. The agent writes or updates the entry at th
   - seed from the global Config.
 
 ## C5 ModelLoader
-- Status: not built (wave 1)
+- Status: built (wave 1); run once on the real `models/whisper-tiny`
 - Purpose: Load one Whisper model, its feature extractor and its tokenizer from a LOCAL folder, validate them, and describe what was loaded.
-- How to use: (to be written when built: exact command or call, and one example)
-- Inputs and outputs: see the brief in `docs/PRD.md`
-- Known limits: (to be written when built)
-- Tests: (to be filled in when built)
-- Config keys (planned):
-  - `model.loader` [DEFAULT: `hf_whisper`]
-  - `model.path` (folder, required, no default)
-  - `model.language` [DEFAULT: `he`]
-  - `model.task` [DEFAULT: `transcribe`]
-  - `model.dtype` [DEFAULT: `float32`; CPU]
-  - Example YAML (examples only, never in code): phase 1 `model.path` points to a local copy of OpenAI `whisper-tiny`
-    (`whisper-base` as the next step); a commented-out later example for `ivrit-ai/whisper-large-v3-turbo`.
-  - Python version [DEFAULT: 3.12, the conservative choice for torch / transformers wheels on Windows and for an offline machine]. Still to be confirmed by the clean-venv install test (O1).
+- How to use (project root, PowerShell, `$env:PYTHONPATH = "src"; $env:PYTHONIOENCODING = "utf-8"`; needs `models/whisper-tiny` from `tools/fetch_model.py`, or use the stored `tests/assets/tiny_whisper`):
+  ```
+  python -c "from pathlib import Path; from stt.modelloader import ModelConfig, create_loader, make_token_counter; m = create_loader(ModelConfig(path=Path('models/whisper-tiny'))).load(); print(m.info); print(m.feature_extractor.num_mel_bins, make_token_counter(m.tokenizer)('שלום עולם'))"
+  ```
+  Output: `ModelInfo(name='whisper-tiny', ... num_parameters=37760640, dtype='float32', num_mel_bins=80, language='he', task='transcribe', source_config_ref=None)` then `80 4`. The first load takes about 6 seconds (it imports torch), later ones under a second. In a run the section is `model` (class `ModelConfig`, registered with `SectionRegistry({"model": ModelConfig})`); the model is chosen ONLY by `model.path` (a local folder, never a Hub name). Example YAML: `configs/model_default.yaml`.
+- Inputs and outputs: `ModelConfig` -> `create_loader(config).load()` -> `LoadedModel(model, feature_extractor, tokenizer, info)`. `ModelInfo`: `name`, `path`, `num_parameters`, `dtype`, `num_mel_bins`, `language`, `task`, `source_config_ref` (from `pipeline_model_info.json` when it exists). The loaded objects are small Protocols (DECISIONS 37): `FeatureExtractor` (`sampling_rate`, `window_seconds`, `num_mel_bins`, `extract(audio, sampling_rate) -> float32 (mel bins, frames)`, which refuses another rate and audio longer than the window), `LabelTokenizer` (`max_label_tokens`, `encode_label(text)` with the start, language, task and no-timestamps prefix and the end token, `count_tokens(text)` without special tokens, `decode(ids, skip_special_tokens)`), and the model itself is an opaque `object` for the adapter modules of the trainer and evaluator. `make_token_counter(tokenizer)` gives a plain `Callable[[str], int]` for the composition root to pass to the SampleFilter. Errors: `ModelLoaderError` (exit code 2).
+- Rules kept: local files only, even when `runtime.online` is true; `trust_remote_code` never; the folder is validated first (all missing files are listed) and never modified; safetensors weights required (old formats fail with the conversion advice); not-Whisper, English-only and unsupported-language models fail with the model and language named; language and task are written into the generation settings and the label prefix; two `load()` calls return independent objects; torch and transformers are imported only in `stt/modelloader/hf_whisper.py`, and only when a loader is created.
+- Known limits: one implementation (`hf_whisper`). The freeze policy, dropout and thread count are not the loader's business (TrainerCore). The dtype `float16` and `bfloat16` load but are not tested for speed (CPU phase 1 is float32). Old-format weights (`pytorch_model.bin`) are not accepted.
+- Tests: `tests/test_modelloader.py` (28 tests: the 9 acceptance tests of the brief plus the Protocols, the token counter and the config; the stored tiny model, network blocked), `tests/test_make_test_model.py`. Test model: `tests/assets/tiny_whisper` (built by `tools/make_test_model.py`).
+- Config keys (section `model`): `model.path` (required), `model.loader` [DEFAULT `hf_whisper`], `model.language` [DEFAULT `he`], `model.task` [DEFAULT `transcribe`], `model.dtype` [DEFAULT `float32`]. Python 3.12 with torch 2.14.1 (CPU) was confirmed (O1).
 
 ## C4 FeaturePipeline
 - Status: not built (wave 1)
@@ -312,15 +309,16 @@ How to use: one entry per component. The agent writes or updates the entry at th
   - `benchmark.steps` [DEFAULT: 3]
 
 ## T Standalone tools
-- Status: PARTLY built (Step 0): `fetch_model`, `fetch_data`, `fetch_wheels` and the extra `inspect_audio` done. `make_test_model` and `make_manifest` are not built yet.
+- Status: PARTLY built (Step 0): `fetch_model`, `fetch_data`, `fetch_wheels`, `make_test_model` and the extra `inspect_audio` done. `make_manifest` is not built yet.
 - Purpose: Prepare, outside the pipeline and with network access allowed ONLY here, everything the offline pipeline needs: models, data, packages, the tiny test model and the code manifest.
 - How to use (project root, project virtual environment active; every script has a "How to run" header):
   - `python tools/fetch_model.py --repo openai/whisper-tiny --out models/whisper-tiny`
   - `python tools/fetch_data.py --repo <dataset> --dry-run` (prints the size, downloads nothing), then `python tools/fetch_data.py --repo <dataset> --out data/daf_yomi_raw`
   - `python tools/fetch_wheels.py --requirements requirements.txt --out wheels --lock requirements.lock` (add `--python-version 3.12 --platform win_amd64`; the Python running it must be that version)
   - `python tools/inspect_audio.py --data data/daf_yomi_raw` (read-only report on a downloaded parquet dataset: schema and row counts from the metadata, metadata distributions, `entry_id` overlap between splits, about 50 real audio rows decoded, about 30 raw labels with simple counts; options `--seed 0 --audio-samples 50 --text-samples 30`; changes nothing; this tool is an addition requested by the owner, not in the PRD tool list)
+  - `python tools/make_test_model.py --tokenizer-from models/whisper-tiny --out tests/assets/tiny_whisper` (builds the tiny random-weight test model with the REAL tokenizer and extractor files, 3.9 MB, loads it through the ModelLoader and runs a forward pass; `--seed 0`, `--force` to replace; already built and stored with the tests, so you only run it again to change the model)
   - Run the tool tests: `python -m unittest discover -s tests -v`
 - Inputs and outputs: see the brief in `docs/PRD.md`. `fetch_model` and `fetch_data` write the folder plus `fetch_info.json`; they are idempotent (a finished folder is reused, an unfinished one is rebuilt). `fetch_wheels` writes `wheels/` and `requirements.lock`. Exit codes: 0 OK; 1 failure; `fetch_wheels` also 2 = a wheel is missing for the target, 3 = the offline install test failed.
 - Known limits: only public repositories (anonymous download). `fetch_model` downloads only safetensors weights and the small config and tokenizer files. `fetch_wheels` takes only binary wheels (`--only-binary`), so a package that exists only as source fails with the package name. The offline install test runs on the home machine, with the same Python version as the target.
-- Tests: `tests/test_tools_fetch.py`, `tests/test_fetch_wheels.py` (network faked), `tests/test_inspect_audio.py` (tiny synthetic parquet).
+- Tests: `tests/test_tools_fetch.py`, `tests/test_fetch_wheels.py` (network faked), `tests/test_inspect_audio.py` (tiny synthetic parquet), `tests/test_make_test_model.py` (the stored tiny model is rebuilt from itself).
 

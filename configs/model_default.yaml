@@ -1,0 +1,21 @@
+# How to run: example `model` section (phase 1: a local copy of OpenAI whisper-tiny, downloaded at home with
+# `python tools/fetch_model.py --repo openai/whisper-tiny --out models/whisper-tiny`). Extend it:
+#     extends: model_default.yaml
+#     $env:PYTHONPATH = "src"
+#     python -c "from pathlib import Path; from stt.config import SectionRegistry, load_config; from stt.modelloader import ModelConfig; print(load_config(Path('configs/model_default.yaml'), registry=SectionRegistry({'model': ModelConfig})).section('model', ModelConfig))"
+# The model is chosen ONLY here; the loader never downloads anything and never takes a Hub name.
+extends: base.yaml
+
+model:
+  # REQUIRED. A local folder with the model (config.json, model.safetensors, tokenizer and preprocessor files).
+  path: models/whisper-tiny
+  # Later phase, on the owner's own machine (an ivrit-ai large-family model, copied locally first):
+  # path: models/ivrit-ai-whisper-large-v3-turbo
+  # Loader in the registry (DEFAULT hf_whisper).
+  loader: hf_whisper
+  # Language code written into the generation settings and the label prefix (Hebrew only; the ivrit-ai cards require it to be set).
+  language: he
+  # transcribe (DEFAULT) | translate
+  task: transcribe
+  # float32 (DEFAULT, CPU) | float16 | bfloat16
+  dtype: float32
