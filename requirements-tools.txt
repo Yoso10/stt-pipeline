@@ -1,0 +1,6 @@
+# How to run: python -m pip install -r requirements-tools.txt   (home machine only)
+# Extra packages for the home-side tools in tools/. Install requirements.txt first.
+# huggingface_hub is already installed together with transformers; it is pinned here so that
+# the tools keep working if transformers is ever changed. No other packages are needed:
+# the tools use the standard library plus huggingface_hub (CLAUDE.md rule 4).
+huggingface_hub==1.33.0

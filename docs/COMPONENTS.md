@@ -288,10 +288,14 @@ How to use: one entry per component. The agent writes or updates the entry at th
   - `benchmark.steps` [DEFAULT: 3]
 
 ## T Standalone tools
-- Status: not built (wave 3)
+- Status: PARTLY built (Step 0): `fetch_model`, `fetch_data`, `fetch_wheels` done. `make_test_model` and `make_manifest` are not built yet.
 - Purpose: Prepare, outside the pipeline and with network access allowed ONLY here, everything the offline pipeline needs: models, data, packages, the tiny test model and the code manifest.
-- How to use: (to be written when built: exact command or call, and one example)
-- Inputs and outputs: see the brief in `docs/PRD.md`
-- Known limits: (to be written when built)
-- Tests: (to be filled in when built)
+- How to use (project root, project virtual environment active; every script has a "How to run" header):
+  - `python tools/fetch_model.py --repo openai/whisper-tiny --out models/whisper-tiny`
+  - `python tools/fetch_data.py --repo <dataset> --dry-run` (prints the size, downloads nothing), then `python tools/fetch_data.py --repo <dataset> --out data/daf_yomi_raw`
+  - `python tools/fetch_wheels.py --requirements requirements.txt --out wheels --lock requirements.lock` (add `--python-version 3.12 --platform win_amd64`; the Python running it must be that version)
+  - Run the tool tests: `python -m unittest discover -s tests -v`
+- Inputs and outputs: see the brief in `docs/PRD.md`. `fetch_model` and `fetch_data` write the folder plus `fetch_info.json`; they are idempotent (a finished folder is reused, an unfinished one is rebuilt). `fetch_wheels` writes `wheels/` and `requirements.lock`. Exit codes: 0 OK; 1 failure; `fetch_wheels` also 2 = a wheel is missing for the target, 3 = the offline install test failed.
+- Known limits: only public repositories (anonymous download). `fetch_model` downloads only safetensors weights and the small config and tokenizer files. `fetch_wheels` takes only binary wheels (`--only-binary`), so a package that exists only as source fails with the package name. The offline install test runs on the home machine, with the same Python version as the target.
+- Tests: `tests/test_tools_fetch.py`, `tests/test_fetch_wheels.py` (network faked).
 
