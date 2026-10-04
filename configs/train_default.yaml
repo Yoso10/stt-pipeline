@@ -1,0 +1,42 @@
+# How to run: example `train` section; every value shown is the DEFAULT (the hyperparameter numbers below are PLACEHOLDERS until the
+# owner decides them, O39). Extend it:
+#     extends: train_default.yaml
+#     $env:PYTHONPATH = "src"
+#     python -c "from pathlib import Path; from stt.config import SectionRegistry, load_config; from stt.trainercore import TrainConfig; print(load_config(Path('configs/train_default.yaml'), registry=SectionRegistry({'train': TrainConfig})).section('train', TrainConfig).hyperparams)"
+# One step = one optimizer update = batch_size * grad_accum_steps examples. The search space belongs to the HyperparamSearcher.
+extends: base.yaml
+
+train:
+  # none (DEFAULT, full fine-tuning) | freeze_encoder (the audio encoder is not trained: less memory and time per step)
+  freeze_policy: none
+  hyperparams:
+    learning_rate: 1.0e-5
+    max_steps: 100
+    batch_size: 4
+    grad_accum_steps: 4
+    warmup_steps: 10
+    weight_decay: 0.0
+    max_grad_norm: 1.0
+    # Empty = use runtime.seed.
+    seed: null
+  # A metrics record every N steps (and at step 1), appended to <output folder>/metrics.csv and the log.
+  log_every_steps: 10
+  # The loss on the whole Val set every N steps (and once at the end). It costs time: see COMPONENTS.md (C6).
+  eval_every_steps: 50
+  # A checkpoint every N steps (more are saved at a new best Val loss, at a stop and at the end). Only the latest and the best are kept.
+  save_every_steps: 100
+  early_stopping:
+    # Stop after this many evaluations in a row without improvement.
+    patience: 5
+    # An evaluation improves only if the loss is lower by more than this.
+    min_delta: 0.0
+  # Empty = no cap. A cap saves and stops gracefully (stopped_reason time_limit); a later call with resume true continues.
+  max_runtime_minutes: null
+  # Empty = half of the cores (at least 1). Keeps the machine usable.
+  cpu_threads: null
+  # false (DEFAULT): the output folder must be new or empty. true: continue the run in it (same settings required).
+  resume: false
+  # Set per experiment (the RunManager does it later); the caller copies it into the TrainRequest.
+  # output_dir: runs/exp_0001/train
+  # Where the records go while the run is in progress: csv (live file), console (log lines).
+  sinks: [csv, console]
