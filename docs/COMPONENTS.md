@@ -3,19 +3,22 @@
 How to use: one entry per component. The agent writes or updates the entry at the end of every component task; the whole file is checked at the end of the project. Entries below hold the planned purpose and config keys extracted from the PRD. The "How to use" line is filled in with the real command or call and one working example when the component is built. Status values: not built, built, verified.
 
 ## C0 Config
-- Status: not built (wave 1)
+- Status: built (wave 1); `mypy --strict` is not installed here, so it was not run
 - Purpose: Load, merge, validate and freeze all settings into one typed, read-only `AppConfig` object.
-- How to use: (to be written when built: exact command or call, and one example)
-- Inputs and outputs: see the brief in `docs/PRD.md`
-- Known limits: (to be written when built)
-- Tests: (to be filled in when built)
-- Config keys (planned):
-  - `runtime.*` (defined here): `online` (bool, default false), `seed` (int).
-    (Consistency fix after the full design review, proposed to the owner: the earlier draft keys `num_proc`,
-    `dataloader_num_workers`, `runs_dir` and `log_level` are replaced by the section keys `features.num_workers`,
-    `train.cpu_threads`, `run.experiments_dir` and `run.log.*`, so that no setting has two homes.)
+- How to use (project root, PowerShell; set `$env:PYTHONPATH = "src"` once per window):
+  ```
+  python -c "from pathlib import Path; from stt.config import load_config, dump_config; print(dump_config(load_config(Path('configs/base.yaml'), overrides=['runtime.seed=7'], target_environ={})))"
+  ```
+  Output: `runtime:` then `online: false` and `seed: 7`. In code: `config = load_config(Path("configs/x.yaml"), overrides=["a.b=3e-5"], registry=registry)`; the Orchestrator can use `add_config_arguments(parser)` (adds `--config PATH` and repeatable `--set A.B=VALUE`) and `load_config_from_args(args)`. Precedence: defaults in code < YAML (`extends: other.yaml` allowed) < environment `STT__SECTION__KEY` (also read from `.env`; the real environment wins) < `--set`. Offline by default: unless `runtime.online` is true, `HF_HUB_OFFLINE`, `TRANSFORMERS_OFFLINE` and `HF_DATASETS_OFFLINE` are set to 1. Use `config.section("name", SchemaClass)` to read a component's section.
+- Inputs and outputs: a YAML path (optional), `--set` strings, environment, `.env` -> a frozen `AppConfig` (`runtime` plus the registered sections). `dump_config(config)` returns the resolved YAML text. Errors raise `ConfigError` (exit code 2) naming the key and how to fix it; all problems are reported together.
+- How a component adds its section (no change to the loader): subclass `SectionModel` (frozen, unknown keys forbidden), then the composition root builds `SectionRegistry({"data": DataSection})` and passes it to `load_config`. `stt.config.validators` offers `ExistingPath` and `check_ratios_sum_to_one` for such schemas.
+- Known limits: only the `runtime` section exists until components are built, so any other top-level key in a YAML file fails as unknown. `.env` lines are read only for `STT__` names (nothing else is exported). The dump has no comments (the per-key reference comes from `config-docs`, a later task). `extends` takes one file name, not a list.
+- Tests: `tests/test_config.py` (34 tests, offline), `tests/test_package_layout.py`. Files: `src/stt/config/` (`schema.py`, `sources.py`, `loader.py`, `validators.py`, `errors.py`), `configs/base.yaml`, `.env.example`.
+- Config keys (defined here):
+  - `runtime.online` (bool, default false), `runtime.seed` (int, DEFAULT 42).
+    (Consistency fix after the full design review: the earlier draft keys `num_proc`, `dataloader_num_workers`, `runs_dir` and `log_level` are replaced by the section keys `features.num_workers`, `train.cpu_threads`, `run.experiments_dir` and `run.log.*`, so that no setting has two homes.)
   - Other sections are defined by the component that uses them.
-  - Environment variable mapping: `STT__SECTION__KEY` overrides `section.key` (exact prefix to be confirmed in implementation brief).
+  - Environment variable mapping: `STT__SECTION__KEY` overrides `section.key` (double underscore; decided in DECISIONS, section 2, item 31).
 
 ## C1 DataSource
 - Status: not built (wave 1)

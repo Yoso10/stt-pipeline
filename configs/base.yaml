@@ -1,0 +1,10 @@
+# How to run: this is the base configuration. Use it directly or extend it from another file:
+#     python -c "from pathlib import Path; from stt.config import load_config; print(load_config(Path('configs/base.yaml')).runtime)"   (with $env:PYTHONPATH = "src")
+#     in another YAML file:   extends: base.yaml
+# Only the `runtime` keys exist for now; every component adds its own section when it is built.
+
+runtime:
+  # True only at home: allows online mode. The pipeline is offline by default and never downloads.
+  online: false
+  # DEFAULT 42. Seed applied everywhere, so the same seed gives the same result on the same machine.
+  seed: 42
