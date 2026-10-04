@@ -5,7 +5,7 @@ Columns: the issue, the current stance (DEFAULT, DECIDED, open), and what eviden
 
 | # | Issue | Current stance | What evidence settles it |
 |---|-------|----------------|--------------------------|
-| O1 | Python version (3.14 vs 3.12/3.13) | DEFAULT 3.12 (owner: any version that works with the libraries likely available on the closed machine) | clean-venv install of all packages at home on Windows; offline wheel bundle for the closed machine must match the same Python and Windows |
+| O1 | Python version (3.14 vs 3.12/3.13) | DECIDED 2026-10-04: 3.12 stays (home install test passed). Target machine's Python still unknown: ask the manager once, then run `fetch_wheels --python-version X.Y` (owner: any version that works with the libraries likely available on the closed machine) | clean-venv install of all packages at home on Windows; offline wheel bundle for the closed machine must match the same Python and Windows |
 | O2 | `num_proc` / `dataloader_num_workers` on Windows | DEFAULT 0 or 1 | timing runs with 0, 1, N |
 | O3 | timestamp tokens: strip vs keep | DECIDED: v1 strips them; `keep` is a documented later extension. Owner: no need to deal with timestamps in the transcript itself (see O48) | the work data, if it ever contains tokens that must be learned |
 | O4 | each component owns its own config section (Config decision 7) | DECIDED in practice: every brief follows it and the owner approved them all | none |
@@ -13,7 +13,7 @@ Columns: the issue, the current stance (DEFAULT, DECIDED, open), and what eviden
 | O6 | which splits the quality filter applies to | DEFAULT train only | WER on filtered vs unfiltered test subsets (per-file WER) |
 | O7 | use the official `eval` split vs own split by `entry_id` | open | overlap of `entry_id` between train and eval in LoadReport |
 | O8 | strength of the baseline model | unknown | baseline WER on test; compare with plain Whisper tiny/base |
-| O9 | mp3 decoding on Windows, audio library, parquet reader | candidates only | home install test |
+| O9 | mp3 decoding on Windows, audio library, parquet reader | DECIDED 2026-10-04: soundfile + pyarrow approved; mp3 verified on synthetic files, real Daf Yomi audio still to be checked | home install test |
 | O10 | grid vs Optuna | open | number of trials affordable on CPU (step-time measurement) |
 | O11 | subsample sizes (smoke / screening / full) | DEFAULT small | measured time per training step |
 | O12 | safety gates (`max_rejected_ratio` 0.05, `min_kept_ratio` 0.4) | DEFAULT | first real reports |
@@ -39,7 +39,7 @@ Columns: the issue, the current stance (DEFAULT, DECIDED, open), and what eviden
 | O33 | CPU cost of short clips: the Whisper encoder always processes the full 30 s window, so short clips (for example short radio transmissions) cost as much per sample as long ones; concatenating short clips is a possible later optimization (not in v1) | open | measured step time on short clips; clip duration distribution from the manager |
 | O34 | label-length removal in FeaturePipeline (DEFAULT flag-and-remove, gate `features.max_dropped_ratio` 0.05) vs a SampleFilter rule with a token counter | DEFAULT as written | count of removed labels in the first reports |
 | O35 | timestamp `keep` mode: LATER EXTENSION (see O48); designs A/B/C and the Evaluator generating and stripping timestamps are kept for then | postponed | work-data timestamp format and resolution (manager); WER impact |
-| O36 | resampling / mono library and numpy approval | open | home install test (with O9) |
+| O36 | resampling / mono library and numpy approval | DECIDED 2026-10-04: scipy and numpy approved | home install test (with O9) |
 | O37 | live progress viewer for the training metrics file (metrics file is live and locked; the viewer is open: Excel, a tiny dependency-free HTML/SVG page, or TensorBoard which needs approval) | merged into the ReportBuilder component (O54): the live page is one of its two outputs | owner's use of the live file in the first runs |
 | O38 | optional WER on a small fixed Val subset during training (default off, CPU cost), injected from the Evaluator | open | measured generation time per sample |
 | O39 | training defaults (learning rate, batch size, accumulation, patience, save/eval intervals, CPU threads = half the cores) | DEFAULT | first smoke runs on the small model |
@@ -66,4 +66,4 @@ Columns: the issue, the current stance (DEFAULT, DECIDED, open), and what eviden
 | O59 | test-set usage counter in the registry and the report | DECIDED (owner approved) | none |
 | O60 | generated `CONFIG_REFERENCE.md` and four ready config presets (`smoke`, `home_full`, `work_like`, `work` template) | DECIDED (owner approved) | none |
 | O61 | REJECTED or NOT NEEDED by the owner (do not propose again without new evidence): a diagnostics bundle command (an internal agent exists at the work site); a file-lock retry helper for Windows | recorded | none |
-| O62 | package and command-line name (placeholder `stt` used in the RUNBOOK examples) | open | owner's choice at the bootstrap step |
+| O62 | package and command-line name | DECIDED 2026-10-04: `stt` | owner's choice at the bootstrap step |

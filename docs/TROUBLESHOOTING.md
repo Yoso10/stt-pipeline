@@ -20,6 +20,12 @@
 ## Reproducibility expectation
 The same seed gives the same result on the same machine. Results are not guaranteed to be bit-identical across machines, CPUs or core counts, so exact numbers are not compared between home and work.
 
+## Installation (bootstrap)
+| Symptom | Likely cause | Minimal fix |
+|---|---|---|
+| `pip OSError: No such file ... long path` (usually while installing torch; a very long file path is named) | the project or `.venv` is in a deep folder and Windows long paths are off | move the project and `.venv` to a short path such as `C:\stt` (40 characters or fewer), recreate the venv there, install again; do not change system settings (no admin rights) |
+| pip says "no matching distribution" when installing offline | the wheel bundle was built for another Python version | check `python --version`; rebuild the bundle at home with `python tools/fetch_wheels.py --python-version X.Y` for the Python of this machine |
+
 ## Config (C0)
 | Symptom | Likely cause | Minimal fix |
 |---|---|---|

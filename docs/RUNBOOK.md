@@ -6,21 +6,23 @@ stt check                                   # is this machine ready?
 stt smoke --config configs/smoke.yaml       # does the whole chain work? (tiny model, synthetic data)
 stt run --config configs/home_full.yaml     # the whole pipeline, one command
 ```
-`stt` is a placeholder for the command name (O62). This file describes the TARGET usage; the agent verifies every command against the real CLI and updates this file when the CLI exists. Every command also prints `--help` with an example.
+`stt` is the package and command name (O62, decided). This file describes the TARGET usage; the agent verifies every command against the real CLI and updates this file when the CLI exists. Every command also prints `--help` with an example.
 
 ## 1. What this is
 An offline, CPU-only, non-interactive pipeline that fine-tunes a Whisper model on labeled audio, evaluates it with WER, and returns a winning model, or says that the baseline stays. You run it alone; it needs no network and no admin rights.
 
 ## 2. One-time setup on a machine
-1. Python 3.12 (or the version the project settled on, O1) installed for your user.
-2. Create a virtual environment and install offline from the wheel bundle:
+1. FIRST: put the whole project (code, `wheels/`, `.venv`) at a SHORT path, for example `C:\stt` (the venv is then `C:\stt\.venv`). Keep the path to the project folder at 40 characters or fewer. Windows without long-path support fails to install torch in a deep folder (`pip OSError: No such file ...`); enabling long paths needs admin rights, so avoid the problem by choosing a short path.
+2. Python 3.12 (or the version the project settled on, O1) installed for your user.
+3. Create a virtual environment and install offline from the wheel bundle:
    ```
+   cd C:\stt
    python -m venv .venv
    .venv\Scripts\activate
    pip install --no-index --find-links wheels -r requirements.lock
    ```
-3. Copy `.env.example` to `.env` and fill in the machine settings (folders, core counts).
-4. Verify: `stt check`. It lists everything that is wrong at once, verifies the code against `MANIFEST.sha256` and prints the code version.
+4. Copy `.env.example` to `.env` and fill in the machine settings (folders, core counts).
+5. Verify: `stt check`. It lists everything that is wrong at once, verifies the code against `MANIFEST.sha256` and prints the code version.
 
 ## 3. Moving to the closed machine (checklist)
 - [ ] The release folder (code) with `MANIFEST.sha256`

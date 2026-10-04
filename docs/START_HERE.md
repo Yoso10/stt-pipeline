@@ -133,7 +133,7 @@ At the end of a wave, add: "Then run the wave's end-to-end smoke run as describe
 1. `git log --stat`: only the expected files changed.
 2. The report: each Definition of Done item, any deviation, and the open questions. Answer the questions; the agent must not decide DEFAULT or OPEN items.
 3. Run the new component's example from `docs/COMPONENTS.md` yourself once.
-4. Tests: `pytest` passes offline (disconnect the network once to be sure).
+4. Tests: `python -m unittest discover -s tests` passes offline (disconnect the network once to be sure).
 
 ## 8. Keeping the documents in sync
 The agent works from the copies in the repository. The copies in the Claude project and in the repository must not drift apart: when a decision changes, change it in the repository documents (through the agent, after your approval) and tell me, so that the project copy is updated too.

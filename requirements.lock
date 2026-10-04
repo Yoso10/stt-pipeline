@@ -10,6 +10,7 @@ annotated-doc==0.0.5
 annotated-types==0.8.0
 anyio==4.15.1
 certifi==2026.7.22
+cffi==2.1.1
 click==8.5.0
 colorama==0.4.6
 colorlog==6.12.0
@@ -29,13 +30,17 @@ numpy==2.5.3
 optuna==5.0.0
 packaging==26.3
 psutil==7.2.2
+pyarrow==25.0.1
+pycparser==3.0
 pydantic==2.13.5
 pydantic_core==2.46.5
 regex==2026.9.29
 rich==15.0.0
 safetensors==0.8.0
+scipy==1.18.1
 setuptools==84.0.0
 shellingham==1.5.4
+soundfile==0.14.0
 sympy==1.14.0
 tokenizers==0.23.2
 torch==2.14.1

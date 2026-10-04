@@ -2,8 +2,7 @@
 # Pipeline dependencies = only those marked "approved" in docs/DECISIONS.md section 3.
 # Tested at home on Python 3.12.14, Windows 11 x64, CPU only (2026-10-04).
 # Exact versions of every package (including indirect ones) are in requirements.lock.
-# Pending approval (NOT listed here): audio library (O9), parquet reader (O9), resampling (O36).
-# numpy arrives as a dependency of torch and is not listed until O36 is decided.
+# Approved by the owner on 2026-10-04: soundfile and pyarrow (O9), scipy and numpy (O36).
 # GPU later: the PyPI torch wheel for Windows is CPU-only. For a GPU, replace the torch line with
 # a CUDA build from https://download.pytorch.org/whl/<cuXXX> (a config/requirements change only).
 pydantic==2.13.5
@@ -13,3 +12,7 @@ transformers==5.18.0
 safetensors==0.8.0
 accelerate==1.15.0
 optuna==5.0.0
+numpy==2.5.3
+scipy==1.18.1
+soundfile==0.14.0
+pyarrow==25.0.1

@@ -41,6 +41,13 @@ How to use: the decisions of each component are the "Rules" and "Decisions" sect
 16. Orchestrator: one `run` command, stage commands, completion markers, stop at the first failure, fixed exit codes, graceful interrupt, sleep prevention on Windows, `smoke`, `benchmark`, `check`, `report`, `config-docs`.
 17. Python 3.12 is the DEFAULT version, to be confirmed by the clean-environment install test.
 18. Version control: `git init` at the bootstrap step; every component task ends with a commit.
+19. Python version (O1, owner approved 2026-10-04): 3.12 stays. The clean-environment install test with Python 3.12.14 on Windows 11 (CPU only) passed, offline install and `pip check` included. The Python version of the closed machine is still UNKNOWN: ask the manager once, then run `python tools/fetch_wheels.py --python-version X.Y` (with a Python X.Y) to prove the stack installs on it.
+20. Audio and parquet libraries (O9, owner approved 2026-10-04): soundfile and pyarrow. mp3 read and decode works on Windows (libsndfile 1.2.2), tested on synthetic files only; the first check on real Daf Yomi audio is a separate task.
+21. Resampling and numpy (O36, owner approved 2026-10-04): scipy (`resample_poly`) and numpy, both listed in requirements.txt.
+22. Package and command-line name (O62, owner approved 2026-10-04): `stt`.
+23. Source layout (owner approved 2026-10-04): `src/stt/` with one subfolder per component, created when that component is built. Run and test with `PYTHONPATH=src` (no packaging, no new dependency): `set PYTHONPATH=src` in cmd, `$env:PYTHONPATH="src"` in PowerShell, then `python -m stt ...`; tests run with `python -m unittest discover -s tests` (the test files add `src` to the path themselves).
+24. Test runner (owner approved 2026-10-04): unittest. No pytest dependency.
+25. Short paths on Windows (owner approved 2026-10-04): the project and its `.venv` live at a short path such as `C:\stt` (40 characters or fewer) because Windows without long-path support fails to install torch in a deep folder, and enabling long paths needs admin rights. Documented in docs/RUNBOOK.md (first install step) and docs/TROUBLESHOOTING.md (Installation).
 
 ## 3. Dependencies
 | Dependency | Status | Used by |
@@ -49,10 +56,12 @@ How to use: the decisions of each component are the "Rules" and "Decisions" sect
 | torch, transformers, safetensors, accelerate | approved | ModelLoader, FeaturePipeline, TrainerCore, Evaluator |
 | optuna | approved only if it helps (the `grid` strategy needs no dependency) | HyperparamSearcher adapter |
 | huggingface_hub | installed with transformers; used by the home-side tools only | tools |
-| audio header and decoding library (candidate soundfile; mp3 on Windows to be verified) | PENDING, needs approval (O9) | DataSource, FeaturePipeline |
-| parquet reader (candidate pyarrow) | PENDING, needs approval (O9) | DataSource |
-| resampling and mono conversion (candidates scipy, torchaudio) | PENDING, needs approval (O36) | FeaturePipeline |
-| numpy (installed with torch) | approval requested for explicit use (O36) | FeaturePipeline |
+| soundfile (audio header and decoding; mp3 verified on Windows at home with synthetic files) | approved (O9, 2026-10-04) | DataSource, FeaturePipeline |
+| pyarrow (parquet reader) | approved (O9, 2026-10-04) | DataSource |
+| scipy (resampling and mono conversion) | approved (O36, 2026-10-04) | FeaturePipeline |
+| numpy (listed explicitly in requirements.txt) | approved (O36, 2026-10-04) | FeaturePipeline |
+| torchaudio | NOT used (its version must be paired with torch) | none |
+| pytest | NOT used: tests use the standard-library unittest (`python -m unittest discover -s tests`) | none |
 | datasets | NOT used (owner approved a plain loop) | none |
 | peft | NOT approved, not needed in phase 1 | none |
 | matplotlib, jiwer, TensorBoard | NOT used (own code) | none |
