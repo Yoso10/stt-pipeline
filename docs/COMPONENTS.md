@@ -21,12 +21,18 @@ How to use: one entry per component. The agent writes or updates the entry at th
   - Environment variable mapping: `STT__SECTION__KEY` overrides `section.key` (double underscore; decided in DECISIONS, section 2, item 31).
 
 ## C1 DataSource
-- Status: not built (wave 1)
+- Status: built (wave 1); run once on the real Daf Yomi data (8723 rows, 0 rejected)
 - Purpose: Load raw labeled audio + text from a LOCAL folder into one uniform list of `AudioSample`, and report what was loaded and what was rejected.
-- How to use: (to be written when built: exact command or call, and one example)
-- Inputs and outputs: see the brief in `docs/PRD.md`
-- Known limits: (to be written when built)
-- Tests: (to be filled in when built)
+- How to use (project root, PowerShell, `$env:PYTHONPATH = "src"`; needs `data/daf_yomi_raw` from `tools/fetch_data.py`; the first run extracts about 800 MB of audio to `data/extracted/daf_yomi`, about 3 minutes; later runs reuse it, about 10 seconds):
+  ```
+  python -c "from pathlib import Path; from stt.config import SectionRegistry, load_config; from stt.datasource import DataConfig, create_data_source; c = load_config(Path('configs/data_gmara.yaml'), registry=SectionRegistry({'data': DataConfig})); r = create_data_source(c.section('data', DataConfig), Path('data/load_out')).load(); print(r.report.summary())"
+  ```
+  Output starts with `seen 8723, loaded 8723, rejected 0`, then the reasons, the counts per split, the number of groups and the duration summary. `rejected.csv` (id, reason, detail) is written to the folder given as `out_dir` (here `data/load_out`; in a run the RunManager passes the experiment folder). Config: copy `configs/data_gmara.yaml` and change the paths and column names.
+- Inputs and outputs: config section `data` (class `DataConfig`, registered by the composition root with `SectionRegistry({"data": DataConfig})`) -> `LoadResult(samples sorted by id, report, rejections)`. `AudioSample`: `id`, `audio_path`, `text` (raw), `group_id`, `duration_sec` (from the audio header), `source_split`, `extra` (all other columns, typed by `data.extra_types`; nested `metadata` fields as `meta_<name>`). `LoadReport` has counts, rejection reasons, per-split counts, duration and numeric-extra distributions, empty values left out of `extra`, and how many `group_id` occur in more than one `source_split` (information only). Errors: `DataSourceError` (exit code 3).
+- Sources (selected by `data.source.type` through `DataSourceRegistry`, `default_registry()`): `csv` = a folder with `manifest.csv` (UTF-8, BOM tolerated; relative audio paths are relative to the manifest); `hf_parquet` = a folder of parquet files, extracted to `data.extract.dir` (`audio/<split>/<id>.<ext>`, `manifest.csv` written last, `extract_info.json`), then read by the csv code. Parquet ids are `<split>_<row:06d>` (`<split>` = file name before the first `-`).
+- Rejection reasons: `missing_audio`, `empty_text`, `unreadable_audio` (from the brief); `missing_group`, `malformed_row`, `bad_extra_value` (added, see DECISIONS 32). Failures: duplicate or empty id, a mapped column that does not exist (the existing columns are listed), no group column with `group_fallback: fail`, rejected ratio above `data.max_rejected_ratio` (after writing `rejected.csv`), zero samples, no parquet files, a reused extraction made from other source files.
+- Known limits: audio arrays are never loaded (headers only). An empty value of a non-text `extra` type is left out of `extra` and counted (not a rejection). Extraction needs free disk space about the size of the parquet files. The duration is read from the header with soundfile, about 20 ms per mp3 file.
+- Tests: `tests/test_datasource.py` (35 tests: the 10 acceptance tests of the brief plus edge cases; tiny synthetic wav and parquet files, offline).
 - Config keys (planned):
   - `data.source.type` (`csv` | `hf_parquet`), `data.source.path` (folder)
   - `data.columns.id` (optional), `data.columns.audio`, `data.columns.text`, `data.columns.group`, `data.columns.split` (optional)

@@ -1,0 +1,41 @@
+# How to run: example `data` section for the Daf Yomi (Gmara) parquet data downloaded with tools/fetch_data.py.
+#     $env:PYTHONPATH = "src"
+#     python -c "from pathlib import Path; from stt.config import SectionRegistry, load_config; from stt.datasource import DataConfig; print(load_config(Path('configs/data_gmara.yaml'), registry=SectionRegistry({'data': DataConfig})).section('data', DataConfig).source)"
+# Copy it for another dataset and change the paths and column names. Nothing here is hard-coded in the code.
+extends: base.yaml
+
+data:
+  source:
+    # Source type in the registry: csv (folder with manifest.csv) or hf_parquet (folder of parquet files).
+    type: hf_parquet
+    # The downloaded parquet folder (must exist).
+    path: data/daf_yomi_raw
+  # Names are those of the extracted manifest: `metadata` fields appear as meta_<name>.
+  columns:
+    audio: audio
+    text: transcript
+    # The lesson id: the group that must never be split between Train and Test.
+    group: meta_entry_id
+    # Source split taken from the parquet file name (train / eval).
+    split: source_split
+  # DEFAULT fail: a missing group column stops the run on purpose (leakage protection).
+  group_fallback: fail
+  # Types of the values kept in `extra` (columns not listed stay text).
+  extra_types:
+    meta_seek: float
+    meta_duration: float
+    meta_quality_score: float
+    meta_number_of_segments: int
+    meta_bad_segments: int
+    meta_golden_segments: bool
+    has_prev: bool
+    has_timestamps: bool
+  extract:
+    # Where the audio is extracted (git-ignored data/ folder, never inside src/ or tests/).
+    dir: data/extracted/daf_yomi
+    # DEFAULT false: a complete earlier extraction is reused.
+    overwrite: false
+  # DEFAULT skip: a bad sample is rejected and listed in rejected.csv.
+  on_invalid: skip
+  # DEFAULT 0.05: the run fails when more than 5 percent of the rows are rejected.
+  max_rejected_ratio: 0.05
