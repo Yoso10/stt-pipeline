@@ -1,0 +1,44 @@
+# How to run: example `split` section (all values shown are the DEFAULTS). Combine it with a data section by
+# copying it into your configuration file, or extend it:   extends: split_default.yaml
+#     $env:PYTHONPATH = "src"
+#     python -c "from pathlib import Path; from stt.config import SectionRegistry, load_config; from stt.splitter import SplitConfig; print(load_config(Path('configs/split_default.yaml'), registry=SectionRegistry({'split': SplitConfig})).section('split', SplitConfig).ratios)"
+extends: base.yaml
+
+split:
+  # Splitter in the registry: grouped_ratio | hash_group | predefined | time_block.
+  mode: grouped_ratio
+  group_key:
+    # Empty = the DataSource group (`group_id`, here the lesson `entry_id`). Else: group_id, id, source_split or a key of `extra`.
+    column: null
+    # Optional regex; its first capture group becomes the group (for example the tractate code from meta_source).
+    regex: null
+  # Split names and their shares (they must sum to 1). The official eval split is NOT used as the Test (decision 26).
+  names: [train, val, test]
+  ratios: [0.8, 0.1, 0.1]
+  # What the ratios measure: duration (seconds of audio) or samples.
+  ratio_unit: duration
+  # Allowed absolute deviation from a requested ratio.
+  ratio_tolerance: 0.05
+  # Empty = use runtime.seed.
+  seed: null
+  # Minimum gates; review them when the data volume is known (O22).
+  min_samples_per_split: 30
+  min_groups_per_split: 2
+  # A group larger than the smallest split can hold: fail | warn.
+  on_oversized_group: fail
+  # For mode predefined: a group in several source splits: fail | drop_from_train.
+  on_overlap: fail
+  time_block:
+    order_column: meta_seek
+    guard_gap_sec: 30
+  predefined:
+    # Source split name -> split name, for example {eval: test}. Empty = the same name.
+    source_map: {}
+  # Key of the samples with the speaker or creator (for example meta_creator): the report counts shared speakers.
+  speaker_column: null
+  # Folder for saved splits: <dir>/<version>/split.json. Empty = nothing is saved.
+  dir: null
+  # A new version is the only way to create a new split; experiments with different versions are not comparable.
+  version: v1
+  reuse: true
+  export_csv: false

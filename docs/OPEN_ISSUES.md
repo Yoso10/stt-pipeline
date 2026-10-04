@@ -20,7 +20,7 @@ Columns: the issue, the current stance (DEFAULT, DECIDED, open), and what eviden
 | O13 | text-to-duration ratio rule in the filter | open | misalignment seen in the reports |
 | O14 | where reports are persisted (ReportWriter vs RunManager) | DECIDED (owner approved): the RunManager writes all reports into the experiment folder; other components return objects (metrics sinks are the only exception). Brief written (component 12) | none |
 | O15 | first-evaluation failure threshold (original PRD: WER 0.6) | DEFAULT, from Config | baseline WER |
-| O16 | split ratios | DEFAULT 80/10/10 | dataset size per group |
+| O16 | split ratios | DEFAULT 80/10/10. EVIDENCE 2026-10-04 (C3 on the real data, grouped_ratio, seed 42, by duration): train 6973 samples / 566 groups / 57.90 h, val 875 / 72 / 7.25 h, test 875 / 72 / 7.26 h; the largest group is 0.35% of the data (30 clips), so no group is oversized; seeds 1, 2, 3 all give ratios within 0.001 of the request | dataset size per group |
 | O17 | pipeline order: DataSource -> Splitter -> TextNormalizer -> SampleFilter -> FeaturePipeline | agreed (owner approved the `NormalizedSample` wrapper, option A) | none yet |
 | O18 | split group key: lesson/recording (`entry_id`) vs content level (tractate via regex on `meta_source`) | DEFAULT `entry_id`; tractate level is a candidate | number of groups per key; WER gap between a seen-groups test and a held-out-groups test |
 | O19 | identical text appearing in both Train and Test (quotes repeat across the Talmud) | open, decide at TextNormalizer | % of Test sentences also in Train after normalization |

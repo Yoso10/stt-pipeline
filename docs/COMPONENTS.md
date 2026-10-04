@@ -44,13 +44,18 @@ How to use: one entry per component. The agent writes or updates the entry at th
   - Defaults for the Gmara dataset (example only, in the example YAML, not in code): audio=`audio`, text=`transcript`, group=`meta_entry_id`, split=`source_split` from the parquet file/split name.
 
 ## C3 Splitter
-- Status: not built (wave 1)
+- Status: built (wave 1); run once on the real Daf Yomi data (8723 samples, 710 groups)
 - Purpose: Divide the samples into named splits (default `train`, `val`, `test`) BY GROUP, deterministically, guaranteeing that no group appears in more than one split.
-- How to use: (to be written when built: exact command or call, and one example)
-- Inputs and outputs: see the brief in `docs/PRD.md`
-- Known limits: (to be written when built)
-- Tests: (to be filled in when built)
-- Config keys (planned):
+- How to use (project root, PowerShell, `$env:PYTHONPATH = "src"`; needs the extracted audio of C1):
+  ```
+  python -c "from pathlib import Path; from stt.config import SectionRegistry, load_config; from stt.datasource import DataConfig, create_data_source; from stt.splitter import SplitConfig, resolve_split; c = load_config(Path('configs/data_gmara.yaml'), overrides=['split.speaker_column=meta_creator'], registry=SectionRegistry({'data': DataConfig, 'split': SplitConfig})); s = create_data_source(c.section('data', DataConfig), Path('data/load_out')).load().samples; print(resolve_split(c.section('split', SplitConfig), c.runtime.seed, s).report.summary())"
+  ```
+  Output (about 15 seconds): `mode grouped_ratio, seed 42 ...`, `samples 8723, groups 710`, then `train: 6973 samples, 566 groups, 57.90 h, ratio 0.800`, the same for `val` and `test`, the largest groups, the overlap check, a table `source_split -> split`, and the speaker line. In code: `resolve_split(split_config, runtime_seed, samples)` returns a `SplitResult`; `default_registry().create(config, seed).split(samples)` splits without saving. Saving: set `split.dir` (the split is written to `<dir>/<version>/split.json` and reused by later runs; a new split needs a new `split.version`; `split.export_csv: true` also writes `split.csv`). Example YAML with every key and its DEFAULT: `configs/split_default.yaml`. In a command-line list, write JSON text, for example `--set 'split.names=["a","b"]'`.
+- Inputs and outputs: `list[AudioSample]` (C1) -> `SplitResult`: `splits` (name -> samples sorted by id), `dropped_guard` (time_block only), `dropped_overlap` (predefined with `drop_from_train` only), `report` (`SplitReport`: per split samples, groups, hours, actual and requested ratio; the largest groups; the overlap check; the table source split -> split; a speaker line; both fingerprints), `fingerprint` (this split) and `data_fingerprint` (the input). Errors: `SplitError` (exit code 3).
+- Modes (`split.mode`, a registry): `grouped_ratio` (DEFAULT: seeded stable order, each whole group goes to the split furthest below its target; fails when a ratio is missed by more than `split.ratio_tolerance`), `hash_group` (sha256 of seed and group: adding groups never moves old ones), `predefined` (uses `source_split`; missing names such as `val` are carved from the first split by group), `time_block` (cuts each recording into contiguous blocks by `meta_seek` with a guard gap; groups span splits by design). Hard checks after every split: no group in two splits (not for time_block), the union equals the input, no duplicate ids, no empty split; then the minimum gates and the oversized-group gate.
+- Known limits: the official `eval` split is NOT used for the Test (decision 26): `source_split` is only reported. The Test measures new lessons, not new speakers; set `split.speaker_column` to see it in the report. No stratification and no text-duplicate check between splits (O19). With `hash_group` and few groups the shares can be uneven (the minimum gates fail instead). A saved split cannot be loaded after the data changed (fingerprint check): use a new `split.version` (with `hash_group` the old groups keep their splits). Neighbouring lessons of the same tractate can still share content (O18).
+- Tests: `tests/test_splitter.py` (41 tests: the 10 acceptance tests of the brief plus edge cases; synthetic samples, no files, offline).
+- Config keys (defined here, section `split`; `split.predefined.source_map` and `split.speaker_column` were added, see DECISIONS 33):
   - `split.mode` (`predefined` | `grouped_ratio` | `hash_group` | `time_block`) [DEFAULT: `grouped_ratio`; final choice OPEN, depends on the data check]
   - `split.group_key.column` [DEFAULT: the DataSource group column, i.e. one lesson/recording], `split.group_key.regex` [DEFAULT: none]
     - OPEN (O18): a content-level key, for example the tractate code extracted by regex from the `meta_source` column. Decided after the data is inspected.
