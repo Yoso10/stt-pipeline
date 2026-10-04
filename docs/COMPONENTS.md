@@ -112,22 +112,29 @@ How to use: one entry per component. The agent writes or updates the entry at th
   - `filter.min_kept_ratio` [DEFAULT: 0.4]: if a split keeps less than this fraction, the run FAILS (safety gate).
 
 ## C3b Subsampler
-- Status: not built (wave 2)
+- Status: built (wave 2); run once on the real Daf Yomi splits (sizes, nesting, fixed Val and Test, determinism); wired into the `prepare` stage, OFF by default
 - Purpose: Select, deterministically and reproducibly, a smaller subset of the samples to the size requested in Config, and report exactly what was selected.
-- How to use: (to be written when built: exact command or call, and one example)
-- Inputs and outputs: see the brief in `docs/PRD.md`
-- Known limits: (to be written when built)
-- Tests: (to be filled in when built)
-- Config keys (planned):
-  - `subsample.enabled` [DEFAULT: false]
-  - `subsample.size` [DEFAULT: `all`]
-  - `subsample.strategy` [DEFAULT: `by_sample`]
-  - `subsample.scope` [DEFAULT: `train_only`]
-  - `subsample.val` [DEFAULT: `fixed`]
-  - `subsample.repeats` [DEFAULT: 1]
-  - `subsample.min_train_samples` [DEFAULT: 10]: if fewer samples are selected, FAIL
-  - `subsample.presets` (named sizes for convenience) [DEFAULT: `smoke` = 20 samples, `tiny` = 30 minutes, `work_like` = fraction 0.1 with `scope: all_splits` and `by_group`, `half` = fraction 0.5, `full` = all]
-  - seed from the global Config.
+- How to use (project root, PowerShell, `$env:PYTHONPATH = "src"`; needs the data of C1; about 15 seconds; the experiment goes to a temporary folder that you can delete):
+  ```
+  python -m stt prepare --config configs/data_gmara.yaml --set model.path=models/whisper-tiny --set run.experiments_dir=data/c3b_example --set subsample.enabled=true --set subsample.preset=tiny
+  Get-Content data/c3b_example/exp_0001/reports/subsample_report.txt
+  Remove-Item -Recurse -Force data/c3b_example
+  ```
+  Output: the JSON summary with `kept_train 61, kept_val 875, kept_test 875`, then the report: `requested 30 minutes ... achieved 30.34 minutes ... overshoot +0.34 minutes`, and the sizes before and after of Train (reduced), Val and Test (untouched). In code: `resolve_subsample(subsample_config, runtime_seed, splits, "train", "val")` with `splits` = `{name: [NormalizedSample]}` after the filter, or `Subsampler().subsample(splits, spec)` with a `SubsampleSpec`. In a run the section is `subsample` (class `SubsampleConfig`); example YAML: `configs/subsample_default.yaml`. Sizes on the command line: `--set 'subsample.size={"minutes": 30}'` (JSON text), or `--set subsample.preset=tiny`.
+- Inputs and outputs: `Subsampler.subsample(splits, spec) -> SubsampleResult(splits, report, fingerprint)`. `SubsampleSpec`: `size` (`all`, `minutes`, `samples` or `fraction`), `strategy`, `scope`, `val`, `seed`, `repeat_index`, plus `train_split`, `val_split`, `min_train_samples`. `splits` keep the input order inside each split. `SubsampleReport`: requested size, per split before and after (samples, groups, minutes) and whether it was reduced, achieved size and the overshoot of Train, warnings (a single group in Train), where the ids are stored. `SubsampleStore` writes and reads the JSON (`<size>_<strategy>_<scope>_<val>_s<seed>_r<repeat>.json`: the spec, the fingerprints and the ids). Errors: `SubsampleConfigError` (exit code 2: unknown strategy, scope or preset, a minutes or samples size with scope all_splits, `val: follow` without a Val split) and `SubsampleError` (exit code 3: a size larger than what exists with both numbers, fewer than `min_train_samples`, a split that would be empty, a stale or damaged stored file).
+- Rules kept: every unit (a sample or a whole group) gets a rank from the SHA-256 of `seed|repeat_index|unit key` and units are taken in rank order until the size is reached, so the same inputs give the same subset, the input order does not matter and a smaller subset is inside a larger one; the unit that crosses the target is included (overshoot at most one unit, reported); `by_group` never splits a group; `train_only` leaves Val and Test as the same objects in the same order; `val: follow` reduces Val by the same share as Train; `all_splits` reduces all three by the same fraction (a fraction or `all` is required); a `fraction` is a share of the MINUTES of audio; a size larger than available FAILS (unless `all`); no sample is modified and no file is touched except through the store (a stored file is never overwritten and never reused when the spec or the data changed); `enabled: false` returns the input unchanged. No stratification.
+- Presets (built in; `subsample.preset`): `smoke` 20 samples, `tiny` 30 minutes, `work_like` 10% of the audio by group over ALL splits, `half` 50% of the audio, `full` all. A preset replaces the size and, where it defines them, the strategy and the scope. Measured on the real Daf Yomi splits (Train 6973 clips, 57.90 h, 566 lessons; clips are 30 s): `smoke` 20 clips (0.17 h); `tiny` 61 clips (0.51 h, 59 lessons); `half` 3484 clips (28.95 h); `work_like` Train 702 clips (5.84 h, 58 lessons), Val 101 clips (0.84 h, 7 lessons), Test 97 clips (0.81 h, 8 lessons), about 7.5 h in all (one tenth of the 72.4 h).
+- In the pipeline: the `prepare` stage applies the Subsampler AFTER the SampleFilter (Splitter, TextNormalizer, SampleFilter, Subsampler), writes `reports/subsample_report.txt` when it is on, and its config slice includes `subsample`, so a change reruns `prepare` and the later stages.
+- Known limits: the learning curve and the repeats are run by the Orchestrator (later wave): this component makes ONE subset per call. The preset sizes are open until the step times are known (O11): with whisper-tiny at 2 threads one training example costs about 1.24 s (O28). `work_like` with by_group over three splits can give a Val and a Test of only a few lessons (7 and 8 here), which is the point of the rehearsal. A fraction is measured in minutes of audio, not in samples.
+- Tests: `tests/test_subsampler.py` (20 tests: the 11 acceptance tests of the brief, the presets, the config, the store and `resolve_subsample`, offline on synthetic samples) and one test in `tests/test_orchestrator.py` (off by default and unchanged, on: Train reduced, Val and Test untouched, the two error exit codes).
+- Config keys (section `subsample`; NEW keys marked):
+  - `subsample.enabled` [DEFAULT: false], `subsample.size` [DEFAULT: `all`; or one of `minutes`, `samples`, `fraction`]
+  - `subsample.strategy` [DEFAULT: `by_sample`], `subsample.scope` [DEFAULT: `train_only`], `subsample.val` [DEFAULT: `fixed`]
+  - `subsample.repeats` [DEFAULT: 1], `subsample.repeat_index` [NEW, DEFAULT: 0]
+  - `subsample.min_train_samples` [DEFAULT: 10]
+  - `subsample.preset` [NEW, DEFAULT: none], `subsample.presets` [DEFAULT: empty = your own presets; the built-in ones are in code]
+  - `subsample.dir` [NEW, DEFAULT: none = nothing is saved]
+  - the seed comes from `runtime.seed`
 
 ## C5 ModelLoader
 - Status: built (wave 1); run once on the real `models/whisper-tiny`

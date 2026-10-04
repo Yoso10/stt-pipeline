@@ -4,7 +4,7 @@ How to run: this module is not a script; the command line uses it. Example (Powe
     $env:PYTHONPATH = "src"
     python -c "from stt.orchestrator.wiring import section_registry; print(sorted(section_registry().sections))"
 Example output:
-    ['data', 'eval', 'features', 'filter', 'model', 'pipeline', 'run', 'smoke', 'split', 'text', 'train']
+    ['data', 'eval', 'features', 'filter', 'model', 'pipeline', 'run', 'smoke', 'split', 'subsample', 'text', 'train']
 `build_runtime(config)` builds the services from the names in the config (through the registries of the components), the experiment store, the stage
 registry and the exit-code mapping. Heavy libraries (torch, transformers) are imported lazily, only when the services that need them are used.
 """
@@ -28,6 +28,7 @@ from stt.orchestrator.types import FeatureBuilder, PreparedData, Services
 from stt.runmanager import ExperimentStore, LogSetup, RunConfig, RunManagerError
 from stt.samplefilter import FilterConfig, FilterError, SampleFilter
 from stt.splitter import SplitConfig, SplitError, resolve_split
+from stt.subsampler import SubsampleConfig, SubsampleConfigError, SubsampleError, resolve_subsample
 from stt.textnormalizer import TextConfig, TextNormalizer, TextNormalizerError
 from stt.trainercore import (
     ConsoleMetricsSink,
@@ -55,6 +56,7 @@ def section_registry() -> SectionRegistry:
         {
             "data": DataConfig,
             "split": SplitConfig,
+            "subsample": SubsampleConfig,
             "text": TextConfig,
             "filter": FilterConfig,
             "model": ModelConfig,
@@ -83,9 +85,9 @@ def exit_code_for(exc: BaseException) -> int:
     """The process exit code of an exception: 2 config error, 3 data error, 4 training or evaluation failure, 1 for anything unexpected (a bug)."""
     if isinstance(exc, OrchestratorError):
         return exc.exit_code
-    if isinstance(exc, ConfigError | ModelLoaderError | TrainerConfigError | EvaluatorConfigError | RunManagerError | TextNormalizerError):
+    if isinstance(exc, ConfigError | ModelLoaderError | TrainerConfigError | EvaluatorConfigError | RunManagerError | TextNormalizerError | SubsampleConfigError):
         return 2
-    if isinstance(exc, DataSourceError | SplitError | FilterError | FeaturePipelineError):
+    if isinstance(exc, DataSourceError | SplitError | FilterError | FeaturePipelineError | SubsampleError):
         return 3
     if isinstance(exc, TrainerCoreError | EvaluatorError):
         return 4
@@ -108,15 +110,22 @@ class DataPipeline:
         by_id = {n.sample.id: n for n in normalized.samples}
         splits = {name: [by_id[s.id] for s in samples] for name, samples in split.splits.items()}
         filtered = SampleFilter(c.section("filter", FilterConfig)).filter_splits(splits)
+        kept = {name: result.kept for name, result in filtered.items()}
+        names = c.section("split", SplitConfig).names
+        pipeline = c.sections.get("pipeline")
+        subsampled = resolve_subsample(c.section("subsample", SubsampleConfig), c.runtime.seed, kept, names[0], str(getattr(pipeline, "eval_split", "val")))  # the Subsampler comes AFTER the filter; OFF by default
+        kept = subsampled.splits
         counts: dict[str, str | float | int] = {"samples": len(loaded.samples), "rejected_at_load": len(loaded.rejections), "eval_version": c.section("text", TextConfig).eval_version}
-        counts.update({f"kept_{name}": len(result.kept) for name, result in filtered.items()})
+        counts.update({f"kept_{name}": len(samples) for name, samples in kept.items()})
         reports = {
             "load_report.txt": loaded.report.summary(),
             "split_report.txt": split.report.summary(),
             "text_report.txt": normalized.report.summary(),
             "filter_report.txt": "\n\n".join(result.report.summary() for result in filtered.values()),
         }
-        return PreparedData({name: result.kept for name, result in filtered.items()}, c.section("text", TextConfig).eval_version, text.build_profile("eval"), reports, counts)
+        if subsampled.report.enabled:
+            reports["subsample_report.txt"] = subsampled.report.summary()
+        return PreparedData(kept, c.section("text", TextConfig).eval_version, text.build_profile("eval"), reports, counts)
 
 
 class ModelWiring:

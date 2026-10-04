@@ -1,0 +1,32 @@
+# How to run: example `subsample` section; every value shown is the DEFAULT (OFF: the main runs use all the data). Extend it:
+#     extends: subsample_default.yaml
+#     $env:PYTHONPATH = "src"
+#     python -c "from pathlib import Path; from stt.config import SectionRegistry, load_config; from stt.subsampler import SubsampleConfig; print(load_config(Path('configs/subsample_default.yaml'), registry=SectionRegistry({'subsample': SubsampleConfig})).section('subsample', SubsampleConfig).size)"
+# Presets (built in; pick one with `preset:`): smoke = 20 samples, tiny = 30 minutes, work_like = 10% of the audio by group over ALL splits (rehearsal of
+# the small work data), half = 50% of the audio, full = all. The sizes of the presets are open until the step times are known (O11).
+extends: base.yaml
+
+subsample:
+  # false (DEFAULT): the splits are returned unchanged.
+  enabled: false
+  # all | {minutes: 30} | {samples: 20} | {fraction: 0.1}  (a fraction is a share of the minutes of audio). Exactly one form.
+  size: all
+  # by_sample (a unit is one clip) | by_group (a unit is a whole group, for example a lesson; never split).
+  strategy: by_sample
+  # train_only (DEFAULT): only Train is reduced, Val and Test are never touched. all_splits: all three by the same fraction (rehearsal only).
+  scope: train_only
+  # fixed (DEFAULT): Val is kept. follow: Val is reduced by the same share as Train (train_only scope).
+  val: fixed
+  # Draws of the same size (repeat_index 0 .. repeats-1) to measure the variance at small sizes; this run uses repeat_index.
+  repeats: 1
+  repeat_index: 0
+  # Fewer selected Train samples than this FAIL the run.
+  min_train_samples: 10
+  # Name of a preset; it replaces size and, where defined, strategy and scope. Empty = no preset.
+  preset: null
+  # Your own presets (the built-in ones stay), for example:
+  #   presets:
+  #     quarter: {size: {fraction: 0.25}, strategy: by_group}
+  presets: {}
+  # Folder for the stored subsets (JSON, one file per spec, never overwritten, never reused when stale). Empty = nothing is saved.
+  dir: null

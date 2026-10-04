@@ -490,6 +490,29 @@ class CommandLineTests(unittest.TestCase):
             self.assertEqual((code, json.loads(out)["status"]), (2, "failed"))
             self.assertIn("refuses the Test split", json.loads(out)["message"])
 
+    def test_the_subsampler_is_off_by_default_and_when_on_it_reduces_only_the_train_split_in_prepare(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            write_smoke_data(SmokeConfig(n_samples=12), 42, work / "smoke")
+            base = ["--config", str(SMOKE_YAML), "--set", f"data.source.path={(work / 'smoke').as_posix()}", "--set", f"model.path={TINY.as_posix()}", "--set", f"run.experiments_dir={(work / 'e').as_posix()}"]
+            code, out, err = run_cli("prepare", *base)
+            self.assertEqual(code, 0, err)
+            off = json.loads(out)["stages"]["prepare"]["summary"]
+            self.assertEqual((off["kept_train"], off["kept_val"], off["kept_test"]), (10, 1, 1))  # nothing changed by default
+            self.assertFalse((work / "e" / "exp_0001" / "reports" / "subsample_report.txt").exists())
+            code, out, err = run_cli("prepare", *base, "--set", "subsample.enabled=true", "--set", 'subsample.size={"samples": 6}', "--set", "subsample.min_train_samples=3")
+            self.assertEqual(code, 0, err)
+            on = json.loads(out)["stages"]["prepare"]["summary"]
+            self.assertEqual((on["kept_train"], on["kept_val"], on["kept_test"]), (6, 1, 1))  # Train reduced, Val and Test untouched
+            report = (work / "e" / "exp_0002" / "reports" / "subsample_report.txt").read_text(encoding="utf-8")
+            self.assertIn("requested 6 samples", report)
+            code, out, err = run_cli("prepare", *base, "--set", "subsample.enabled=true", "--set", 'subsample.size={"samples": 99}')
+            self.assertEqual((code, json.loads(out)["status"]), (3, "failed"))  # a size larger than what exists: data error, reported in the summary
+            self.assertIn("99.00 samples", json.loads(out)["message"])
+            code, out, err = run_cli("prepare", *base, "--set", "subsample.enabled=true", "--set", "subsample.preset=nope")
+            self.assertEqual(code, 2)  # an unknown preset: config error
+            self.assertIn("Known presets", err)
+
     def test_the_configs_load_and_the_defaults_are_the_documented_ones(self) -> None:
         smoke = load_config(SMOKE_YAML, env_file=None, target_environ={}, registry=section_registry(), overrides=[f"data.source.path={TINY.as_posix()}"])
         self.assertEqual(smoke.section("smoke", SmokeConfig), SmokeConfig())

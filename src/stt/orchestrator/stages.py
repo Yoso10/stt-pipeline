@@ -56,7 +56,7 @@ class PrepareStage:
 
     def config_slice(self, config: AppConfig) -> Mapping[str, Any]:
         """data, split, text, filter and the seed."""
-        return {"seed": config.runtime.seed, **{n: _section(config, n) for n in ("data", "split", "text", "filter")}}
+        return {"seed": config.runtime.seed, **{n: _section(config, n) for n in ("data", "split", "text", "filter", "subsample")}}
 
     def run(self, ctx: StageContext) -> StageResult:
         """Load, split, normalize, filter; write the reports. Errors: the components' errors (data errors are exit code 3)."""
