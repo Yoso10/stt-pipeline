@@ -1,0 +1,3 @@
+# Stored test assets (the tiny test model with its tokenizer files) must stay byte-exact on every machine:
+# no line-ending conversion, so release checksums (MANIFEST.sha256) match.
+tests/assets/** binary
