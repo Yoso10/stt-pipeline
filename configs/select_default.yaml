@@ -1,0 +1,17 @@
+# How to run: example `select` section; every value shown is the DEFAULT. Extend it:
+#     extends: select_default.yaml
+#     $env:PYTHONPATH = "src"
+#     python -c "from pathlib import Path; from stt.config import SectionRegistry, load_config; from stt.selector import SelectConfig; print(load_config(Path('configs/select_default.yaml'), registry=SectionRegistry({'select': SelectConfig})).section('select', SelectConfig))"
+# The level of evidence of the comparisons (90 percent, one-sided, a lenient test on purpose) is set in `eval.significance`, not here.
+# Val decides. The Test is evaluated ONCE, only for the winner and for the baseline, as the final confirmation (and never when the baseline stays).
+extends: base.yaml
+
+select:
+  # improved (DEFAULT) | no_clear_difference. The lowest Val verdict against the baseline that makes a candidate eligible.
+  min_verdict: improved
+  # Val WERs closer than this (absolute) are a tie; the lower Val loss wins the tie.
+  tie_epsilon: 0.001
+  # plain_difference (DEFAULT): with too few groups for a confidence statement, judge by the plain WER difference and flag it. reject: not eligible.
+  on_insufficient_groups: plain_difference
+  # true (DEFAULT): evaluate the Test once for the winner and the baseline. false: test_status not_evaluated.
+  test_confirmation: true
