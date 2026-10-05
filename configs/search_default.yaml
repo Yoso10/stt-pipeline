@@ -35,6 +35,8 @@ search:
   finalists:
     k: 3
   finalist_repeats: 1
+  # REAL RUNS: also set `subsample.val_samples` (for example 100, a fixed Val slice). Without it every Val evaluation of every trial scores the WHOLE Val set
+  # (875 clips, about 6 minutes with whisper-tiny). The default is NOT changed (owner decision, DECISIONS 56).
   screening:
     # The Subsampler preset the search runs on (the Orchestrator reads it). To revise after the step times are known (O11).
     preset: tiny
