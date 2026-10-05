@@ -1,0 +1,18 @@
+# How to run: example `registry` section; every value shown is the DEFAULT. Extend it:
+#     extends: registry_default.yaml
+#     $env:PYTHONPATH = "src"
+#     python -c "from pathlib import Path; from stt.config import SectionRegistry, load_config; from stt.registry import RegistryConfig; print(load_config(Path('configs/registry_default.yaml'), registry=SectionRegistry({'registry': RegistryConfig})).section('registry', RegistryConfig))"
+# The registry is ONE self-contained folder (entries, cards, checksums, index). Copy the whole folder to move it, for example to a removable drive.
+# It lives next to the project, OUTSIDE the experiments folder, so no experiment cleanup can reach it. Keep the path short on Windows.
+extends: base.yaml
+
+registry:
+  # The registry folder (git-ignored by default).
+  dir: registry
+  # false (DEFAULT): the folders of the other finalists and the checkpoints are deleted after a successful registration. true: keep them.
+  keep_finalists: false
+  cleanup: true
+  # move (DEFAULT): the winner folder is renamed into the registry (a verified copy and a delete across drives). copy: the original stays.
+  transfer: move
+  # SHA256SUMS for every entry (detects a corrupted copy after moving the registry between machines).
+  checksums: true
