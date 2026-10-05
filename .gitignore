@@ -2,11 +2,11 @@
 __pycache__/
 *.pyc
 .env
-data/
-models/
-wheels/
-experiments/
-registry/
+/data/
+/models/
+/wheels/
+/experiments/
+/registry/
 *.egg-info/
 .pytest_cache/
 .mypy_cache/
