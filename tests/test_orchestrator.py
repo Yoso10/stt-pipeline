@@ -249,6 +249,14 @@ class RunTests(OrchestratorTestCase):
                 self.orchestrator(stage).run(self.plan("a"))
         self.assertEqual(self.calls, [])
 
+    def test_the_prepare_slice_ignores_a_disabled_subsampler_so_older_experiments_keep_their_fingerprint(self) -> None:
+        from stt.orchestrator import PrepareStage
+
+        self.assertNotIn("subsample", PrepareStage().config_slice(self.config))
+        on = make_config("subsample.enabled=true", 'subsample.size={"samples": 5}')
+        self.assertIn("subsample", PrepareStage().config_slice(on))
+        self.assertNotEqual(fingerprint("prepare", PrepareStage().config_slice(self.config), []), fingerprint("prepare", PrepareStage().config_slice(on), []))
+
     def test_fingerprints_depend_on_the_slice_and_the_dependencies(self) -> None:
         self.assertEqual(fingerprint("a", {"x": 1}, []), fingerprint("a", {"x": 1}, []))
         self.assertNotEqual(fingerprint("a", {"x": 1}, []), fingerprint("a", {"x": 2}, []))

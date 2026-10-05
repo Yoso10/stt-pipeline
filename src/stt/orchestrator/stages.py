@@ -56,7 +56,11 @@ class PrepareStage:
 
     def config_slice(self, config: AppConfig) -> Mapping[str, Any]:
         """data, split, text, filter and the seed."""
-        return {"seed": config.runtime.seed, **{n: _section(config, n) for n in ("data", "split", "text", "filter", "subsample")}}
+        sections = {n: _section(config, n) for n in ("data", "split", "text", "filter")}
+        subsample = _section(config, "subsample")
+        if subsample.get("enabled"):  # a disabled Subsampler changes nothing, so older experiments keep their fingerprint (O76)
+            sections["subsample"] = subsample
+        return {"seed": config.runtime.seed, **sections}
 
     def run(self, ctx: StageContext) -> StageResult:
         """Load, split, normalize, filter; write the reports. Errors: the components' errors (data errors are exit code 3)."""

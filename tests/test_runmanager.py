@@ -156,6 +156,30 @@ class CreateTests(RunManagerTestCase):
         loaded = load_config(handle.paths.config_full, registry=REGISTRY, env_file=None, target_environ={})  # config_full.yaml is a complete config file
         self.assertEqual(loaded, config)
 
+    def test_a_resume_ignores_new_keys_that_equal_the_schema_default_but_not_real_differences(self) -> None:
+        old = make_config("train.hyperparams.max_steps=7")  # an "older" config: only the train section exists
+        self.store.create(spec(old))
+        newer = lambda *o: load_config(None, overrides=list(o), registry=SectionRegistry({"train": TrainConfig, "run": RunConfig}), env_file=None, target_environ={})  # noqa: E731  (a later version added the run section)
+        reopened = self.store.open("exp_0001", newer("train.hyperparams.max_steps=7"))
+        self.assertEqual(reopened.experiment_id, "exp_0001")
+        with self.assertRaises(RunManagerError) as ctx:  # a new key with a NON-default value is a real difference
+            self.store.open("exp_0001", newer("train.hyperparams.max_steps=7", "run.id_digits=6"))
+        self.assertIn("run.id_digits: stored None, now 6", str(ctx.exception))
+        with self.assertRaises(RunManagerError) as ctx2:  # a changed value still fails, also when new default keys are present
+            self.store.open("exp_0001", newer("train.hyperparams.max_steps=8"))
+        self.assertIn("train.hyperparams.max_steps: stored 7, now 8", str(ctx2.exception))
+        self.assertNotIn("run.", str(ctx2.exception))  # the ignored default keys are not listed as differences
+        path = self.dir / "exp_0001" / "config_full.yaml"
+        import yaml
+
+        stored = yaml.safe_load(path.read_text(encoding="utf-8"))
+        stored["train"]["removed_later"] = 1  # a key that exists only in the stored config (removed from the schema) fails
+        os.chmod(path, stat.S_IWRITE)
+        path.write_text(yaml.safe_dump(stored), encoding="utf-8")
+        with self.assertRaises(RunManagerError) as ctx3:
+            self.store.open("exp_0001", newer("train.hyperparams.max_steps=7"))
+        self.assertIn("train.removed_later", str(ctx3.exception))
+
     def test_a_writable_config_when_the_key_says_so(self) -> None:
         handle = self.make_store(config_readonly=False).create(spec())
         handle.paths.config_full.write_text("x: 1", encoding="utf-8")

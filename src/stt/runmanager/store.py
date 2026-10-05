@@ -134,6 +134,7 @@ class ExperimentStore:
         """Open an existing experiment (for a resume or for reading).
 
         With `config` (an addition to the brief) the stored `config_full.yaml` must match it; a mismatch FAILS and shows the first differing keys.
+        A key that is new in the current config and equal to its schema default is ignored (O76); every real difference fails.
         Errors: RunManagerError for an unknown experiment (the existing ones are listed), a damaged `status.json`, or a config mismatch.
         """
         root = self._dir / experiment_id
@@ -152,9 +153,12 @@ class ExperimentStore:
             stored = yaml.safe_load(paths.config_full.read_text(encoding="utf-8")) or {}
         except (OSError, yaml.YAMLError) as exc:
             raise RunManagerError(f"Cannot read the stored config {paths.config_full} ({exc}).") from exc
-        changes = flatten(diff_configs(stored, config_tree(config)))
+        stored_flat = flatten(stored)
+        defaults = flatten(defaults_tree(config))
+        # A key that is NEW in the current config (a later version added it) and equals its schema default is not a difference: the experiment ran
+        # with exactly that behavior. Any other difference, a changed value, a new key with a non-default value, or a removed key, still fails.
+        changes = {key: value for key, value in flatten(diff_configs(stored, config_tree(config))).items() if not (key not in stored_flat and key in defaults and defaults[key] == value)}
         if changes:
-            stored_flat = flatten(stored)
             first = [f"{key}: stored {stored_flat.get(key)!r}, now {value!r}" for key, value in list(changes.items())[:5]]
             raise RunManagerError(
                 f"Cannot resume {paths.root.name}: the config differs from the stored {paths.config_full.name} ({len(changes)} keys; first: {'; '.join(first)}). "
