@@ -1,4 +1,4 @@
-"""stt.orchestrator: the minimal Orchestrator and command line (C13, first end-to-end version: prepare, train, evaluate, smoke, check).
+"""stt.orchestrator: the Orchestrator and command line (C13: prepare, train, evaluate, search, smoke, check; the later Wave 2 parts add selection and registration).
 
 How to run: from the command line (PowerShell, project root; the working example is in docs/COMPONENTS.md, C13):
     $env:PYTHONPATH = "src"
@@ -13,13 +13,16 @@ from stt.orchestrator.orchestrator import Orchestrator, fingerprint
 from stt.orchestrator.sleepguard import NoopSleepGuard, SleepGuard, WindowsSleepGuard, default_sleep_guard
 from stt.orchestrator.smoke import write_smoke_data
 from stt.orchestrator.stageio import load_result, save_result
-from stt.orchestrator.stages import EvaluateStage, PrepareStage, StageRegistry, TrainStage, default_stage_registry
+from stt.orchestrator.stages import EvaluateStage, PrepareStage, SearchStage, StageRegistry, TrainStage, default_stage_registry
 from stt.orchestrator.stopflag import InterruptFlag
+from stt.orchestrator.trials import SearchTrialRunner
 from stt.orchestrator.types import (
     PipelineStage,
     PreparedData,
     RunOutcome,
     RunPlan,
+    ScreeningSet,
+    SearchService,
     Services,
     StageContext,
     StageResult,
@@ -39,6 +42,10 @@ __all__ = [
     "PreparedData",
     "RunOutcome",
     "RunPlan",
+    "ScreeningSet",
+    "SearchService",
+    "SearchStage",
+    "SearchTrialRunner",
     "Services",
     "SleepGuard",
     "SmokeConfig",

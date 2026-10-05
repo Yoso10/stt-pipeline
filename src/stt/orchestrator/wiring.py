@@ -4,7 +4,7 @@ How to run: this module is not a script; the command line uses it. Example (Powe
     $env:PYTHONPATH = "src"
     python -c "from stt.orchestrator.wiring import section_registry; print(sorted(section_registry().sections))"
 Example output:
-    ['data', 'eval', 'features', 'filter', 'model', 'pipeline', 'run', 'smoke', 'split', 'subsample', 'text', 'train']
+    ['data', 'eval', 'features', 'filter', 'model', 'pipeline', 'run', 'search', 'smoke', 'split', 'subsample', 'text', 'train']
 `build_runtime(config)` builds the services from the names in the config (through the registries of the components), the experiment store, the stage
 registry and the exit-code mapping. Heavy libraries (torch, transformers) are imported lazily, only when the services that need them are used.
 """
@@ -12,11 +12,11 @@ registry and the exit-code mapping. Heavy libraries (torch, transformers) are im
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from importlib import metadata
 from pathlib import Path
 
-from stt.config import AppConfig, ConfigError, SectionRegistry
+from stt.config import AppConfig, ConfigError, SectionRegistry, load_config
 from stt.datasource import DataConfig, DataSourceError, create_data_source
 from stt.evaluator import Comparator, ComparisonResult, DecodeSettings, EvalConfig, EvalItem, EvalRequest, Evaluator, EvaluatorConfigError, EvaluatorError, EvalResult, make_decode_settings
 from stt.featurepipeline import FeaturePipeline, FeaturePipelineError, FeaturesConfig
@@ -24,9 +24,10 @@ from stt.modelloader import LoadedModel, ModelConfig, ModelLoaderError, create_l
 from stt.orchestrator.config import PipelineConfig, SmokeConfig
 from stt.orchestrator.errors import OrchestratorError
 from stt.orchestrator.stages import StageRegistry, default_stage_registry
-from stt.orchestrator.types import FeatureBuilder, PreparedData, Services
+from stt.orchestrator.types import FeatureBuilder, PreparedData, ScreeningSet, Services
 from stt.runmanager import ExperimentStore, LogSetup, RunConfig, RunManagerError
 from stt.samplefilter import FilterConfig, FilterError, SampleFilter
+from stt.searcher import HyperparamSearcher, SearchConfig, SearchConfigError, SearchError, SearchResult, SearchSpec, TrialRunner, build_spec
 from stt.splitter import SplitConfig, SplitError, resolve_split
 from stt.subsampler import SubsampleConfig, SubsampleConfigError, SubsampleError, resolve_subsample
 from stt.textnormalizer import TextConfig, TextNormalizer, TextNormalizerError
@@ -64,6 +65,7 @@ def section_registry() -> SectionRegistry:
             "train": TrainConfig,
             "eval": EvalConfig,
             "run": RunConfig,
+            "search": SearchConfig,
             "pipeline": PipelineConfig,
             "smoke": SmokeConfig,
         }
@@ -85,11 +87,11 @@ def exit_code_for(exc: BaseException) -> int:
     """The process exit code of an exception: 2 config error, 3 data error, 4 training or evaluation failure, 1 for anything unexpected (a bug)."""
     if isinstance(exc, OrchestratorError):
         return exc.exit_code
-    if isinstance(exc, ConfigError | ModelLoaderError | TrainerConfigError | EvaluatorConfigError | RunManagerError | TextNormalizerError | SubsampleConfigError):
-        return 2
+    if isinstance(exc, ConfigError | ModelLoaderError | TrainerConfigError | EvaluatorConfigError | RunManagerError | TextNormalizerError | SubsampleConfigError | SearchConfigError):
+        return 2  # SearchConfigError is a SearchError: it is tested here first
     if isinstance(exc, DataSourceError | SplitError | FilterError | FeaturePipelineError | SubsampleError):
         return 3
-    if isinstance(exc, TrainerCoreError | EvaluatorError):
+    if isinstance(exc, TrainerCoreError | EvaluatorError | SearchError):
         return 4
     return 1
 
@@ -125,7 +127,8 @@ class DataPipeline:
         }
         if subsampled.report.enabled:
             reports["subsample_report.txt"] = subsampled.report.summary()
-        return PreparedData(kept, c.section("text", TextConfig).eval_version, text.build_profile("eval"), reports, counts)
+        fingerprints = {"data": split.data_fingerprint, "split": split.fingerprint, "subsample": subsampled.fingerprint if subsampled.report.enabled else None}
+        return PreparedData(kept, c.section("text", TextConfig).eval_version, text.build_profile("eval"), reports, counts, fingerprints)
 
 
 class ModelWiring:
@@ -158,9 +161,12 @@ class TrainingWiring:
         """True when the folder holds a complete checkpoint."""
         return bool(list_checkpoints(checkpoints_dir(output_dir)))
 
-    def train(self, request: TrainRequest, metrics_dir: Path, resume: bool) -> TrainResult:
-        """Run the training with `train.resume` set by the caller, never by the YAML (O69)."""
-        config = self._config.section("train", TrainConfig).model_copy(update={"resume": resume})
+    def train(self, request: TrainRequest, metrics_dir: Path, resume: bool, threads: int | None = None) -> TrainResult:
+        """Run the training with `train.resume` set by the caller, never by the YAML (O69); `threads` (a search trial's share) replaces `train.cpu_threads`."""
+        update: dict[str, object] = {"resume": resume}
+        if threads is not None:
+            update["cpu_threads"] = threads
+        config = self._config.section("train", TrainConfig).model_copy(update=update)
         sinks = SinkRegistry({"csv": lambda ctx: CsvMetricsSink(SinkContext(metrics_dir, ctx.resume_step)), "console": ConsoleMetricsSink})
         return TrainerCore(config, sink_registry=sinks).train(request)
 
@@ -190,9 +196,49 @@ class EvaluationWiring:
         return Comparator(self._config.section("eval", EvalConfig), self._config.runtime.seed).compare(baseline, candidate)
 
 
+def services_from_experiment_config(path: Path) -> Services:
+    """The services of the experiment whose stored `config_full.yaml` is `path` (no environment variables, no `.env`: the file is the whole truth).
+
+    Module-level on purpose: a worker process of a parallel search receives this function by name and rebuilds its own services (the services themselves cannot be sent).
+    Errors: ConfigError when the file cannot be read as a configuration.
+    """
+    return build_services(load_config(path, registry=section_registry(), environ={}, env_file=None, apply_environment=False))
+
+
+class SearchWiring:
+    """The HyperparamSearcher and the Subsampler's screening choice, bound to the config (DECISIONS 55)."""
+
+    services_provider = staticmethod(services_from_experiment_config)
+
+    def __init__(self, config: AppConfig) -> None:
+        self._config = config
+
+    def spec(self, study_dir: Path) -> SearchSpec:
+        """The typed spec of `search`; the seed is `runtime.seed`, the thread budget `resolve_threads(train)`, the study is stored in `study_dir`."""
+        spec = build_spec(self._config.section("search", SearchConfig), self._config.runtime.seed, resolve_threads(self._config.section("train", TrainConfig)))
+        return replace(spec, study_dir=study_dir)
+
+    def screening(self, prepared: PreparedData) -> ScreeningSet:
+        """The screening Train and Val samples: the Subsampler preset `search.screening.preset` on the prepared data, with `subsample.val_samples` as the Val slice.
+
+        The `subsample` section supplies everything but the preset and `enabled` (strategy, scope, Val rule, `val_samples`, `repeat_index`, `dir`). When the
+        Subsampler is also on for the whole experiment, the screening set is taken from the already reduced data.
+        """
+        c = self._config
+        names = c.section("split", SplitConfig).names
+        val_split = str(getattr(c.sections.get("pipeline"), "eval_split", "val"))
+        config = c.section("subsample", SubsampleConfig).model_copy(update={"enabled": True, "preset": c.section("search", SearchConfig).screening.preset})
+        result = resolve_subsample(config, c.runtime.seed, dict(prepared.kept), names[0], val_split)
+        return ScreeningSet(names[0], val_split, tuple(result.splits[names[0]]), tuple(result.splits[val_split]), result.report.summary(), result.fingerprint)
+
+    def search(self, spec: SearchSpec, runner: TrialRunner) -> SearchResult:
+        """Run the search (errors: SearchConfigError, SearchError, SearchInterrupted)."""
+        return HyperparamSearcher().search(spec, runner)
+
+
 def build_services(config: AppConfig) -> Services:
     """All the services of a run, built from the config."""
-    return Services(DataPipeline(config), ModelWiring(config), TrainingWiring(config), EvaluationWiring(config), exit_code_for)
+    return Services(DataPipeline(config), ModelWiring(config), TrainingWiring(config), EvaluationWiring(config), exit_code_for, SearchWiring(config))
 
 
 @dataclass(frozen=True)

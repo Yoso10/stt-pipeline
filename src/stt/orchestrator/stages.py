@@ -1,19 +1,24 @@
-"""The pipeline stages of the minimal Orchestrator: prepare, train, evaluate (they use the services through their Protocols only).
+"""The pipeline stages of the Orchestrator: prepare, train, evaluate, search (they use the services through their Protocols only).
 
 How to run: this module is not a script; `Orchestrator.run` runs the stages by name. Example (PowerShell, project root):
     $env:PYTHONPATH = "src"
     python -c "from stt.orchestrator import default_stage_registry; print(default_stage_registry().names())"
 Example output:
-    ['evaluate', 'prepare', 'train']
+    ['evaluate', 'prepare', 'search', 'train']
 prepare  : load, split, normalize and filter the data; write the plain-text reports of each step into `reports/`.
 train    : one training run (trial) with the TrainerCore; the model folder is named after the experiment, the trial and the step
            (`exp_0004_trial_001_step_00100`); a trial folder with a complete checkpoint is RESUMED (the Orchestrator sets the resume itself, O69).
 evaluate : score the baseline model (and the trained model of this experiment, if there is one) on the Val split, compare them, write the
            evaluation files. It REFUSES the Test split (the Test is scored once, for the winner, through the Selector; Wave 2).
+search   : the hyperparameter search (C8) on the screening data: one trial after another (or `search.parallel_trials` worker processes), each trial a fresh model trained
+           with its own hyperparameters; the objective is the Val loss; the study is stored in `search/study.json` after every trial, so an interrupted search is RESUMED
+           by the same command with `--experiment`; it writes `reports/search_report.txt`, `search_trials.json` and `search_screening.txt`. It does NOT retrain the finalists,
+           select or register (the next Orchestrator parts). The Test split is never touched.
 """
 
 from __future__ import annotations
 
+import json
 import logging
 import re
 from collections.abc import Callable, Mapping
@@ -25,7 +30,9 @@ from stt.evaluator import EvalItem, EvalRequest, EvalResult
 from stt.orchestrator import reporting
 from stt.orchestrator.errors import OrchestratorError, StageInterrupted
 from stt.orchestrator.stageio import load_result
-from stt.orchestrator.types import PipelineStage, PreparedData, StageContext, StageResult
+from stt.orchestrator.trials import SearchTrialRunner
+from stt.orchestrator.types import PipelineStage, PreparedData, ScreeningSet, StageContext, StageResult
+from stt.searcher import SearchError, SearchInterrupted, SearchResult, SearchSpec
 from stt.trainercore import TrainRequest
 
 logger = logging.getLogger("stt.orchestrator")
@@ -68,7 +75,9 @@ class PrepareStage:
         artifacts: list[Path] = []
         for name, text in prepared.reports.items():
             artifacts.append(ctx.experiment.write_report(name, text))
-        return StageResult("ok", dict(prepared.counts), artifacts)
+        summary: dict[str, str | float | int] = dict(prepared.counts)
+        summary.update({f"{kind}_fingerprint": value for kind, value in prepared.fingerprints.items() if value})  # for the model card (the subsample one only when the Subsampler is on)
+        return StageResult("ok", summary, artifacts)
 
 
 def _items(prepared: PreparedData, split: str, removed: frozenset[str], model_tokens: Callable[[str], int]) -> list[EvalItem]:
@@ -208,6 +217,68 @@ class EvaluateStage:
         return Path(str(folder)) if folder and Path(str(folder)).is_dir() else None
 
 
+class SearchStage:
+    """search: the hyperparameter search on the screening data (see the module docstring)."""
+
+    name = "search"
+    depends_on: tuple[str, ...] = ("prepare",)
+
+    def config_slice(self, config: AppConfig) -> Mapping[str, Any]:
+        """search, train, model, features, the data sections, subsample and the seed (a larger `search.n_trials` makes the stage run again and continue the study)."""
+        return {"seed": config.runtime.seed, **{n: _section(config, n) for n in ("search", "train", "model", "features", "subsample", "data", "split", "text", "filter")}}
+
+    def run(self, ctx: StageContext) -> StageResult:
+        """Search. Errors: SearchConfigError (exit code 2), SearchError (exit code 4, the reports of what was done are still written), StageInterrupted when the stop flag
+        stopped a trial (the study keeps the finished trials)."""
+        service = ctx.services.search
+        if service is None:
+            raise OrchestratorError("The search stage needs the search service, but this run has none wired. Use `python -m stt search`.", exit_code=2)
+        prepared = prepared_data(ctx)
+        experiment = ctx.experiment
+        spec = service.spec(experiment.paths.search)
+        screening = service.screening(prepared)
+        screening_report = experiment.write_report("search_screening.txt", screening.report)
+        runner = SearchTrialRunner(experiment, screening, service.services_provider, ctx.services, ctx.stop_flag)
+        logger.info("Search (%s, up to %d trials, %d parallel) on %d Train and %d Val samples.", spec.strategy, spec.n_trials, spec.parallel_trials, len(screening.train), len(screening.val))
+        try:
+            result = service.search(spec, runner)
+        except SearchInterrupted as exc:
+            raise StageInterrupted(str(exc)) from exc
+        except SearchError as exc:
+            if isinstance(exc.result, SearchResult):  # no trial completed: the reports still say what happened
+                self._write(ctx, exc.result, spec, screening)
+            raise
+        artifacts = [screening_report, *self._write(ctx, result, spec, screening)]
+        report = result.report
+        summary: dict[str, str | float | int] = {
+            "strategy": report.strategy,
+            "trials_started": report.n_started,
+            "trials_complete": report.n_complete,
+            "trials_pruned": report.n_pruned,
+            "trials_failed": report.n_failed,
+            "trials_from_earlier_run": report.n_resumed,
+            "stopped_reason": result.stopped_reason,
+            "best_val_loss": round(report.best_val_loss, 5) if report.best_val_loss is not None else "none",
+            "best_params": json.dumps(dict(report.best_params or {}), sort_keys=True),
+            "finalist_trials": json.dumps([r.trial.trial_id for r in result.ranked]),
+            "screening_train_samples": len(screening.train),
+            "screening_val_samples": len(screening.val),
+            "seconds": round(report.seconds, 1),
+            "study_file": str(experiment.paths.search / "study.json"),
+        }
+        return StageResult("ok", summary, artifacts)
+
+    @staticmethod
+    def _write(ctx: StageContext, result: SearchResult, spec: SearchSpec, screening: ScreeningSet) -> list[Path]:
+        known = {r.trial.trial_id for r in result.trials}
+        pattern = re.compile(rf"{re.escape(ctx.experiment.experiment_id)}_trial_(\d+)(_stale_\d+)?")
+        unrecorded = sorted(p.name for p in ctx.experiment.paths.candidates.glob("*") if (m := pattern.fullmatch(p.name)) and (m.group(2) or int(m.group(1)) not in known))
+        return [
+            ctx.experiment.write_report("search_report.txt", reporting.search_report_text(result, screening, unrecorded)),
+            ctx.experiment.write_report("search_trials.json", reporting.search_trials_json(result, spec, screening)),
+        ]
+
+
 class StageRegistry:
     """A read-only name -> stage factory mapping."""
 
@@ -227,5 +298,5 @@ class StageRegistry:
 
 
 def default_stage_registry() -> StageRegistry:
-    """The registry with prepare, train and evaluate."""
-    return StageRegistry({"prepare": PrepareStage, "train": TrainStage, "evaluate": EvaluateStage})
+    """The registry with prepare, train, evaluate and search."""
+    return StageRegistry({"prepare": PrepareStage, "train": TrainStage, "evaluate": EvaluateStage, "search": SearchStage})

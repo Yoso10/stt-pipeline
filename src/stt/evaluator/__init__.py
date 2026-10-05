@@ -9,6 +9,7 @@ Importing this package does not import torch or transformers (the adapter `hf_tr
 """
 
 from stt.evaluator.bootstrap import PairedGroupBootstrap, resample_deltas
+from stt.evaluator.codec import comparison_from_json, comparison_to_json, eval_result_from_json, eval_result_to_json
 from stt.evaluator.comparator import Comparator
 from stt.evaluator.config import EvalConfig
 from stt.evaluator.errors import EvaluatorConfigError, EvaluatorError
@@ -61,9 +62,13 @@ __all__ = [
     "Transcriber",
     "WordErrorRate",
     "build_review_list",
+    "comparison_from_json",
+    "comparison_to_json",
     "default_metric_registry",
     "default_significance_registry",
     "edit_distance",
+    "eval_result_from_json",
+    "eval_result_to_json",
     "make_decode_settings",
     "resample_deltas",
     "word_diff",

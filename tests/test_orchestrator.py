@@ -239,8 +239,8 @@ class RunTests(OrchestratorTestCase):
         self.assertIn("a", str(ctx.exception))
         self.assertEqual((self.calls, self.handle.status().status), ([], "created"))
         with self.assertRaises(OrchestratorError) as ctx2:
-            default_stage_registry().create("search")
-        self.assertIn("evaluate, prepare, train", str(ctx2.exception))
+            default_stage_registry().create("select_and_register")  # built in the next Orchestrator part
+        self.assertIn("evaluate, prepare, search, train", str(ctx2.exception))
 
     def test_a_locked_experiment_fails_before_a_stage_runs(self) -> None:
         stage = FakeStage("a", calls=self.calls)
@@ -590,6 +590,7 @@ class ImportRuleTests(unittest.TestCase):
     CONCRETE = {
         "create_data_source", "create_loader", "resolve_split", "TextNormalizer", "SampleFilter", "FeaturePipeline", "TrainerCore", "Evaluator",
         "Comparator", "HfTranscriber", "ExperimentStore", "LogSetup", "CsvMetricsSink", "ConsoleMetricsSink", "SinkRegistry",
+        "HyperparamSearcher", "resolve_subsample",  # the search service and the screening choice are wired in wiring.py only
     }
 
     def test_12_only_wiring_imports_concrete_classes_and_nothing_imports_torch_or_prompts(self) -> None:

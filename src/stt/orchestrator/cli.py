@@ -7,13 +7,16 @@ How to run (PowerShell, project root; set the path to the sources once per windo
     python -m stt prepare  --config my.yaml   # the data steps only, with the reports
     python -m stt train    --config my.yaml   # prepare + one training run
     python -m stt evaluate --config my.yaml   # prepare + baseline (and trained) model on the Val split
+    python -m stt search   --config my.yaml   # prepare + the hyperparameter search (a few small trials on a screening subset, objective: Val loss)
 Shared options: `--config FILE`, `--set a.b=value` (repeatable), `--parent exp_0003` (the new experiment extends that one), `--experiment exp_0004`
 (continue an existing experiment: finished stages are skipped, an interrupted training is resumed). Every command creates a numbered experiment folder
 `experiments/exp_NNNN/` and prints ONE JSON summary at the end (the only thing on stdout); the log lines go to the console (stderr) and to
 `experiments/exp_NNNN/logs/run.log`. Exit codes: 0 success, 2 config error, 3 data error, 4 training or evaluation failure, 130 interrupted (Ctrl+C:
 the training saves a checkpoint first; run the same command with `--experiment` to continue). Look at an experiment afterwards with
-`python -m stt.runmanager list` and `python -m stt.runmanager show exp_0001`. Not in this minimal version: run, search, report, export, registry,
-learning-curve, benchmark, cleanup, config-docs (later waves).
+`python -m stt.runmanager list` and `python -m stt.runmanager show exp_0001`. `search` writes `reports/search_report.txt` (the trials in a table and the
+finalists) and stores the study in `search/study.json`: after Ctrl+C or a crash run the same command with `--experiment exp_NNNN` and the finished trials are kept
+(an interrupted trial is resumed). `search.parallel_trials: 2` runs two trials at once, each with half of the threads. Not in this version: run, report, export,
+registry, learning-curve, benchmark, cleanup, config-docs (later parts and waves).
 """
 
 from __future__ import annotations
@@ -43,7 +46,7 @@ from stt.runmanager import ExperimentHandle, ExperimentSpec, RunConfig
 
 logger = logging.getLogger("stt.orchestrator")
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-PLANS = {"prepare": ["prepare"], "train": ["prepare", "train"], "evaluate": ["prepare", "evaluate"], "smoke": ["prepare", "train", "evaluate"]}
+PLANS = {"prepare": ["prepare"], "train": ["prepare", "train"], "evaluate": ["prepare", "evaluate"], "search": ["prepare", "search"], "smoke": ["prepare", "train", "evaluate"]}
 DEFAULT_SMOKE_CONFIG = Path("configs/smoke.yaml")
 
 
@@ -59,6 +62,7 @@ def build_parser() -> argparse.ArgumentParser:
         "prepare": "python -m stt prepare --config my.yaml",
         "train": "python -m stt train --config my.yaml --set train.hyperparams.max_steps=50",
         "evaluate": "python -m stt evaluate --config my.yaml --experiment exp_0003",
+        "search": "python -m stt search --config my.yaml --set search.n_trials=4",
         "smoke": "python -m stt smoke",
         "check": "python -m stt check --config configs/smoke.yaml",
     }
@@ -66,6 +70,7 @@ def build_parser() -> argparse.ArgumentParser:
         "prepare": "load, split, normalize and filter the data and write the reports",
         "train": "prepare, then one training run",
         "evaluate": "prepare, then score the baseline (and the trained model of the experiment) on the Val split",
+        "search": "prepare, then the hyperparameter search on a screening subset (objective: the Val loss); a rerun with --experiment continues it",
         "smoke": "run the whole chain on synthetic data and the tiny test model, to prove that the mechanics work",
         "check": "say what is fine and what is not on this machine",
     }
@@ -82,7 +87,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def _final_summary(handle: ExperimentHandle, outcome: RunOutcome, extra: dict[str, Any] | None = None) -> dict[str, Any]:
     where = handle.locations()
-    evaluate = outcome.stage_results.get("evaluate")
+    evaluate = outcome.stage_results.get("evaluate") or outcome.stage_results.get("search")  # the numbers a human looks at first
     return {
         "experiment_id": outcome.experiment_id,
         "experiment_dir": str(handle.paths.root),

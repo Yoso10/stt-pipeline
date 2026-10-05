@@ -22,6 +22,7 @@ from stt.evaluator import ComparisonResult, DecodeSettings, EvalItem, EvalReques
 from stt.featurepipeline import FeatureResult
 from stt.modelloader import LoadedModel
 from stt.runmanager import ExperimentHandle
+from stt.searcher import SearchResult, SearchSpec, TrialRunner
 from stt.textnormalizer import NormalizedSample
 from stt.trainercore import TrainHyperparams, TrainRequest, TrainResult
 
@@ -44,6 +45,7 @@ class PreparedData:
     """The result of the prepare stage that later stages use: the kept samples per split (normalized), the eval profile, and plain-text reports.
 
     `reports` maps a report file name to its text (the stage writes them through the RunManager). `counts` are the numbers for the summary.
+    `fingerprints` (DECISIONS 55, O83) holds the `data`, `split` and `subsample` fingerprints for the model card; `subsample` is None when the Subsampler is off.
     """
 
     kept: Mapping[str, Sequence[NormalizedSample]]
@@ -51,6 +53,7 @@ class PreparedData:
     normalize: Callable[[str], str]
     reports: Mapping[str, str]
     counts: Summary
+    fingerprints: Mapping[str, str | None] = field(default_factory=dict)
 
 
 class DataService(Protocol):
@@ -96,8 +99,9 @@ class TrainingService(Protocol):
         """True when `output_dir` holds a complete checkpoint to resume from."""
         ...
 
-    def train(self, request: TrainRequest, metrics_dir: Path, resume: bool) -> TrainResult:
-        """Run one training. `resume` is set by the Orchestrator itself (never from the YAML, O69)."""
+    def train(self, request: TrainRequest, metrics_dir: Path, resume: bool, threads: int | None = None) -> TrainResult:
+        """Run one training. `resume` is set by the Orchestrator itself (never from the YAML, O69). `threads` (the search gives each trial its share, DECISIONS 55)
+        replaces `train.cpu_threads` for this run; None keeps the config."""
         ...
 
 
@@ -118,14 +122,48 @@ class EvaluationService(Protocol):
 
 
 @dataclass(frozen=True)
+class ScreeningSet:
+    """The data one search trial uses: the screening Train samples and the Val samples (the Subsampler preset `search.screening.preset` and `subsample.val_samples`
+    applied to the prepared data). `report` is the Subsampler's text; `fingerprint` identifies the choice. The samples are plain data, so the set can be sent to a worker process."""
+
+    train_split: str
+    val_split: str
+    train: tuple[NormalizedSample, ...]
+    val: tuple[NormalizedSample, ...]
+    report: str
+    fingerprint: str
+
+
+class SearchService(Protocol):
+    """The HyperparamSearcher and the Subsampler's screening choice, bound to the config (DECISIONS 55)."""
+
+    services_provider: Callable[[Path], Services]
+    """A picklable function that rebuilds the services in a worker process from the stored `config_full.yaml` of the experiment."""
+
+    def spec(self, study_dir: Path) -> SearchSpec:
+        """The typed search spec of `search` (the seed from `runtime.seed`, the thread budget from `train.cpu_threads`), with the study stored in `study_dir`."""
+        ...
+
+    def screening(self, prepared: PreparedData) -> ScreeningSet:
+        """The screening Train and Val samples of the prepared data."""
+        ...
+
+    def search(self, spec: SearchSpec, runner: TrialRunner) -> SearchResult:
+        """Run the search. Raises SearchConfigError, SearchError and SearchInterrupted."""
+        ...
+
+
+@dataclass(frozen=True)
 class Services:
-    """Everything the stages may use, built once by `wiring.build_services`. `exit_code_for` maps an exception to the process exit code."""
+    """Everything the stages may use, built once by `wiring.build_services`. `exit_code_for` maps an exception to the process exit code.
+    `search` is None where no search is wired (a test with fakes)."""
 
     data: DataService
     models: ModelService
     training: TrainingService
     evaluation: EvaluationService
     exit_code_for: Callable[[BaseException], int]
+    search: SearchService | None = None
 
 
 class StopFlag(Protocol):
