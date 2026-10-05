@@ -6,7 +6,7 @@ How to run: this module is not a script; the other modules and later components 
 Example output:
     SubsampleSize(kind='minutes', value=30.0)
 
-Additions to the brief (DECISIONS 46): `SubsampleSpec.train_split`, `.val_split` and `.min_train_samples` (the caller names the splits; the brief's spec
+Additions to the brief (DECISIONS 46): `SubsampleSpec.train_split`, `.val_split`, `.min_train_samples` and `.val_samples` (the caller names the splits; the brief's spec
 did not say which split is the Train).
 """
 
@@ -49,6 +49,7 @@ class SubsampleSpec:
     train_split: str
     val_split: str | None
     min_train_samples: int
+    val_samples: int | None = None
 
 
 class SubsampleStrategy(Protocol):

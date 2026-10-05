@@ -60,6 +60,7 @@ class SubsampleConfig(SectionModel):
     strategy: str = Field(default="by_sample", description="DEFAULT by_sample. The unit of selection: by_sample or by_group (registry).")
     scope: Literal["train_only", "all_splits"] = Field(default="train_only", description="DEFAULT train_only. all_splits reduces Train, Val and Test by the same fraction (rehearsal only).")
     val: Literal["fixed", "follow"] = Field(default="fixed", description="DEFAULT fixed. follow reduces Val by the same share as Train (train_only scope).")
+    val_samples: int | None = Field(default=None, ge=1, description="NEW, DEFAULT none. A FIXED number of Val samples (a Val slice, for example 100), whatever the Train size. Train_only scope; not with val: follow.")
     repeats: int = Field(default=1, ge=1, description="DEFAULT 1. How many draws of the same size the caller makes (repeat_index 0 to repeats-1).")
     repeat_index: int = Field(default=0, ge=0, description="NEW, DEFAULT 0. Which draw this run uses; must be below `repeats`.")
     min_train_samples: int = Field(default=10, ge=1, description="DEFAULT 10. Fewer selected Train samples FAIL the run.")
@@ -71,6 +72,8 @@ class SubsampleConfig(SectionModel):
     def _repeat_index_in_range(self) -> SubsampleConfig:
         if self.repeat_index >= self.repeats:
             raise ValueError(f"subsample.repeat_index ({self.repeat_index}) must be below subsample.repeats ({self.repeats}).")
+        if self.val_samples is not None and self.val == "follow":
+            raise ValueError("subsample.val_samples (a fixed Val slice) cannot be combined with subsample.val: follow (a Val reduced in the Train share): choose one.")
         return self
 
 
@@ -100,4 +103,4 @@ def build_spec(config: SubsampleConfig, runtime_seed: int, train_split: str, val
             raise SubsampleConfigError(f"Unknown subsample.preset '{config.preset}'. Known presets: {', '.join(preset_names(config))}.")
         size, strategy, scope = preset.size, preset.strategy or strategy, preset.scope or scope
     typed = SubsampleSize("all") if size == "all" else size.to_size()  # type: ignore[union-attr]
-    return SubsampleSpec(typed, strategy, scope, config.val, runtime_seed, config.repeat_index, train_split, val_split, config.min_train_samples)
+    return SubsampleSpec(typed, strategy, scope, config.val, runtime_seed, config.repeat_index, train_split, val_split, config.min_train_samples, config.val_samples)

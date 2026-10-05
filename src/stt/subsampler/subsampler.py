@@ -14,6 +14,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections import defaultdict
+from dataclasses import replace
 from collections.abc import Mapping, Sequence
 
 from stt.subsampler.errors import SubsampleConfigError, SubsampleError
@@ -49,6 +50,7 @@ def spec_document(spec: SubsampleSpec) -> dict[str, object]:
         "train_split": spec.train_split,
         "val_split": spec.val_split,
         "min_train_samples": spec.min_train_samples,
+        "val_samples": spec.val_samples,
     }
 
 
@@ -87,7 +89,9 @@ class Subsampler:
         if spec.train_split not in splits:
             raise SubsampleConfigError(f"The Train split '{spec.train_split}' is not one of the splits: {', '.join(splits)}.")
         copy = {name: list(samples) for name, samples in splits.items()}
-        if spec.size.kind == "all":
+        if spec.val_samples is not None and spec.scope != "train_only":
+            raise SubsampleConfigError("subsample.val_samples (a fixed Val slice) needs scope train_only: with all_splits every split is reduced by the same fraction.")
+        if spec.size.kind == "all" and spec.val_samples is None:
             return self._finish(splits, copy, spec, strategy, data_fp, set(), None)
         targets = self._targets(splits, spec)
         chosen_ids: dict[str, set[str]] = {}
@@ -98,7 +102,7 @@ class Subsampler:
             if not result_splits[name]:
                 raise SubsampleError(f"The split '{name}' would be empty after the subsampling (it had {len(splits[name])} samples). Choose a larger size.")
         train = result_splits[spec.train_split]
-        if len(train) < spec.min_train_samples:
+        if spec.train_split in chosen_ids and len(train) < spec.min_train_samples:
             raise SubsampleError(f"Only {len(train)} Train samples were selected, fewer than subsample.min_train_samples ({spec.min_train_samples}). Choose a larger size, or lower the minimum knowingly.")
         return self._finish(splits, result_splits, spec, strategy, data_fp, set(chosen_ids), targets.get(spec.train_split))
 
@@ -107,6 +111,13 @@ class Subsampler:
         """For every reduced split: (unit, target), the unit being `minutes` or `samples`."""
         size = spec.size
         train = splits[spec.train_split]
+        if spec.val_samples is not None:
+            if spec.val_split is None or spec.val_split not in splits:
+                raise SubsampleConfigError(f"subsample.val_samples needs a Val split, but '{spec.val_split}' is not one of the splits: {', '.join(splits)}.")
+            slice_target = {spec.val_split: ("samples", float(spec.val_samples))}
+            if size.kind == "all":
+                return slice_target
+            return {**self._targets(splits, replace(spec, val_samples=None)), **slice_target}
         if spec.scope == "all_splits":
             if size.kind != "fraction":
                 raise SubsampleConfigError(f"scope all_splits needs a size given as a fraction (for example 0.1) or all, not {size.describe()}: every split is reduced by the same fraction.")
@@ -158,7 +169,8 @@ class Subsampler:
             unit, requested = train_target
             achieved = float(len(train_after)) if unit == "samples" else sum(map(_minutes, train_after))
             overshoot = achieved - requested
-        report = SubsampleReport(True, spec.size.describe(), spec.strategy, spec.scope, spec.val, spec.seed, spec.repeat_index, sizes, unit, requested, achieved, overshoot, tuple(warnings))
+        requested_text = spec.size.describe() + (f", Val slice of {spec.val_samples} samples" if spec.val_samples is not None else "")
+        report = SubsampleReport(True, requested_text, spec.strategy, spec.scope, spec.val, spec.seed, spec.repeat_index, sizes, unit, requested, achieved, overshoot, tuple(warnings))
         fingerprint = result_fingerprint(spec, data_fp, {name: [n.sample.id for n in samples] for name, samples in after.items()})
         return SubsampleResult(after, report, fingerprint)
 

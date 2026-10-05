@@ -17,6 +17,9 @@ subsample:
   scope: train_only
   # fixed (DEFAULT): Val is kept. follow: Val is reduced by the same share as Train (train_only scope).
   val: fixed
+  # Empty (DEFAULT) = off. A FIXED number of Val samples (a Val slice, for example 100) whatever the Train size: it keeps the Val loss of a screening trial
+  # cheap (about 0.4 s per clip) and the Val set big enough to rank trials. Train_only scope; not with `val: follow`. Needs `enabled: true`.
+  val_samples: null
   # Draws of the same size (repeat_index 0 .. repeats-1) to measure the variance at small sizes; this run uses repeat_index.
   repeats: 1
   repeat_index: 0

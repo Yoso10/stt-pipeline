@@ -26,7 +26,8 @@ SCHEMA_VERSION = 1
 
 def _label(spec: SubsampleSpec) -> str:
     size = "all" if spec.size.kind == "all" else f"{spec.size.kind}_{spec.size.value:g}"
-    return f"{size}_{spec.strategy}_{spec.scope}_{spec.val}_s{spec.seed}_r{spec.repeat_index}"
+    slice_part = f"_v{spec.val_samples}" if spec.val_samples is not None else ""
+    return f"{size}_{spec.strategy}_{spec.scope}_{spec.val}{slice_part}_s{spec.seed}_r{spec.repeat_index}"
 
 
 class SubsampleStore:

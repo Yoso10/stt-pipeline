@@ -188,6 +188,77 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual(before, [(n, n.train_text, n.eval_text) for n in self.splits["train"]])
 
 
+class ValSliceTests(unittest.TestCase):
+    """`subsample.val_samples`: a fixed-size Val slice (O78, owner approved)."""
+
+    def setUp(self) -> None:
+        self.splits = make_splits(val_groups=30, test_groups=30)
+        self.sub = Subsampler()
+
+    def slice_spec(self, size_kind: str = "all", value: float | None = None, val_samples: int | None = 10, **kw: object) -> SubsampleSpec:
+        return replace(spec(size_kind, value, **kw), val_samples=val_samples)  # type: ignore[arg-type]
+
+    def test_a_fixed_val_slice_with_the_train_split_untouched(self) -> None:
+        result = self.sub.subsample(self.splits, self.slice_spec())
+        self.assertEqual(len(result.splits["val"]), 10)
+        self.assertTrue(all(a is b for a, b in zip(result.splits["train"], self.splits["train"], strict=True)))  # Train unchanged
+        self.assertEqual(len(result.splits["test"]), len(self.splits["test"]))  # the Test is never touched
+        sizes = {s.name: s.reduced for s in result.report.sizes}
+        self.assertEqual(sizes, {"train": False, "val": True, "test": False})
+        self.assertIn("Val slice of 10 samples", result.report.requested)
+
+    def test_the_slice_does_not_depend_on_the_train_size_and_is_nested(self) -> None:
+        a = ids(self.sub.subsample(self.splits, self.slice_spec()).splits, "val")
+        b = ids(self.sub.subsample(self.splits, self.slice_spec("minutes", 30.0)).splits, "val")
+        c = ids(self.sub.subsample(self.splits, self.slice_spec("fraction", 0.1)).splits, "val")
+        self.assertEqual(a, b)
+        self.assertEqual(a, c)  # the same Val slice for every Train size: the trials of a search are comparable
+        small = ids(self.sub.subsample(self.splits, self.slice_spec(val_samples=4)).splits, "val")
+        self.assertTrue(small < a)  # nested
+        reduced = self.sub.subsample(self.splits, self.slice_spec("minutes", 30.0))
+        self.assertLess(len(reduced.splits["train"]), len(self.splits["train"]))
+        self.assertEqual(len(reduced.splits["val"]), 10)
+
+    def test_a_slice_larger_than_val_fails_with_both_numbers_and_the_minimum_train_check_is_for_a_reduced_train_only(self) -> None:
+        with self.assertRaises(SubsampleError) as ctx:
+            self.sub.subsample(self.splits, self.slice_spec(val_samples=999))
+        self.assertIn("999.00 samples", str(ctx.exception))
+        self.assertIn("30.00 samples", str(ctx.exception))
+        tiny_train = {**self.splits, "train": self.splits["train"][:3]}
+        result = self.sub.subsample(tiny_train, self.slice_spec(minimum=10))
+        self.assertEqual(len(result.splits["train"]), 3)  # Train is untouched, so the minimum for a REDUCED Train does not apply
+
+    def test_a_slice_needs_train_only_and_a_val_split_and_the_config_refuses_follow(self) -> None:
+        with self.assertRaises(SubsampleConfigError):
+            self.sub.subsample(self.splits, self.slice_spec("fraction", 0.5, scope="all_splits"))
+        with self.assertRaises(SubsampleConfigError):
+            self.sub.subsample(self.splits, replace(self.slice_spec(), val_split=None))
+        with self.assertRaises(ValueError) as ctx:
+            SubsampleConfig.model_validate({"val": "follow", "val_samples": 10})
+        self.assertIn("cannot be combined", str(ctx.exception))
+        with self.assertRaises(ValueError):
+            SubsampleConfig.model_validate({"val_samples": 0})
+        self.assertIsNone(SubsampleConfig().val_samples)  # off by default
+
+    def test_the_config_store_and_fingerprint_know_the_slice(self) -> None:
+        config = SubsampleConfig.model_validate({"enabled": True, "val_samples": 10, "size": {"minutes": 30}, "min_train_samples": 1})
+        spec_ = build_spec(config, 42, "train", "val")
+        self.assertEqual(spec_.val_samples, 10)
+        with tempfile.TemporaryDirectory() as tmp:
+            on = SubsampleConfig.model_validate({"enabled": True, "val_samples": 10, "size": {"minutes": 30}, "min_train_samples": 1, "dir": tmp})
+            result = resolve_subsample(on, 42, self.splits, "train", "val")
+            self.assertTrue(Path(result.report.ids_location or "").name.endswith("_v10_s42_r0.json"))
+            again = resolve_subsample(on, 42, self.splits, "train", "val")
+            self.assertEqual(again.fingerprint, result.fingerprint)
+        without = self.sub.subsample(self.splits, replace(spec_, val_samples=None))
+        self.assertNotEqual(without.fingerprint, self.sub.subsample(self.splits, spec_).fingerprint)
+
+    def test_a_val_slice_with_all_train_through_resolve_subsample(self) -> None:
+        config = SubsampleConfig.model_validate({"enabled": True, "val_samples": 7})
+        result = resolve_subsample(config, 42, self.splits, "train", "val")
+        self.assertEqual((len(result.splits["train"]), len(result.splits["val"]), len(result.splits["test"])), (100, 7, 30))
+
+
 class StoreTests(unittest.TestCase):
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
