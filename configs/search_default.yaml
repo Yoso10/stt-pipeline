@@ -1,0 +1,42 @@
+# How to run: example `search` section; every value shown is the DEFAULT. Extend it:
+#     extends: search_default.yaml
+#     $env:PYTHONPATH = "src"
+#     python -c "from pathlib import Path; from stt.config import SectionRegistry, load_config; from stt.searcher import SearchConfig; print(load_config(Path('configs/search_default.yaml'), registry=SectionRegistry({'search': SearchConfig})).section('search', SearchConfig).n_trials)"
+# The search is deliberately SMALL (owner: do not widen it, thin it out): two parameters, a few trials. Everything else is fixed from `train.hyperparams`.
+# max_steps and seed cannot be searched. The objective is the Val loss; the finalists are scored by WER on Val afterwards. Naming `parameters` REPLACES the space.
+extends: base.yaml
+
+search:
+  # grid (own code, no dependency) | optuna_tpe (the TPE sampler of Optuna, an optional package). The brief's DEFAULT is optuna_tpe; see COMPONENTS.md (C8)
+  # for the comparison with grid on a synthetic objective and the recommendation.
+  strategy: optuna_tpe
+  parameters:
+    learning_rate:
+      kind: log_float      # log_float | float | int | categorical
+      low: 5.0e-6
+      high: 5.0e-5
+      points: 3            # the grid strategy takes this many values from a float or log_float range
+    grad_accum_steps:
+      kind: categorical
+      choices: [2, 4]
+  # Trials in all (a resumed study counts the earlier ones). 6 trials of the screening size cost about 1.5 hours with whisper-tiny at 2 threads.
+  n_trials: 6
+  # Empty = no time limit. A running trial is told to stop when the budget is over and is recorded as failed with the reason time_budget (not a result).
+  time_budget_minutes: null
+  pruning:
+    enabled: true
+    # No trial is pruned before it has had this many Val evaluations (the median rule only fires for trials with four or more evaluations).
+    min_evals: 3
+  # 1 = one trial after another (DEFAULT). More: worker processes, each with (total threads / parallel_trials) threads.
+  parallel_trials: 1
+  # The search stops when more than this share of the finished trials failed, after min_trials_before_abort trials.
+  max_failed_ratio: 0.5
+  min_trials_before_abort: 4
+  finalists:
+    k: 3
+  finalist_repeats: 1
+  screening:
+    # The Subsampler preset the search runs on (the Orchestrator reads it). To revise after the step times are known (O11).
+    preset: tiny
+  # Set by the RunManager (the `search/` folder of the experiment). Empty = nothing is stored and a search cannot be resumed.
+  # study_dir: experiments/exp_0001/search
