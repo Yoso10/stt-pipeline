@@ -7,9 +7,9 @@
 extends: base.yaml
 
 search:
-  # grid (own code, no dependency) | optuna_tpe (the TPE sampler of Optuna, an optional package). The brief's DEFAULT is optuna_tpe; see COMPONENTS.md (C8)
-  # for the comparison with grid on a synthetic objective and the recommendation.
-  strategy: optuna_tpe
+  # grid (DEFAULT, own code, no dependency; owner decision, O79) | optuna_tpe (the TPE sampler of Optuna, an optional package). See DECISIONS 49 for the
+  # comparison on a synthetic objective: not clearly better at 6 trials.
+  strategy: grid
   parameters:
     learning_rate:
       kind: log_float      # log_float | float | int | categorical

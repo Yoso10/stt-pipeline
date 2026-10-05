@@ -309,7 +309,7 @@ class ParallelTests(unittest.TestCase):
 class ConfigTests(unittest.TestCase):
     def test_defaults_and_the_yaml_example(self) -> None:
         c = SearchConfig()
-        self.assertEqual((c.strategy, c.n_trials, c.time_budget_minutes, c.parallel_trials, c.max_failed_ratio, c.min_trials_before_abort, c.finalists.k, c.finalist_repeats, c.screening.preset), ("optuna_tpe", 6, None, 1, 0.5, 4, 3, 1, "tiny"))
+        self.assertEqual((c.strategy, c.n_trials, c.time_budget_minutes, c.parallel_trials, c.max_failed_ratio, c.min_trials_before_abort, c.finalists.k, c.finalist_repeats, c.screening.preset), ("grid", 6, None, 1, 0.5, 4, 3, 1, "tiny"))
         self.assertEqual((c.pruning.enabled, c.pruning.min_evals), (True, 3))
         self.assertEqual(sorted(c.parameters), ["grad_accum_steps", "learning_rate"])  # the owner's default space: only these two
         self.assertEqual((c.parameters["learning_rate"].kind, c.parameters["learning_rate"].low, c.parameters["learning_rate"].high), ("log_float", 5e-6, 5e-5))
@@ -341,7 +341,7 @@ class ConfigTests(unittest.TestCase):
 
     def test_build_spec_and_apply_params(self) -> None:
         spec = build_spec(SearchConfig(), 42, 6)
-        self.assertEqual((spec.strategy, spec.n_trials, spec.finalists_k, spec.seed, spec.total_threads, spec.pruning), ("optuna_tpe", 6, 3, 42, 6, PruningSpec(True, 3)))
+        self.assertEqual((spec.strategy, spec.n_trials, spec.finalists_k, spec.seed, spec.total_threads, spec.pruning), ("grid", 6, 3, 42, 6, PruningSpec(True, 3)))
         self.assertEqual(spec.parameters["grad_accum_steps"].choices, (2, 4))
         base = TrainHyperparams(1e-5, 100, 4, 4, 10, 0.0, 1.0, 42)
         applied = apply_params(base, {"learning_rate": 3e-5, "grad_accum_steps": 2.0})

@@ -83,7 +83,7 @@ def _default_parameters() -> dict[str, ParamConfig]:
 class SearchConfig(SectionModel):
     """The `search` section."""
 
-    strategy: str = Field(default="optuna_tpe", description="DEFAULT optuna_tpe (the brief's DEFAULT; the owner decides after the comparison with grid, O10). Registered: grid, optuna_tpe.")
+    strategy: str = Field(default="grid", description="DEFAULT grid (owner decision 2026-10-05, O79; the brief's optuna_tpe stays available). Registered: grid, optuna_tpe.")
     parameters: dict[str, ParamConfig] = Field(default_factory=_default_parameters, description="DEFAULT learning_rate (log range 5e-6 to 5e-5) and grad_accum_steps (2 or 4). Naming this key replaces the default space.")
     n_trials: int = Field(default=6, ge=1, description="DEFAULT 6 (a small budget, thinned from the brief's 10 because of the step time, O28). Trials in all, earlier ones of a resumed study included.")
     time_budget_minutes: float | None = Field(default=None, gt=0, description="DEFAULT none. Stop starting trials after this many minutes (a running trial is told to stop).")
