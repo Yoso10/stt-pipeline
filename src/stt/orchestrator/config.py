@@ -18,9 +18,12 @@ class PipelineConfig(SectionModel):
     """The `pipeline` section."""
 
     stages: list[str] = Field(
-        default_factory=lambda: ["prepare", "train", "evaluate"],
+        default_factory=lambda: ["prepare", "evaluate", "search", "finalists", "select_and_register"],
         min_length=1,
-        description="DEFAULT prepare, train, evaluate (the minimal chain; the brief's later default adds search, select_and_register, export, report).",
+        description=(
+            "DEFAULT prepare, evaluate, search, finalists, select_and_register: the stages of `python -m stt run` (evaluate = the baseline on Val; later: export, report). "
+            "Registered stages: prepare, train, evaluate, search, finalists, select_and_register. The other commands (prepare, train, evaluate, search) run their own fixed stages."
+        ),
     )
     skip_completed: bool = Field(default=True, description="DEFAULT true. A stage with a completion marker and an unchanged config slice is skipped.")
     eval_split: str = Field(default="val", description="DEFAULT val (NEW key). The split the evaluate stage scores. Model choice and checks use Val.")

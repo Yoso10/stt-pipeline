@@ -15,7 +15,8 @@ smoke:
   work_dir: data/smoke
 
 pipeline:
-  stages: [prepare, train, evaluate]
+  # The stages of `python -m stt run` (the `smoke` command runs its own fixed plan: prepare, train, evaluate).
+  stages: [prepare, evaluate, search, finalists, select_and_register]
   skip_completed: true
   eval_split: val
   test_split: test

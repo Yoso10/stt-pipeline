@@ -7,6 +7,8 @@ files that can be opened in any editor or Excel. Files written per scored model 
     review_<name>.txt        the human review list: worst files first, then random ones, with the word-level difference and the audio path
 and `comparison.json` with the verdict. The `search` stage adds (pure functions below, DECISIONS 55):
     search_report.txt        what the search did: the trials in a table, the finalists, the notes (plain text)
+    finalists_report.txt     the retrained finalists with their Val WER (the `finalists` stage)
+    selection.json, selection_table.csv, selection_reason.txt   the selection stage: the verdict, the comparison table of the finalists, the reason in plain words
     search_trials.json       the same as data: the space, the screening set, every trial with its parameters, status, Val loss and reports, the finalist trial ids
 """
 
@@ -21,6 +23,7 @@ from typing import Any
 from stt.evaluator import ComparisonResult, EvalResult
 from stt.orchestrator.types import ScreeningSet
 from stt.searcher import SearchResult, SearchSpec, TrialRecord
+from stt.selector import Candidate, SelectionResult
 
 
 def evaluation_json(result: EvalResult) -> str:
@@ -125,3 +128,58 @@ def search_trials_json(result: SearchResult, spec: SearchSpec, screening: Screen
         "notes": list(result.report.notes),
     }
     return json.dumps(body, indent=1, ensure_ascii=False)
+
+
+def finalists_report_text(candidates: list[Candidate]) -> str:
+    """The retrained finalists on Val: one line each (their Val WER is what the selection compares with the baseline)."""
+    lines = ["finalists retrained on the full data and scored on the Val split (the selection stage compares them with the baseline):", ""]
+    lines.append("trial  Val WER  Val CER  Val loss  steps  files  model folder")
+    for c in candidates:
+        lines.append(f"{c.trial_id:>5}  {c.val.wer:>7.4f}  {_loss(c.val.cer):>7}  {c.val_loss:>8.4f}  {c.steps:>5}  {c.val.n_files:>5}  {c.model_dir.name}")
+        lines.append(f"       {_params(c.params)}")
+    return "\n".join(lines) + "\n"
+
+
+def selection_table_csv(selection: SelectionResult) -> str:
+    """The comparison table of the selection (winner first), one row per finalist (UTF-8 with a byte order mark so Excel reads it)."""
+    out = io.StringIO()
+    writer = csv.writer(out)
+    writer.writerow(["rank", "trial", "params", "val_wer", "val_cer", "delta_wer_vs_baseline", "ci_low", "ci_high", "val_verdict", "val_loss", "steps", "eligible", "note"])
+    for r in selection.comparison_table:
+        fmt = lambda v: "" if v is None else f"{v:.4f}"  # noqa: E731
+        writer.writerow([r.rank, r.trial_id, json.dumps(dict(r.params), sort_keys=True), fmt(r.val_wer), fmt(r.val_cer), fmt(r.delta_wer), fmt(r.ci_low), fmt(r.ci_high), r.verdict, f"{r.val_loss:.5f}", r.steps, r.eligible, r.note])
+    return "﻿" + out.getvalue()
+
+
+def selection_text(selection: SelectionResult, baseline_val: EvalResult, entry_id: str | None, registry_dir: str) -> str:
+    """The selection in plain words: the verdict, the reason, the Test confirmation, the flags, where the entry is."""
+    lines = [f"VERDICT: {selection.verdict}" + (f" (trial {selection.winner.trial_id})" if selection.winner is not None else " (the baseline model stays)"), "", selection.reason, ""]
+    lines.append(f"Baseline on Val: WER {baseline_val.wer:.4f} over {baseline_val.n_files} files.")
+    if selection.winner is not None:
+        lines.append(f"Winner on Val:   WER {selection.winner.val.wer:.4f} (trial {selection.winner.trial_id}, {_params(selection.winner.params)}).")
+    lines.append(f"Test status: {selection.test_status}.")
+    if selection.test_baseline is not None and selection.test_winner is not None and selection.test_comparison is not None:
+        lines.append(f"Test: baseline WER {selection.test_baseline.wer:.4f}, winner WER {selection.test_winner.wer:.4f}; {selection.test_comparison.explanation}")
+    if selection.test_error:
+        lines.append(f"Test error: {selection.test_error}")
+    lines += [f"WARNING: {w}" for w in selection.warnings]
+    lines.append("")
+    lines.append(f"Registered as {entry_id} in {registry_dir}." if entry_id else "Not registered.")
+    return "\n".join(lines) + "\n"
+
+
+def selection_json(selection: SelectionResult, entry_id: str | None, registry_dir: str) -> str:
+    """The selection as data (no per-file results)."""
+    body: dict[str, Any] = {
+        "verdict": selection.verdict,
+        "winner_trial": None if selection.winner is None else selection.winner.trial_id,
+        "test_status": selection.test_status,
+        "reason": selection.reason,
+        "warnings": list(selection.warnings),
+        "test_error": selection.test_error,
+        "test_comparison": None if selection.test_comparison is None else asdict(selection.test_comparison),
+        "table": [asdict(r) for r in selection.comparison_table],
+        "entry_id": entry_id,
+        "registry_dir": registry_dir,
+    }
+    return json.dumps(body, indent=1, ensure_ascii=False, default=str)

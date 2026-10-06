@@ -9,6 +9,7 @@ worker process.
 from __future__ import annotations
 
 import json
+import re
 import shutil
 from collections.abc import Callable, Sequence
 from pathlib import Path
@@ -20,16 +21,19 @@ from search_fakes import bowl
 from stt.config import load_config
 from stt.datasource import AudioSample
 from stt.orchestrator import PreparedData, Services
-from stt.orchestrator.wiring import SearchWiring, exit_code_for, section_registry
+from stt.evaluator import DecodeSettings, EvalRequest, EvalResult, FileScore, ReviewEntry, ReviewList
+from stt.modelloader import ModelInfo
+from stt.orchestrator.wiring import EvaluationWiring, RegistryWiring, SearchWiring, SelectionWiring, exit_code_for, section_registry
 from stt.textnormalizer import NormalizedSample
 from stt.trainercore import FreezeReport, StepMetrics, TrainHyperparams, TrainRequest, TrainResult, TrainTimings
 
+SIX_WORDS = "אחת שתיים שלוש ארבע חמש שש"
 SPLIT_SIZES = {"train": 40, "val": 10, "test": 10}
 
 
 def make_samples(split: str, n: int) -> list[NormalizedSample]:
     """`extra` is a read-only mapping, as the real data source makes it (a mappingproxy cannot be pickled: the runner must send plain copies to a worker)."""
-    return [NormalizedSample(AudioSample(f"{split}{i:03d}", Path(f"audio/{split}{i:03d}.wav"), "raw", f"{split}_g{i:03d}", 6.0, None, MappingProxyType({"meta_note": "x"})), "טקסט", "טקסט", None, ()) for i in range(n)]
+    return [NormalizedSample(AudioSample(f"{split}{i:03d}", Path(f"audio/{split}{i:03d}.wav"), "raw", f"{split}_g{i:03d}", 6.0, None, MappingProxyType({"meta_note": "x"})), SIX_WORDS, SIX_WORDS, None, ()) for i in range(n)]
 
 
 class FakeData:
@@ -47,7 +51,7 @@ class FakeFeatures:
 
     def build(self, samples: Sequence[NormalizedSample], split: str) -> Any:
         self.requested.append(split)
-        return SimpleNamespace(dataset=list(samples), report=None)
+        return SimpleNamespace(dataset=list(samples), report=SimpleNamespace(removed_label_ids=()))
 
     def build_collator(self) -> Callable[[Sequence[Any]], dict[str, object]]:
         return lambda batch: {}
@@ -60,7 +64,8 @@ class FakeModels:
         self.requested: list[str] = []
 
     def load(self, path: Path | None = None) -> object:
-        return SimpleNamespace(path=path)
+        name = "baseline" if path is None else path.name
+        return SimpleNamespace(path=path, info=SimpleNamespace(name=name), tokenizer=SimpleNamespace(count_tokens=lambda text: len(text.split())))
 
     def features(self, model: object) -> FakeFeatures:
         return FakeFeatures(self.requested)
@@ -124,6 +129,40 @@ class FakeTraining:
         return TrainResult(model_dir, tuple(history), best[0] if best else steps, best[1] if best else None, reason, timings, FreezeReport("none", 1, 1, 0, ()), 42)  # type: ignore[arg-type]
 
 
+class FakeEvaluation(EvaluationWiring):
+    """Scores a model without a model: the number of wrong words per file (of six) comes from a table by model and split. `val_errors` and `test_errors` map a finalist's trial number
+    to its errors; the baseline has `baseline_errors`. `calls` lists every (split, model name) that was scored."""
+
+    def __init__(self, config: Any, val_errors: dict[int, int] | None = None, test_errors: dict[int, int] | None = None, baseline_errors: int = 3) -> None:
+        super().__init__(config)
+        self.val_errors = val_errors if val_errors is not None else {0: 2, 1: 1, 2: 3, 3: 3}
+        self.test_errors = test_errors if test_errors is not None else self.val_errors
+        self.baseline_errors = baseline_errors
+        self.calls: list[tuple[str, str]] = []
+
+    def decode_settings(self, model: Any, items: Any) -> DecodeSettings:
+        return DecodeSettings(1, 100, 4, 8.0)
+
+    def evaluate(self, request: EvalRequest) -> EvalResult:
+        name = request.model.info.name  # type: ignore[attr-defined]
+        self.calls.append((request.split_name, name))
+        match = re.search(r"final_trial_(\d+)", name)
+        table = self.test_errors if request.split_name == "test" else self.val_errors
+        errors = self.baseline_errors if match is None else table[int(match.group(1))]
+        words = SIX_WORDS.split()
+        files = []
+        for item in request.items:
+            hypothesis = " ".join(["x"] * errors + words[errors:])
+            files.append(FileScore(item.sample_id, item.group_id, item.reference, hypothesis, hypothesis, 6, errors, errors / 6, None, False, False, dict(item.attributes)))
+        order = sorted(files, key=lambda f: f.sample_id)
+        review = ReviewList(tuple(ReviewEntry(f.sample_id, f.group_id, Path("audio") / f"{f.sample_id}.wav", f.reference, f.hypothesis, f.wer, "[diff]", "worst") for f in order[:2]))
+        n_words = 6 * len(files)
+        return EvalResult(
+            request.split_name, request.eval_version, ModelInfo(name, Path(name), 0, "float32", 80, "he", "transcribe", None), errors / 6, errors / 6, None, len(files), n_words, {0.1: 0.0 if errors else 1.0},
+            tuple(files), request.settings, 0.1, {"empty_output": 0, "hit_length_cap": 0, "excluded_empty_reference": 0}, (), review,
+        )
+
+
 def fake_provider(path: Path) -> Services:
     """Module-level: a worker process receives it by name. It reads the stored config (as the real provider does) and builds the fakes."""
     config = load_config(path, registry=section_registry(), environ={}, env_file=None, apply_environment=False)
@@ -136,5 +175,6 @@ class FakeSearchWiring(SearchWiring):
     services_provider = staticmethod(fake_provider)
 
 
-def fake_services(config: Any, hook: Callable[[int, int], None] | None = None, fail: frozenset[str] = frozenset()) -> Services:
-    return Services(FakeData(), FakeModels(), FakeTraining(hook, fail), None, exit_code_for, FakeSearchWiring(config))  # type: ignore[arg-type]
+def fake_services(config: Any, hook: Callable[[int, int], None] | None = None, fail: frozenset[str] = frozenset(), evaluation: FakeEvaluation | None = None) -> Services:
+    """Fake data, models, training and evaluation; the REAL search, selection and registry services."""
+    return Services(FakeData(), FakeModels(), FakeTraining(hook, fail), evaluation or FakeEvaluation(config), exit_code_for, FakeSearchWiring(config), SelectionWiring(config), RegistryWiring(config), lambda: "2026-10-06T10:00:00")

@@ -21,8 +21,10 @@ from stt.config import AppConfig
 from stt.evaluator import ComparisonResult, DecodeSettings, EvalItem, EvalRequest, EvalResult
 from stt.featurepipeline import FeatureResult
 from stt.modelloader import LoadedModel
+from stt.registry import RegisterRequest, RegistryEntry
 from stt.runmanager import ExperimentHandle
 from stt.searcher import SearchResult, SearchSpec, TrialRunner
+from stt.selector import SelectionRequest, SelectionResult
 from stt.textnormalizer import NormalizedSample
 from stt.trainercore import TrainHyperparams, TrainRequest, TrainResult
 
@@ -153,10 +155,34 @@ class SearchService(Protocol):
         ...
 
 
+class SelectionService(Protocol):
+    """The Selector bound to the `select` section (DECISIONS 57)."""
+
+    def select(self, request: SelectionRequest) -> SelectionResult:
+        """Choose the winner, or keep the baseline. The Test is evaluated through `request.evaluate_test`, at most once per model. Raises SelectorError."""
+        ...
+
+
+class RegistryService(Protocol):
+    """The ModelRegistry bound to the `registry` section (DECISIONS 57)."""
+
+    def location(self) -> Path:
+        """The registry folder (`registry.dir`)."""
+        ...
+
+    def entries(self) -> list[RegistryEntry]:
+        """The registered entries, lowest number first (read only)."""
+        ...
+
+    def register(self, request: RegisterRequest) -> RegistryEntry:
+        """Store the selection result as the next entry. Raises RegistryError."""
+        ...
+
+
 @dataclass(frozen=True)
 class Services:
     """Everything the stages may use, built once by `wiring.build_services`. `exit_code_for` maps an exception to the process exit code.
-    `search` is None where no search is wired (a test with fakes)."""
+    `search`, `selection`, `registry` and `now` are None where they are not wired (a test with fakes); `now` gives the date and time text of a registration."""
 
     data: DataService
     models: ModelService
@@ -164,6 +190,9 @@ class Services:
     evaluation: EvaluationService
     exit_code_for: Callable[[BaseException], int]
     search: SearchService | None = None
+    selection: SelectionService | None = None
+    registry: RegistryService | None = None
+    now: Callable[[], str] | None = None
 
 
 class StopFlag(Protocol):

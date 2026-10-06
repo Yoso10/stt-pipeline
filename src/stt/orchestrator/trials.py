@@ -21,7 +21,7 @@ from __future__ import annotations
 import json
 import logging
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -120,21 +120,7 @@ class SearchTrialRunner:
 
     # ---- the trial folder ----------------------------------------------------------------------------------------------
     def _prepare_folder(self, services: Services, output: Path, trial: Trial) -> bool:
-        """True when the trial resumes an interrupted folder. Stores the parameters of this attempt; renames a folder that cannot be resumed (never deletes it)."""
-        marker = self._experiment.paths.search / f"{trial_name(trial.trial_id)}.params.json"
-        params = json.loads(json.dumps(dict(trial.params), sort_keys=True))
-        resume = False
-        if output.exists() and any(output.iterdir()):
-            stored = _read_json(marker)
-            if stored == params and services.training.can_resume(output):
-                resume = True
-            else:
-                aside = _free_name(output)
-                output.rename(aside)
-                logger.warning("The folder %s of an earlier, interrupted trial cannot be resumed (%s); it was renamed to %s and the trial starts fresh.", output, "other parameters" if stored != params else "no complete checkpoint", aside.name)
-        marker.parent.mkdir(parents=True, exist_ok=True)
-        marker.write_text(json.dumps(params, indent=1, sort_keys=True), encoding="utf-8")
-        return resume
+        return prepare_trial_folder(self._experiment, services, output, f"{trial_name(trial.trial_id)}.params.json", trial.params)
 
     def _configure_worker_logging(self, trial: Trial) -> None:
         """A worker process has no log setup of its own: its lines go to the console and to `logs/trial_TTT.log` of the experiment."""
@@ -154,6 +140,25 @@ class SearchTrialRunner:
             root.addHandler(file_handler)
         except OSError:
             root.warning("Cannot write the trial log %s; the lines go to the console only.", target)
+
+
+def prepare_trial_folder(experiment: ExperimentHandle, services: Services, output: Path, marker_name: str, parameters: Mapping[str, Any]) -> bool:
+    """True when the trial or finalist folder `output` resumes an interrupted run. Stores the parameters of this attempt in `search/<marker_name>`; a folder that cannot be
+    resumed (other parameters, or no complete checkpoint) is RENAMED to `..._stale_N`, never deleted."""
+    marker = experiment.paths.search / marker_name
+    params = json.loads(json.dumps(dict(parameters), sort_keys=True))
+    resume = False
+    if output.exists() and any(output.iterdir()):
+        stored = _read_json(marker)
+        if stored == params and services.training.can_resume(output):
+            resume = True
+        else:
+            aside = _free_name(output)
+            output.rename(aside)
+            logger.warning("The folder %s of an earlier, interrupted run cannot be resumed (%s); it was renamed to %s and the run starts fresh.", output, "other parameters" if stored != params else "no complete checkpoint", aside.name)
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    marker.write_text(json.dumps(params, indent=1, sort_keys=True), encoding="utf-8")
+    return resume
 
 
 def _sendable(samples: tuple[NormalizedSample, ...]) -> tuple[NormalizedSample, ...]:

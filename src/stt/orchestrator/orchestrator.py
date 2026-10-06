@@ -9,7 +9,7 @@ that finishes writes a completion marker (`status.json`, with a fingerprint of i
 (`reports/stage_results/<stage>.json`); a rerun skips a stage whose marker is valid, and a stage whose slice changed runs again together with every later
 stage; the first failed stage stops the run (the later stages are listed as skipped), its exit code comes from `services.exit_code_for`, and the status
 becomes `failed` with the reason; a requested stop (the stop flag, or a second Ctrl+C) leaves no marker, sets the status `stopped` and gives exit code 130.
-There is no automatic retry. The module names no concrete component class.
+There is no automatic retry. The verdict of the outcome is the Selector's (`winner` or `baseline_retained`) when the `select_and_register` stage is in the plan, otherwise `n/a`. The module names no concrete component class.
 """
 
 from __future__ import annotations
@@ -99,7 +99,9 @@ class Orchestrator:
                     return self._stopped(handle, results, f"stop requested after stage {stage.name}")
             if handle.status().status != "completed" or any(r.status == "ok" for r in results.values()):
                 handle.set_status("completed")
-        return RunOutcome(EXIT_OK, "n/a", handle.experiment_id, results, "completed")
+        selected = results.get("select_and_register")
+        verdict = str(selected.summary.get("verdict", "n/a")) if selected is not None else "n/a"  # the Selector's verdict once the selection stage ran
+        return RunOutcome(EXIT_OK, verdict, handle.experiment_id, results, "completed")
 
     @staticmethod
     def _stored_fingerprint(handle: ExperimentHandle, stage: str) -> str | None:

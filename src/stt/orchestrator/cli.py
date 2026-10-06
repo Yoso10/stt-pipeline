@@ -8,6 +8,8 @@ How to run (PowerShell, project root; set the path to the sources once per windo
     python -m stt train    --config my.yaml   # prepare + one training run
     python -m stt evaluate --config my.yaml   # prepare + baseline (and trained) model on the Val split
     python -m stt search   --config my.yaml   # prepare + the hyperparameter search (a few small trials on a screening subset, objective: Val loss)
+    python -m stt run      --config my.yaml   # the whole pipeline: prepare, baseline on Val, search, finalists retrained on the full data, selection (Test ONCE), registry
+    python -m stt registry list   --config my.yaml    # what is registered (read only); also: registry verify [model_0001], registry rebuild-index
 Shared options: `--config FILE`, `--set a.b=value` (repeatable), `--parent exp_0003` (the new experiment extends that one), `--experiment exp_0004`
 (continue an existing experiment: finished stages are skipped, an interrupted training is resumed). Every command creates a numbered experiment folder
 `experiments/exp_NNNN/` and prints ONE JSON summary at the end (the only thing on stdout); the log lines go to the console (stderr) and to
@@ -15,8 +17,10 @@ Shared options: `--config FILE`, `--set a.b=value` (repeatable), `--parent exp_0
 the training saves a checkpoint first; run the same command with `--experiment` to continue). Look at an experiment afterwards with
 `python -m stt.runmanager list` and `python -m stt.runmanager show exp_0001`. `search` writes `reports/search_report.txt` (the trials in a table and the
 finalists) and stores the study in `search/study.json`: after Ctrl+C or a crash run the same command with `--experiment exp_NNNN` and the finished trials are kept
-(an interrupted trial is resumed). `search.parallel_trials: 2` runs two trials at once, each with half of the threads. Not in this version: run, report, export,
-registry, learning-curve, benchmark, cleanup, config-docs (later parts and waves).
+(an interrupted trial is resumed). `search.parallel_trials: 2` runs two trials at once, each with half of the threads. `run` runs the stages of `pipeline.stages` (default:
+prepare, evaluate, search, finalists, select_and_register); a rerun with `--experiment` skips the finished stages and continues; the Test split is looked at ONCE, for the winner and the baseline,
+and the verdict (`winner` or `baseline_retained`) is printed in plain words. `registry` reads the registry folder `registry.dir` (it must lie OUTSIDE `run.experiments_dir`); exit code 5 when a
+registered model does not match its checksums. Nothing is deleted by any command. Not in this version: report, export, learning-curve, benchmark, cleanup, config-docs (later parts and waves).
 """
 
 from __future__ import annotations
@@ -36,17 +40,19 @@ from stt.orchestrator import check as check_module
 from stt.orchestrator.codeversion import code_version
 from stt.orchestrator.config import PipelineConfig, SmokeConfig
 from stt.orchestrator.errors import OrchestratorError
+from stt.orchestrator.selection import check_config_registry_location
 from stt.orchestrator.orchestrator import Orchestrator
 from stt.orchestrator.sleepguard import default_sleep_guard
 from stt.orchestrator.smoke import write_smoke_data
 from stt.orchestrator.stopflag import InterruptFlag
 from stt.orchestrator.types import RunOutcome, RunPlan, StageContext
-from stt.orchestrator.wiring import Runtime, build_runtime, exit_code_for, library_versions, section_registry
+from stt.orchestrator.wiring import RegistryWiring, Runtime, build_runtime, exit_code_for, library_versions, section_registry
+from stt.registry import RegistryConfig
 from stt.runmanager import ExperimentHandle, ExperimentSpec, RunConfig
 
 logger = logging.getLogger("stt.orchestrator")
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-PLANS = {"prepare": ["prepare"], "train": ["prepare", "train"], "evaluate": ["prepare", "evaluate"], "search": ["prepare", "search"], "smoke": ["prepare", "train", "evaluate"]}
+PLANS = {"prepare": ["prepare"], "train": ["prepare", "train"], "evaluate": ["prepare", "evaluate"], "search": ["prepare", "search"], "smoke": ["prepare", "train", "evaluate"]}  # `run` uses pipeline.stages
 DEFAULT_SMOKE_CONFIG = Path("configs/smoke.yaml")
 
 
@@ -63,6 +69,7 @@ def build_parser() -> argparse.ArgumentParser:
         "train": "python -m stt train --config my.yaml --set train.hyperparams.max_steps=50",
         "evaluate": "python -m stt evaluate --config my.yaml --experiment exp_0003",
         "search": "python -m stt search --config my.yaml --set search.n_trials=4",
+        "run": "python -m stt run --config my.yaml --set subsample.val_samples=100",
         "smoke": "python -m stt smoke",
         "check": "python -m stt check --config configs/smoke.yaml",
     }
@@ -71,6 +78,7 @@ def build_parser() -> argparse.ArgumentParser:
         "train": "prepare, then one training run",
         "evaluate": "prepare, then score the baseline (and the trained model of the experiment) on the Val split",
         "search": "prepare, then the hyperparameter search on a screening subset (objective: the Val loss); a rerun with --experiment continues it",
+        "run": "the whole pipeline: prepare, baseline on Val, search, finalists on the full data, selection (the Test is looked at once) and registration; a rerun with --experiment continues it",
         "smoke": "run the whole chain on synthetic data and the tiny test model, to prove that the mechanics work",
         "check": "say what is fine and what is not on this machine",
     }
@@ -82,12 +90,28 @@ def build_parser() -> argparse.ArgumentParser:
             sub.add_argument("--experiment", default=None, help="continue this existing experiment instead of creating a new one, for example exp_0004")
         if name == "evaluate":
             sub.add_argument("--split", default=None, help="the split to score (default: pipeline.eval_split = val; the Test split is refused)")
+    registry = commands.add_parser(
+        "registry",
+        help="look at the model registry (read only): list, verify, rebuild-index",
+        description="Look at the model registry folder `registry.dir`.\nExamples:  python -m stt registry list --config my.yaml   |   python -m stt registry verify model_0001 --config my.yaml   |   python -m stt registry rebuild-index",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    actions = registry.add_subparsers(dest="registry_command", required=True, metavar="action")
+    for action, text in (
+        ("list", "one line per registered entry"),
+        ("verify", "check the files of an entry (or of all entries) against their SHA256SUMS; exit code 5 on a mismatch"),
+        ("rebuild-index", "make index.csv again from the entry cards (the only action that writes)"),
+    ):
+        sub = actions.add_parser(action, help=text, description=f"{text}.\nExample:  python -m stt registry {action} --config my.yaml", formatter_class=argparse.RawDescriptionHelpFormatter)
+        add_config_arguments(sub)
+        if action == "verify":
+            sub.add_argument("entry", nargs="?", default=None, help="the entry to check, for example model_0001 (default: all entries)")
     return parser
 
 
 def _final_summary(handle: ExperimentHandle, outcome: RunOutcome, extra: dict[str, Any] | None = None) -> dict[str, Any]:
     where = handle.locations()
-    evaluate = outcome.stage_results.get("evaluate") or outcome.stage_results.get("search")  # the numbers a human looks at first
+    evaluate = outcome.stage_results.get("select_and_register") or outcome.stage_results.get("evaluate") or outcome.stage_results.get("search")  # the numbers a human looks at first
     return {
         "experiment_id": outcome.experiment_id,
         "experiment_dir": str(handle.paths.root),
@@ -117,6 +141,16 @@ def _how_to_look(handle: ExperimentHandle, runtime_dir: Path) -> None:
     logger.info("  python -m stt check")
 
 
+def _say_verdict(outcome: RunOutcome) -> None:
+    """The verdict of the selection in plain words, on the console (the log file has it too)."""
+    selected = outcome.stage_results.get("select_and_register")
+    if selected is None or selected.status == "failed" or outcome.verdict == "n/a":
+        return
+    s = selected.summary
+    logger.info("VERDICT: %s. %s", outcome.verdict, s.get("reason", ""))
+    logger.info("Test: %s. Registered as %s in %s.", s.get("test_status", "?"), s.get("entry_id", "?"), s.get("registry_dir", "?"))
+
+
 def _error(message: str, code: int) -> int:
     print(f"ERROR: {message}", file=sys.stderr)
     return code
@@ -130,6 +164,12 @@ def _run_pipeline(args: argparse.Namespace, config_overrides: Sequence[str], smo
     runtime = build_runtime(config, _now)
     run = config.section("run", RunConfig)
     pipeline = config.section("pipeline", PipelineConfig)
+    stages = list(pipeline.stages) if args.command == "run" else PLANS[args.command]
+    if "select_and_register" in stages:  # before an experiment folder is made and before any hour of work: the registry must be outside the experiments
+        try:
+            check_config_registry_location(config)
+        except OrchestratorError as exc:
+            return _error(str(exc), exc.exit_code)
     handle = None
     try:
         if args.experiment:
@@ -141,10 +181,11 @@ def _run_pipeline(args: argparse.Namespace, config_overrides: Sequence[str], smo
         orchestrator = Orchestrator(config, runtime.services, runtime.stages, flag, default_sleep_guard(run.prevent_sleep), pipeline.skip_completed)
         options = {"split": args.split} if getattr(args, "split", None) else {}
         with flag.installed():
-            outcome = orchestrator.run(RunPlan(PLANS[args.command], handle, options))
+            outcome = orchestrator.run(RunPlan(stages, handle, options))
         extra = _test_once_check(config, runtime, handle, flag) if smoke and outcome.exit_code == 0 else None
         if extra is not None and extra.get("test_once_rule") != "refused":
             outcome = RunOutcome(4, outcome.verdict, outcome.experiment_id, outcome.stage_results, outcome.status, "the Test-once rule was not enforced")
+        _say_verdict(outcome)
         _how_to_look(handle, run.experiments_dir)
         print(json.dumps(_final_summary(handle, outcome, extra), indent=1, ensure_ascii=False))
         return outcome.exit_code
@@ -186,6 +227,40 @@ def _smoke(args: argparse.Namespace) -> int:
     return _run_pipeline(args, [*derived, *args.config_overrides], smoke=True)
 
 
+def _registry(args: argparse.Namespace) -> int:
+    """`registry list|verify|rebuild-index`: the registry folder of the config, no experiment is made. Read only except `rebuild-index`."""
+    try:
+        tree = apply_overrides(load_yaml_with_extends(args.config) if args.config is not None else {}, [parse_set(item) for item in args.config_overrides])
+        service = RegistryWiring(RegistryConfig.model_validate(tree.get("registry", {})))  # only the registry section is needed (no data or model settings)
+        if args.registry_command == "list":
+            entries = service.entries()
+            print(f"Registry {service.location()}: {len(entries)} entr{'y' if len(entries) == 1 else 'ies'}.")
+            for e in entries:
+                card = service.card(e.entry_id)
+                val = "-" if card.val is None else f"{card.val.wer:.4f}"
+                test = "-" if card.test is None else f"{card.test.wer:.4f}"
+                print(f"  {e.entry_id}  from {e.experiment_id}  {card.kind:<17} verdict {card.verdict:<17} Val WER {val}  Test WER {test}  Test status {card.test_status}  {card.generated_at}")
+            return 0
+        if args.registry_command == "rebuild-index":
+            service.rebuild_index()
+            print(f"The index of {service.location()} was made again from the entry cards.")
+            return 0
+        names = [args.entry] if args.entry else [e.entry_id for e in service.entries()]
+        code = 0
+        for name in names:
+            try:
+                report = service.verify(name)
+                print(f"OK      {name}: {report.files_checked} files match their checksums.")
+            except Exception as exc:  # one damaged entry does not hide the others
+                print(f"FAILED  {name}: {exc}")
+                code = max(code, exit_code_for(exc))
+        if not names:
+            print(f"The registry {service.location()} has no entries to verify.")
+        return code
+    except Exception as exc:
+        return _error(f"{type(exc).__name__}: {exc}", exit_code_for(exc))
+
+
 def _check(args: argparse.Namespace) -> int:
     config = None
     if args.config is not None or args.config_overrides:
@@ -208,6 +283,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _check(args)
     if args.command == "smoke":
         return _smoke(args)
+    if args.command == "registry":
+        return _registry(args)
     return _run_pipeline(args, args.config_overrides)
 
 

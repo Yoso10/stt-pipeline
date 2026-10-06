@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
+from datetime import datetime
 from importlib import metadata
 from pathlib import Path
 
@@ -26,8 +27,10 @@ from stt.orchestrator.errors import OrchestratorError
 from stt.orchestrator.stages import StageRegistry, default_stage_registry
 from stt.orchestrator.types import FeatureBuilder, PreparedData, ScreeningSet, Services
 from stt.runmanager import ExperimentStore, LogSetup, RunConfig, RunManagerError
+from stt.registry import ModelCard, ModelRegistry, RegisterRequest, RegistryConfig, RegistryEntry, RegistryError, RegistryVerifyError, VerifyReport
 from stt.samplefilter import FilterConfig, FilterError, SampleFilter
 from stt.searcher import HyperparamSearcher, SearchConfig, SearchConfigError, SearchError, SearchResult, SearchSpec, TrialRunner, build_spec
+from stt.selector import SelectConfig, SelectionRequest, SelectionResult, SelectorError, Selector
 from stt.splitter import SplitConfig, SplitError, resolve_split
 from stt.subsampler import SubsampleConfig, SubsampleConfigError, SubsampleError, resolve_subsample
 from stt.textnormalizer import TextConfig, TextNormalizer, TextNormalizerError
@@ -66,6 +69,8 @@ def section_registry() -> SectionRegistry:
             "eval": EvalConfig,
             "run": RunConfig,
             "search": SearchConfig,
+            "select": SelectConfig,
+            "registry": RegistryConfig,
             "pipeline": PipelineConfig,
             "smoke": SmokeConfig,
         }
@@ -87,11 +92,13 @@ def exit_code_for(exc: BaseException) -> int:
     """The process exit code of an exception: 2 config error, 3 data error, 4 training or evaluation failure, 1 for anything unexpected (a bug)."""
     if isinstance(exc, OrchestratorError):
         return exc.exit_code
+    if isinstance(exc, RegistryVerifyError):
+        return 5  # a registered model does not match its checksums (tested before RegistryError, its parent)
     if isinstance(exc, ConfigError | ModelLoaderError | TrainerConfigError | EvaluatorConfigError | RunManagerError | TextNormalizerError | SubsampleConfigError | SearchConfigError):
         return 2  # SearchConfigError is a SearchError: it is tested here first
     if isinstance(exc, DataSourceError | SplitError | FilterError | FeaturePipelineError | SubsampleError):
         return 3
-    if isinstance(exc, TrainerCoreError | EvaluatorError | SearchError):
+    if isinstance(exc, TrainerCoreError | EvaluatorError | SearchError | SelectorError | RegistryError):
         return 4
     return 1
 
@@ -236,9 +243,59 @@ class SearchWiring:
         return HyperparamSearcher().search(spec, runner)
 
 
+class SelectionWiring:
+    """The Selector bound to the `select` section (DECISIONS 57)."""
+
+    def __init__(self, config: AppConfig) -> None:
+        self._selector = Selector(config.section("select", SelectConfig))
+
+    def select(self, request: SelectionRequest) -> SelectionResult:
+        """Choose the winner or keep the baseline (errors: SelectorError)."""
+        return self._selector.select(request)
+
+
+class RegistryWiring:
+    """The ModelRegistry bound to the `registry` section: the registration of the stage and the read-only operations of the `registry` command."""
+
+    def __init__(self, config: AppConfig | RegistryConfig) -> None:
+        settings = config if isinstance(config, RegistryConfig) else config.section("registry", RegistryConfig)  # the registry command needs no data or model settings
+        self._dir = settings.dir
+        self._registry = ModelRegistry(settings)
+
+    def location(self) -> Path:
+        """The registry folder."""
+        return self._dir
+
+    def entries(self) -> list[RegistryEntry]:
+        """The registered entries (read only)."""
+        return self._registry.list_entries()
+
+    def register(self, request: RegisterRequest) -> RegistryEntry:
+        """Store the selection result as the next entry (errors: RegistryError)."""
+        return self._registry.register(request)
+
+    def card(self, entry_id: str) -> ModelCard:
+        """The card of an entry (read only)."""
+        return self._registry.card(entry_id)
+
+    def verify(self, entry_id: str) -> VerifyReport:
+        """Check an entry against its checksums (errors: RegistryVerifyError, exit code 5)."""
+        return self._registry.verify(entry_id)
+
+    def rebuild_index(self) -> None:
+        """Make `index.csv` again from the cards (the only operation of the `registry` command that writes)."""
+        self._registry.rebuild_index()
+
+
+def _now() -> str:
+    return datetime.now().isoformat(timespec="seconds")
+
+
 def build_services(config: AppConfig) -> Services:
     """All the services of a run, built from the config."""
-    return Services(DataPipeline(config), ModelWiring(config), TrainingWiring(config), EvaluationWiring(config), exit_code_for, SearchWiring(config))
+    return Services(
+        DataPipeline(config), ModelWiring(config), TrainingWiring(config), EvaluationWiring(config), exit_code_for, SearchWiring(config), SelectionWiring(config), RegistryWiring(config), _now
+    )
 
 
 @dataclass(frozen=True)

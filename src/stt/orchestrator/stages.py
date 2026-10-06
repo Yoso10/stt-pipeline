@@ -4,7 +4,7 @@ How to run: this module is not a script; `Orchestrator.run` runs the stages by n
     $env:PYTHONPATH = "src"
     python -c "from stt.orchestrator import default_stage_registry; print(default_stage_registry().names())"
 Example output:
-    ['evaluate', 'prepare', 'search', 'train']
+    ['evaluate', 'finalists', 'prepare', 'search', 'select_and_register', 'train']
 prepare  : load, split, normalize and filter the data; write the plain-text reports of each step into `reports/`.
 train    : one training run (trial) with the TrainerCore; the model folder is named after the experiment, the trial and the step
            (`exp_0004_trial_001_step_00100`); a trial folder with a complete checkpoint is RESUMED (the Orchestrator sets the resume itself, O69).
@@ -26,33 +26,21 @@ from pathlib import Path
 from typing import Any
 
 from stt.config import AppConfig
-from stt.evaluator import EvalItem, EvalRequest, EvalResult
+from stt.evaluator import EvalResult, eval_result_to_json
 from stt.orchestrator import reporting
 from stt.orchestrator.errors import OrchestratorError, StageInterrupted
 from stt.orchestrator.stageio import load_result
+from stt.orchestrator.stagehelpers import BASELINE_RESULT_FILE, evaluate_model, make_items, pipeline_value, prepared_data, section
 from stt.orchestrator.trials import SearchTrialRunner
-from stt.orchestrator.types import PipelineStage, PreparedData, ScreeningSet, StageContext, StageResult
+from stt.orchestrator.types import PipelineStage, ScreeningSet, StageContext, StageResult
 from stt.searcher import SearchError, SearchInterrupted, SearchResult, SearchSpec
 from stt.trainercore import TrainRequest
 
 logger = logging.getLogger("stt.orchestrator")
 
 
-def _section(config: AppConfig, name: str) -> dict[str, Any]:
-    section = config.sections.get(name)
-    return {} if section is None else dict(section.model_dump(mode="json"))
-
-
-def _pipeline_value(config: AppConfig, key: str, default: str) -> str:
-    return str(getattr(config.sections.get("pipeline"), key, default))
-
-
-def prepared_data(ctx: StageContext) -> PreparedData:
-    """The prepared data of this run (made once and shared by the stages of the run)."""
-    if "prepared" not in ctx.shared:
-        ctx.shared["prepared"] = ctx.services.data.prepare(ctx.experiment.paths.reports)
-    prepared: PreparedData = ctx.shared["prepared"]
-    return prepared
+_section = section  # the helpers moved to stagehelpers.py; the old names stay for the tests and the stages below
+_pipeline_value = pipeline_value
 
 
 class PrepareStage:
@@ -80,22 +68,7 @@ class PrepareStage:
         return StageResult("ok", summary, artifacts)
 
 
-def _items(prepared: PreparedData, split: str, removed: frozenset[str], model_tokens: Callable[[str], int]) -> list[EvalItem]:
-    """The EvalItems of a split with the per-file attributes (duration, reference words, label tokens, numeric extra fields, text flags)."""
-    items = []
-    for n in prepared.kept[split]:
-        s = n.sample
-        if s.id in removed:
-            continue
-        attributes: dict[str, float | int | bool | str] = {
-            "duration": s.duration_sec,
-            "ref_words": len(n.eval_text.split()),
-            "label_tokens": model_tokens(n.train_text),
-        }
-        attributes.update({f"extra_{k}": v for k, v in s.extra.items() if isinstance(v, int | float | bool)})
-        attributes.update({f"flag_{f}": True for f in n.flags})
-        items.append(EvalItem(s.id, s.group_id, n.eval_text, s.audio_path, attributes))
-    return items
+_items = make_items
 
 
 class TrainStage:
@@ -169,17 +142,12 @@ class EvaluateStage:
         return {"seed": config.runtime.seed, **{n: _section(config, n) for n in ("model", "features", "eval", "pipeline", "text")}}
 
     def _score(self, ctx: StageContext, split: str, path: Path | None, label: str) -> EvalResult:
-        prepared = prepared_data(ctx)
-        model = ctx.services.models.load(path)
-        features = ctx.services.models.features(model).build(prepared.kept[split], split)
-        removed = frozenset(features.report.removed_label_ids)
-        items = _items(prepared, split, removed, model.tokenizer.count_tokens)
-        request = EvalRequest(items, features.dataset, model, split, prepared.eval_version, prepared.normalize, ctx.services.evaluation.decode_settings(model, items))
-        logger.info("Evaluating the %s model (%s) on %d files of '%s'.", label, model.info.name, len(items), split)
-        result = ctx.services.evaluation.evaluate(request)
+        result = evaluate_model(ctx, split, path, label)
         ctx.experiment.write_report(f"evaluation_{label}.json", reporting.evaluation_json(result))
         ctx.experiment.write_report(f"predictions_{label}.csv", reporting.predictions_csv(result))
         ctx.experiment.write_report(f"review_{label}.txt", reporting.review_text(result))
+        if label == "baseline":  # the lossless copy that the selection stage reads (DECISIONS 57; O82)
+            ctx.experiment.write_report(BASELINE_RESULT_FILE, eval_result_to_json(result))
         return result
 
     def run(self, ctx: StageContext) -> StageResult:
@@ -197,7 +165,7 @@ class EvaluateStage:
             raise OrchestratorError(f"The split '{split}' does not exist. Known splits: {', '.join(sorted(prepared.kept))}. Set pipeline.eval_split or --split.", exit_code=2)
         baseline = self._score(ctx, split, None, "baseline")
         summary: dict[str, str | float | int] = {"split": split, "baseline_wer": round(baseline.wer, 4), "baseline_cer": round(baseline.cer or 0.0, 4), "n_files": baseline.n_files}
-        artifacts = [ctx.experiment.paths.reports / "evaluation_baseline.json"]
+        artifacts = [ctx.experiment.paths.reports / "evaluation_baseline.json", ctx.experiment.paths.reports / BASELINE_RESULT_FILE]
         trained = self._trained_model(ctx)
         if trained is not None:
             candidate = self._score(ctx, split, trained, "trained")
@@ -298,5 +266,8 @@ class StageRegistry:
 
 
 def default_stage_registry() -> StageRegistry:
-    """The registry with prepare, train, evaluate and search."""
-    return StageRegistry({"prepare": PrepareStage, "train": TrainStage, "evaluate": EvaluateStage, "search": SearchStage})
+    """The registry with prepare, train, evaluate, search, finalists and select_and_register."""
+    from stt.orchestrator.finalists import FinalistsStage  # imported here: those modules use the helpers of this package, not this module
+    from stt.orchestrator.selection import SelectAndRegisterStage
+
+    return StageRegistry({"prepare": PrepareStage, "train": TrainStage, "evaluate": EvaluateStage, "search": SearchStage, "finalists": FinalistsStage, "select_and_register": SelectAndRegisterStage})

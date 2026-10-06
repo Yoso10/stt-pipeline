@@ -6,8 +6,9 @@
 extends: base.yaml
 
 pipeline:
-  # The minimal chain. The brief's later default adds search, select_and_register, export and report (later waves).
-  stages: [prepare, train, evaluate]
+  # The stages of `python -m stt run`: prepare, the baseline on Val (evaluate), the search, the finalists retrained on the full data, the selection and registration.
+  # Later waves add export and report. The other commands (prepare, train, evaluate, search) run their own fixed stages.
+  stages: [prepare, evaluate, search, finalists, select_and_register]
   # A stage with a valid completion marker (and an unchanged config slice) is skipped on a rerun.
   skip_completed: true
   # The split the evaluate stage scores (model choice and checks use Val).

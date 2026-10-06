@@ -239,8 +239,8 @@ class RunTests(OrchestratorTestCase):
         self.assertIn("a", str(ctx.exception))
         self.assertEqual((self.calls, self.handle.status().status), ([], "created"))
         with self.assertRaises(OrchestratorError) as ctx2:
-            default_stage_registry().create("select_and_register")  # built in the next Orchestrator part
-        self.assertIn("evaluate, prepare, search, train", str(ctx2.exception))
+            default_stage_registry().create("export")  # built in a later wave
+        self.assertIn("evaluate, finalists, prepare, search, select_and_register, train", str(ctx2.exception))
 
     def test_a_locked_experiment_fails_before_a_stage_runs(self) -> None:
         stage = FakeStage("a", calls=self.calls)
@@ -525,7 +525,7 @@ class CommandLineTests(unittest.TestCase):
         smoke = load_config(SMOKE_YAML, env_file=None, target_environ={}, registry=section_registry(), overrides=[f"data.source.path={TINY.as_posix()}"])
         self.assertEqual(smoke.section("smoke", SmokeConfig), SmokeConfig())
         p = PipelineConfig()
-        self.assertEqual((p.stages, p.skip_completed, p.eval_split, p.test_split), (["prepare", "train", "evaluate"], True, "val", "test"))
+        self.assertEqual((p.stages, p.skip_completed, p.eval_split, p.test_split), (["prepare", "evaluate", "search", "finalists", "select_and_register"], True, "val", "test"))  # the stages of `run` (DECISIONS 57)
         self.assertTrue(RunConfig().prevent_sleep)
         self.assertEqual((SmokeConfig().n_samples, SmokeConfig().duration_sec, SmokeConfig().steps), (12, 3, 3))
         loaded = load_config(ROOT / "configs" / "pipeline_default.yaml", env_file=None, target_environ={}, registry=SectionRegistry({"run": RunConfig, "pipeline": PipelineConfig}))
@@ -590,7 +590,7 @@ class ImportRuleTests(unittest.TestCase):
     CONCRETE = {
         "create_data_source", "create_loader", "resolve_split", "TextNormalizer", "SampleFilter", "FeaturePipeline", "TrainerCore", "Evaluator",
         "Comparator", "HfTranscriber", "ExperimentStore", "LogSetup", "CsvMetricsSink", "ConsoleMetricsSink", "SinkRegistry",
-        "HyperparamSearcher", "resolve_subsample",  # the search service and the screening choice are wired in wiring.py only
+        "HyperparamSearcher", "resolve_subsample", "Selector", "ModelRegistry",  # the search service and the screening choice are wired in wiring.py only
     }
 
     def test_12_only_wiring_imports_concrete_classes_and_nothing_imports_torch_or_prompts(self) -> None:
