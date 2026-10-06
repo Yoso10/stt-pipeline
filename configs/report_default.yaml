@@ -1,0 +1,37 @@
+# How to run: example `report` section; every value shown is the DEFAULT. Extend it:
+#     extends: report_default.yaml
+#     $env:PYTHONPATH = "src"
+#     python -c "from pathlib import Path; from stt.config import SectionRegistry, load_config; from stt.reportbuilder import ReportConfig; print(load_config(Path('configs/report_default.yaml'), registry=SectionRegistry({'report': ReportConfig})).section('report', ReportConfig).min_points_for_correlation)"
+# The report is ONE self-contained HTML file (no network, no script, no font). The attribute list and the look are open to change after you see the first real report (O54).
+extends: base.yaml
+
+report:
+  # Empty = the experiment name.
+  title: null
+  # The per-file attributes whose rank correlation with the per-file WER is shown. They are the keys the Orchestrator gives the Evaluator:
+  # duration, ref_words, label_tokens, extra_<column> (for example extra_meta_quality_score, shown only if present), flag_<text flag> (a file without the flag counts as 0).
+  attributes: [duration, label_tokens, ref_words, extra_meta_quality_score, flag_had_digits, flag_had_latin, flag_had_brackets]
+  # Fewer points: the per-file correlation row says `too few points` and shows no number.
+  min_points_for_correlation: 30
+  # More points in a scatter or a curve are thinned deterministically (every k-th) and the page says so.
+  max_points_per_chart: 2000
+  # NEW: the number of groups (lessons) in the group table (the worst ones) and the bins of the per-file WER histogram.
+  groups_shown: 15
+  histogram_bins: 20
+  hints:
+    # Empty = every registered rule: overfitting, no_learning, unstable_training, gain_concentrated, short_clip_weakness, length_cap_or_empty, edge_of_range, failed_or_pruned.
+    enabled_rules: null
+    # Thresholds: DEFAULT values to calibrate on real runs. A hint is advice with its evidence and a caveat, never a finding.
+    overfitting_last_k_evals: 3
+    no_learning_min_rel_improvement: 0.01
+    unstable_spike_factor: 2.0
+    gain_top_group_fraction: 0.1
+    gain_share: 0.5
+    short_clip_quantile: 0.25
+    short_clip_wer_ratio: 1.5
+    length_cap_share: 0.05
+    failed_share: 0.3
+  progress:
+    # The live progress page reloads itself every this many seconds and is rewritten after every this many metrics records.
+    refresh_seconds: 10
+    every_n_records: 1
