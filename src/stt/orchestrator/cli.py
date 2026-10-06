@@ -13,6 +13,7 @@ How to run (PowerShell, project root; set the path to the sources once per windo
     python -m stt registry list   --config my.yaml    # what is registered (read only); also: registry verify [model_0001], registry rebuild-index
     python -m stt learning-curve --config my.yaml     # the same settings on increasing Train sizes, Val WER per size, and a plain reading (still improving or flat)
     python -m stt benchmark --config my.yaml          # seconds per step on THIS machine and the planned time of a run
+    python -m stt report --experiment exp_0004        # rebuild reports/report.html of an existing experiment from its stored files (nothing is recomputed)
 Shared options: `--config FILE`, `--set a.b=value` (repeatable), `--parent exp_0003` (the new experiment extends that one), `--experiment exp_0004`
 (continue an existing experiment: finished stages are skipped, an interrupted training is resumed). Every command creates a numbered experiment folder
 `experiments/exp_NNNN/` and prints ONE JSON summary at the end (the only thing on stdout); the log lines go to the console (stderr) and to
@@ -25,7 +26,9 @@ prepare, evaluate, search, finalists, select_and_register); a rerun with `--expe
 and the verdict (`winner` or `baseline_retained`) is printed in plain words. `registry` reads the registry folder `registry.dir` (it must lie OUTSIDE `run.experiments_dir`); exit code 5 when a
 registered model does not match its checksums. `learning-curve` trains the same hyperparameters on each Subsampler preset of `learning_curve.presets` (add `--params-from exp_0003` to take the
 winner's values of that experiment) and scores the SAME Val set; `benchmark` trains `benchmark.steps` steps, times a Val probe and prints the planned time of `run`; neither touches the Test split.
-Nothing is deleted by any command. Not in this version: report, export, cleanup, config-docs (later waves).
+`report` reads the stored files of an existing experiment (the latest one without `--experiment`) and writes `reports/report.html`: one self-contained page, no network; name the experiments that hold the
+learning curve and the benchmark with `--curve-from` and `--benchmark-from`; the `report.*` settings come from `--config` / `--set`. The live progress page of a trial is switched on with
+`--set 'train.sinks=["csv","console","html"]'` and is `metrics/<trial>/progress.html`. Nothing is deleted by any command. Not in this version: export, cleanup, config-docs (later waves).
 """
 
 from __future__ import annotations
@@ -45,14 +48,16 @@ from stt.orchestrator import check as check_module
 from stt.orchestrator.codeversion import code_version
 from stt.orchestrator.config import PipelineConfig, SmokeConfig
 from stt.orchestrator.errors import OrchestratorError
+from stt.orchestrator.reportcmd import build_report, latest_experiment
 from stt.orchestrator.selection import check_config_registry_location
 from stt.orchestrator.orchestrator import Orchestrator
 from stt.orchestrator.sleepguard import default_sleep_guard
 from stt.orchestrator.smoke import FULL_MIN_SAMPLES, full_overrides, write_smoke_data
 from stt.orchestrator.stopflag import InterruptFlag
 from stt.orchestrator.types import RunOutcome, RunPlan, StageContext
-from stt.orchestrator.wiring import RegistryWiring, Runtime, build_runtime, exit_code_for, library_versions, section_registry
+from stt.orchestrator.wiring import RegistryWiring, ReportWiring, Runtime, experiment_catalog, build_runtime, exit_code_for, library_versions, section_registry
 from stt.registry import RegistryConfig
+from stt.reportbuilder import ReportConfig
 from stt.runmanager import ExperimentHandle, ExperimentSpec, RunConfig
 
 logger = logging.getLogger("stt.orchestrator")
@@ -76,6 +81,7 @@ def build_parser() -> argparse.ArgumentParser:
         "search": "python -m stt search --config my.yaml --set search.n_trials=4",
         "run": "python -m stt run --config my.yaml --set subsample.val_samples=100",
         "learning-curve": "python -m stt learning-curve --config my.yaml --params-from exp_0003",
+        "report": "python -m stt report --experiment exp_0004 --curve-from exp_0005",
         "benchmark": "python -m stt benchmark --config my.yaml --set benchmark.steps=5",
         "smoke": "python -m stt smoke --full",
         "check": "python -m stt check --config configs/smoke.yaml",
@@ -103,6 +109,16 @@ def build_parser() -> argparse.ArgumentParser:
             sub.add_argument("--params-from", default=None, help="take the hyperparameters from this experiment (its winner, or its best finalist), for example exp_0003; sets learning_curve.params_from")
         if name == "evaluate":
             sub.add_argument("--split", default=None, help="the split to score (default: pipeline.eval_split = val; the Test split is refused)")
+    report = commands.add_parser(
+        "report",
+        help="rebuild reports/report.html of an existing experiment from its stored files (nothing is recomputed)",
+        description="Rebuild the report page of an existing experiment from its stored files.\nExample:  python -m stt report --experiment exp_0004 --curve-from exp_0005 --benchmark-from exp_0006",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    add_config_arguments(report)
+    report.add_argument("--experiment", default=None, help="the experiment to report on, for example exp_0004 (default: the latest one)")
+    report.add_argument("--curve-from", default=None, help="the experiment that holds the learning curve (reports/learning_curve.json), for example exp_0005")
+    report.add_argument("--benchmark-from", default=None, help="the experiment that holds the benchmark (reports/benchmark.json), for example exp_0006")
     registry = commands.add_parser(
         "registry",
         help="look at the model registry (read only): list, verify, rebuild-index",
@@ -270,6 +286,44 @@ def _smoke(args: argparse.Namespace) -> int:
     return _run_pipeline(args, [*derived, *args.config_overrides], smoke=True, full=full)
 
 
+def _report(args: argparse.Namespace) -> int:
+    """`report`: the page of an EXISTING experiment from its stored files. No experiment is made, no status or marker changes, nothing is recomputed or deleted."""
+    try:
+        tree = apply_overrides(load_yaml_with_extends(args.config) if args.config is not None else {}, [parse_set(item) for item in args.config_overrides])
+        run = RunConfig.model_validate(tree.get("run", {}))
+        settings = ReportConfig.model_validate(tree.get("report", {}))  # only the sections the report needs: no data or model settings
+        store = experiment_catalog(run)
+        handle = store.open(args.experiment or latest_experiment(store))
+        result = build_report(handle, run.experiments_dir, settings, ReportWiring(), _now(), lambda folder: RegistryWiring(RegistryConfig(dir=Path(folder))), args.curve_from, args.benchmark_from)
+    except Exception as exc:
+        return _error(f"{type(exc).__name__}: {exc}", exit_code_for(exc))
+    print(f"The report is in: {result.report_file}", file=sys.stderr)
+    print("Open it in a browser (it needs no network).", file=sys.stderr)
+    if result.sections_without_data:
+        print("Sections WITHOUT data in this experiment: " + "; ".join(title for _, title in result.sections_without_data) + ".", file=sys.stderr)
+    for problem in result.problems:
+        print(f"WARNING: an input could not be read and was left out: {problem}", file=sys.stderr)
+    print(
+        json.dumps(
+            {
+                "experiment_id": result.experiment_id,
+                "report_file": str(result.report_file),
+                "sections_with_data": result.sections_with_data,
+                "sections_without_data": [title for _, title in result.sections_without_data],
+                "inputs": result.found,
+                "input_problems": result.problems,
+                "warnings": result.warnings,
+                "curve_from": result.curve_from,
+                "benchmark_from": result.benchmark_from,
+                "exit_code": 0,
+            },
+            indent=1,
+            ensure_ascii=False,
+        )
+    )
+    return 0
+
+
 def _registry(args: argparse.Namespace) -> int:
     """`registry list|verify|rebuild-index`: the registry folder of the config, no experiment is made. Read only except `rebuild-index`."""
     try:
@@ -328,6 +382,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _smoke(args)
     if args.command == "registry":
         return _registry(args)
+    if args.command == "report":
+        return _report(args)
     overrides = list(args.config_overrides)
     if args.command == "learning-curve" and args.params_from:
         overrides.append(f"learning_curve.params_from={args.params_from}")  # a config value, so it is stored with the experiment and part of the stage's fingerprint

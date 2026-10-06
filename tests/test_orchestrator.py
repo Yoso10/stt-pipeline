@@ -590,7 +590,7 @@ class ImportRuleTests(unittest.TestCase):
     CONCRETE = {
         "create_data_source", "create_loader", "resolve_split", "TextNormalizer", "SampleFilter", "FeaturePipeline", "TrainerCore", "Evaluator",
         "Comparator", "HfTranscriber", "ExperimentStore", "LogSetup", "CsvMetricsSink", "ConsoleMetricsSink", "SinkRegistry",
-        "HyperparamSearcher", "resolve_subsample", "Selector", "ModelRegistry",  # the search service and the screening choice are wired in wiring.py only
+        "HyperparamSearcher", "resolve_subsample", "Selector", "ModelRegistry", "ReportBuilder", "HtmlProgressSink",  # the search service and the screening choice are wired in wiring.py only
     }
 
     def test_12_only_wiring_imports_concrete_classes_and_nothing_imports_torch_or_prompts(self) -> None:

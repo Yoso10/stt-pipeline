@@ -24,9 +24,11 @@ from stt.featurepipeline import FeaturePipeline, FeaturePipelineError, FeaturesC
 from stt.modelloader import LoadedModel, ModelConfig, ModelLoaderError, create_loader
 from stt.orchestrator.config import BenchmarkConfig, LearningCurveConfig, PipelineConfig, SmokeConfig
 from stt.orchestrator.errors import OrchestratorError
+from stt.orchestrator.reportdata import read_metrics_csv
 from stt.orchestrator.stages import StageRegistry, default_stage_registry
 from stt.orchestrator.types import FeatureBuilder, PreparedData, ScreeningSet, Services
 from stt.runmanager import ExperimentStore, LogSetup, RunConfig, RunManagerError
+from stt.reportbuilder import HtmlProgressSink, ReportBuilder, ReportConfig, ReportConfigError, ReportData, ReportError, ReportOutput
 from stt.registry import ModelCard, ModelRegistry, RegisterRequest, RegistryConfig, RegistryEntry, RegistryError, RegistryVerifyError, VerifyReport
 from stt.samplefilter import FilterConfig, FilterError, SampleFilter
 from stt.searcher import HyperparamSearcher, SearchConfig, SearchConfigError, SearchError, SearchResult, SearchSpec, TrialRunner, build_spec
@@ -69,6 +71,7 @@ def section_registry() -> SectionRegistry:
             "eval": EvalConfig,
             "run": RunConfig,
             "search": SearchConfig,
+            "report": ReportConfig,
             "select": SelectConfig,
             "registry": RegistryConfig,
             "pipeline": PipelineConfig,
@@ -96,11 +99,11 @@ def exit_code_for(exc: BaseException) -> int:
         return exc.exit_code
     if isinstance(exc, RegistryVerifyError):
         return 5  # a registered model does not match its checksums (tested before RegistryError, its parent)
-    if isinstance(exc, ConfigError | ModelLoaderError | TrainerConfigError | EvaluatorConfigError | RunManagerError | TextNormalizerError | SubsampleConfigError | SearchConfigError):
+    if isinstance(exc, ConfigError | ModelLoaderError | TrainerConfigError | EvaluatorConfigError | RunManagerError | TextNormalizerError | SubsampleConfigError | SearchConfigError | ReportConfigError):
         return 2  # SearchConfigError is a SearchError: it is tested here first
     if isinstance(exc, DataSourceError | SplitError | FilterError | FeaturePipelineError | SubsampleError):
         return 3
-    if isinstance(exc, TrainerCoreError | EvaluatorError | SearchError | SelectorError | RegistryError):
+    if isinstance(exc, TrainerCoreError | EvaluatorError | SearchError | SelectorError | RegistryError | ReportError):
         return 4
     return 1
 
@@ -176,8 +179,21 @@ class TrainingWiring:
         if threads is not None:
             update["cpu_threads"] = threads
         config = self._config.section("train", TrainConfig).model_copy(update=update)
-        sinks = SinkRegistry({"csv": lambda ctx: CsvMetricsSink(SinkContext(metrics_dir, ctx.resume_step)), "console": ConsoleMetricsSink})
+        sinks = SinkRegistry({"csv": lambda ctx: CsvMetricsSink(SinkContext(metrics_dir, ctx.resume_step)), "console": ConsoleMetricsSink, "html": lambda ctx: self._progress_sink(metrics_dir, ctx.resume_step)})
         return TrainerCore(config, sink_registry=sinks).train(request)
+
+
+    def _progress_sink(self, metrics_dir: Path, resume_step: int | None) -> HtmlProgressSink:
+        """The live progress page of a trial: `<metrics folder>/progress.html`, next to its `metrics.csv` (opt in with `train.sinks`: csv, console, html). On a resume the records
+        already in `metrics.csv` are fed in first, so the page shows the whole run. A page that cannot be written never stops the training (the sink logs and goes on)."""
+        sink = HtmlProgressSink(metrics_dir / "progress.html", self._config.section("report", ReportConfig), f"{metrics_dir.parent.parent.name} / {metrics_dir.name}")
+        if resume_step is not None:
+            try:
+                for record in read_metrics_csv(metrics_dir / "metrics.csv", resume_step) or []:
+                    sink.write(record)
+            except (OSError, ValueError):
+                pass  # the history stays out of the page; the training is not affected
+        return sink
 
 
 class EvaluationWiring:
@@ -297,6 +313,26 @@ class RegistryWiring:
     def rebuild_index(self) -> None:
         """Make `index.csv` again from the cards (the only operation of the `registry` command that writes)."""
         self._registry.rebuild_index()
+
+    def test_set_count(self, test_fingerprint: str) -> int:
+        """How many registered entries were evaluated on the Test set with this fingerprint (read only; the run information of the report shows it)."""
+        return self._registry.test_set_count(test_fingerprint)
+
+
+class ReportWiring:
+    """The ReportBuilder (C14): `build(data)` makes the page. It needs no config of its own (the settings travel inside the `ReportData`)."""
+
+    def __init__(self) -> None:
+        self._builder = ReportBuilder()
+
+    def build(self, data: ReportData) -> ReportOutput:
+        """The report page of `data` (errors: ReportConfigError for an unknown rule name)."""
+        return self._builder.build(data)
+
+
+def experiment_catalog(run: RunConfig) -> ExperimentStore:
+    """The experiments folder `run.experiments_dir` (for the commands that only look at existing experiments, such as `report`)."""
+    return ExperimentStore(run)
 
 
 def _now() -> str:
