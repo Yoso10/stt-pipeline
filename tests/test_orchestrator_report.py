@@ -250,6 +250,25 @@ class LoaderTests(ReportCase):
             with self.assertRaises((ValueError, KeyError)):
                 read_metrics_csv(path)
 
+    def test_the_data_folder_is_the_extraction_folder_when_there_is_one_else_the_source(self) -> None:
+        import os
+        import shutil
+        import stat
+
+        import yaml
+
+        loaded = self.load()
+        self.assertEqual(Path(loaded.data.run_info.data_folder or "").name, "tiny_whisper")  # no extraction: data.source.path (the fake config points at the tiny model folder)
+        with tempfile.TemporaryDirectory() as tmp:
+            copy = Path(tmp) / "exp_0001"
+            shutil.copytree(self.experiments / "exp_0001", copy, ignore=shutil.ignore_patterns("run.lock", "candidates"))
+            config = copy / "config_full.yaml"
+            os.chmod(config, stat.S_IWRITE)
+            tree = yaml.safe_load(config.read_text(encoding="utf-8"))
+            tree["data"]["extract"] = {"dir": "data/extracted/daf_yomi", "overwrite": False}
+            config.write_text(yaml.safe_dump(tree), encoding="utf-8")
+            self.assertEqual(load_report_data(copy, ReportConfig(), "x").data.run_info.data_folder, "data/extracted/daf_yomi")
+
     def test_the_section_list_of_the_command_is_the_builders(self) -> None:
         loaded = self.load(curve_root=self.experiments / "exp_0002", benchmark_root=self.experiments / "exp_0003")
         from stt.reportbuilder import ReportBuilder

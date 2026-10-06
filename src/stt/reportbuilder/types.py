@@ -124,6 +124,7 @@ class RunInfoView:
     code_version: str | None = None
     seed: int | None = None
     search_seconds: float | None = None
+    data_folder: str | None = None  # the folder the audio lives in (`data.extract.dir`, else `data.source.path`): the listening list shows paths relative to it
 
 
 @dataclass(frozen=True)

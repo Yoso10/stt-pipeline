@@ -18,6 +18,10 @@ report:
   # NEW: the number of groups (lessons) in the group table (the worst ones) and the bins of the per-file WER histogram.
   groups_shown: 15
   histogram_bins: 20
+  # NEW (owner decision 2026-10-07): a Val-loss chart whose values vary by less than this gets the note `Differences this small are noise` (the axis stays automatic).
+  loss_noise_range: 0.01
+  # NEW (owner decision 2026-10-07): false = audio paths in the listening list relative to the data folder (data.extract.dir, else data.source.path); true = the full path as stored.
+  absolute_audio_paths: false
   hints:
     # Empty = every registered rule: overfitting, no_learning, unstable_training, gain_concentrated, short_clip_weakness, length_cap_or_empty, edge_of_range, failed_or_pruned.
     enabled_rules: null

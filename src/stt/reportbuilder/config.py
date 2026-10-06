@@ -53,5 +53,13 @@ class ReportConfig(SectionModel):
     max_points_per_chart: int = Field(default=2000, ge=10, description="DEFAULT 2000. More points in a scatter or a curve are thinned deterministically (every k-th) and the page says so.")
     groups_shown: int = Field(default=15, ge=1, description="NEW, DEFAULT 15. How many groups (lessons) the group table lists: the worst ones by the winner's WER.")
     histogram_bins: int = Field(default=20, ge=2, description="NEW, DEFAULT 20. Bins of the per-file WER histogram.")
+    loss_noise_range: float = Field(
+        default=0.01, ge=0.0,
+        description="NEW, DEFAULT 0.01 (owner decision 2026-10-07). A Val-loss chart whose plotted values vary by less than this (in loss units) gets the note `Differences this small are noise`; the axis stays automatic.",
+    )
+    absolute_audio_paths: bool = Field(
+        default=False,
+        description="NEW, DEFAULT false (owner decision 2026-10-07). false: the listening list shows each audio path relative to the data folder (when the file is inside it); true: the full path as stored.",
+    )
     hints: HintsConfig = HintsConfig()
     progress: ProgressConfig = ProgressConfig()

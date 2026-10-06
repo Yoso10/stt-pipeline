@@ -441,5 +441,140 @@ class ConfigAndStructureTests(unittest.TestCase):
             ReportBuilder().build(full_data())
 
 
+def top_of(html: str) -> str:
+    return html.split("<h2")[0]
+
+
+class VerdictLineTests(unittest.TestCase):
+    """The line at the top (owner review, DECISIONS 66): Baseline retained / Proven improvement / No proven improvement."""
+
+    def selection(self, verdict: str, test: str) -> SelectionView:
+        base = full_data()
+        row_ = row(1, 1, 0.1, 0.2, 0.15, 0.25, verdict)
+        comparison = ComparisonResult(0.15, 0.1, 0.2, 0.9, True, 10, True, "improved", "x")
+        return replace(base.selection, test_status=test, table=(row_, *base.selection.table[1:]), test_comparison=comparison if test != "not_evaluated" else None)  # type: ignore[type-var]
+
+    def test_a_winner_that_is_improved_on_val_and_confirmed_by_the_test_is_a_proven_improvement(self) -> None:
+        top = top_of(build(full_data()))
+        self.assertIn('class="vline proven"', top)
+        self.assertIn("<b>Proven improvement</b>", top)
+        self.assertIn("WINNER: trial 1", top)
+
+    def test_a_winner_with_no_clear_difference_is_never_called_a_winner_alone(self) -> None:
+        for test in ("confirmed", "not_confirmed", "not_evaluated"):
+            with self.subTest(test=test):
+                data = replace(full_data(), selection=self.selection("no_clear_difference", test))
+                top = top_of(build(data))
+                self.assertIn('class="vline unproven"', top)
+                self.assertIn("<b>No proven improvement</b>", top)
+                self.assertIn("not clearly better than the baseline on Val (verdict: no_clear_difference)", top)
+                self.assertNotIn("winner", top.lower())  # neither the heading nor the sentences of the builder use the word (the Selector's stored reason is not in this test data)
+                self.assertIn("Best finalist: trial 1", top)
+                self.assertIn("(not proven better than the baseline)", top)
+
+    def test_the_captions_of_the_other_sections_follow_the_same_rule(self) -> None:
+        html = build(replace(full_data(), selection=self.selection("no_clear_difference", "confirmed")))
+        self.assertIn("Files of the best finalist on val", html)  # the listening list
+        self.assertNotIn("Files of the winner", html)
+        self.assertIn("Files of the winner", build(full_data()))  # a proven improvement keeps the word
+
+    def test_improved_on_val_but_the_test_does_not_confirm_or_was_not_evaluated_is_no_proven_improvement(self) -> None:
+        not_confirmed = top_of(build(replace(full_data(), selection=self.selection("improved", "not_confirmed"))))
+        self.assertIn("<b>No proven improvement</b>", not_confirmed)
+        self.assertIn("the one-time Test does not confirm it", not_confirmed)
+        self.assertNotIn("WINNER", not_confirmed)
+        unseen = top_of(build(replace(full_data(), selection=self.selection("improved", "not_evaluated"))))  # the owner's rule: Val improved but no Test is not proven
+        self.assertIn("<b>No proven improvement</b>", unseen)
+        self.assertIn("the Test was not evaluated, so the improvement is not confirmed", unseen)
+        self.assertNotIn("WINNER", unseen)
+
+    def test_a_retained_baseline_says_so_and_a_missing_selection_has_no_line(self) -> None:
+        top = top_of(build(full_data(winner=False)))
+        self.assertIn('class="vline retained"', top)
+        self.assertIn("<b>Baseline retained</b>", top)
+        self.assertNotIn("WINNER", top)
+        self.assertNotIn("vline", top_of(build(full_data(selection=None))).split("<body>")[1])
+
+    def test_the_line_comes_before_the_panel_and_is_derived_only_from_stored_values(self) -> None:
+        top = top_of(build(full_data()))
+        self.assertLess(top.index("vline"), top.index('class="panel"'))
+        self.assertEqual(top_of(build(full_data())), top_of(build(full_data())))  # deterministic
+
+
+class NoiseNoteTests(unittest.TestCase):
+    TINY = [1.0000, 1.0004, 1.0002]
+
+    def tiny_data(self, **settings: Any) -> ReportData:
+        flat = {t: history([v, v + 0.0003, v + 0.0001], [2.0, 1.9, 1.8]) for t, v in enumerate(self.TINY)}
+        trials = tuple(TrialView(i, {"learning_rate": 1e-5 * (i + 1), "grad_accum_steps": 2 + 2 * (i % 2)}, "complete", v, 100, 30.0) for i, v in enumerate(self.TINY))
+        base = full_data(settings=ReportConfig(**settings))
+        return replace(base, final_histories=flat, search_histories=flat, search=replace(base.search, trials=trials))  # type: ignore[type-var]
+
+    def test_a_tiny_val_loss_range_gets_the_note_under_the_curves_the_search_curves_and_the_scatters(self) -> None:
+        html = build(self.tiny_data())
+        self.assertEqual(html.count("Differences this small are noise"), 2 + 2)  # two Val-loss curve charts and two parameter scatters
+        self.assertIn("report.loss_noise_range = 0.01", html)
+        curves = html.split('id="training_curves"')[1].split('id="distribution"')[0]
+        self.assertEqual(curves.count("Differences this small are noise"), 2)
+        self.assertEqual(html.split('id="search"')[1].split('id="learning_curve"')[0].count("Differences this small are noise"), 2)
+        self.assertIn("<svg", html)  # the axis stays automatic: the charts are still drawn
+
+    def test_a_range_at_or_above_the_threshold_or_a_single_value_gets_no_note(self) -> None:
+        self.assertNotIn("Differences this small are noise", build(full_data()))  # the default test data varies by 0.8
+        self.assertNotIn("Differences this small are noise", build(self.tiny_data(loss_noise_range=0.0)))  # a threshold of 0 never fires
+        single = replace(full_data(), final_histories={1: history([1.0, None, None], [2.0, 1.9, 1.8])}, search_histories={})
+        self.assertNotIn("Differences this small are noise", build(single).split('id="search"')[0])  # one Val value: nothing to compare
+
+    def test_the_threshold_is_configurable(self) -> None:
+        wide = build(replace(full_data(settings=ReportConfig(loss_noise_range=5.0))))
+        self.assertIn("Differences this small are noise", wide)
+        self.assertIn("report.loss_noise_range = 5", wide)
+
+    def test_the_defaults_of_the_new_keys(self) -> None:
+        c = ReportConfig()
+        self.assertEqual((c.loss_noise_range, c.absolute_audio_paths), (0.01, False))
+
+
+class AudioPathTests(unittest.TestCase):
+    ENTRY = ReviewEntry("f001", "g01", Path("C:/Users/9090/stt/data/extracted/daf_yomi/audio/a b.mp3"), HEBREW, HEBREW, 0.3, "x", "worst")
+
+    def page(self, folder: str | None, **settings: Any) -> str:
+        data = full_data(settings=ReportConfig(**settings))
+        win = result("w", files_with([1] * 40), review=(self.ENTRY, ReviewEntry("f002", "g02", Path("D:/elsewhere/b.mp3"), HEBREW, HEBREW, 0.2, "x", "random")))
+        return build(replace(data, finalist_val={1: win}, run_info=replace(data.run_info, data_folder=folder)))
+
+    def test_the_path_is_relative_to_the_data_folder_by_default_and_the_link_points_at_the_real_file(self) -> None:
+        html = self.page("data/extracted/daf_yomi")  # a relative folder, an absolute path
+        self.assertIn(">audio/a b.mp3</a>", html)
+        self.assertIn('href="file:///C:/Users/9090/stt/data/extracted/daf_yomi/audio/a%20b.mp3"', html)
+        self.assertIn("relative to the data folder", html)
+        self.assertNotIn(">C:/Users/9090/stt/data/extracted/daf_yomi/audio/a b.mp3<", html)
+
+    def test_a_path_outside_the_data_folder_stays_absolute(self) -> None:
+        html = self.page("data/extracted/daf_yomi")
+        self.assertIn(">D:/elsewhere/b.mp3</a>", html)
+
+    def test_the_absolute_paths_key_shows_the_full_path(self) -> None:
+        html = self.page("data/extracted/daf_yomi", absolute_audio_paths=True)
+        self.assertIn(">C:/Users/9090/stt/data/extracted/daf_yomi/audio/a b.mp3</a>", html)
+        self.assertIn("Audio paths are shown in full.", html)
+
+    def test_without_a_data_folder_the_paths_are_shown_in_full(self) -> None:
+        html = self.page(None)
+        self.assertIn(">C:/Users/9090/stt/data/extracted/daf_yomi/audio/a b.mp3</a>", html)
+        self.assertIn("Audio paths are shown in full.", html)
+
+    def test_relative_to_folder_is_pure_string_work_for_every_combination(self) -> None:
+        from stt.reportbuilder.builder import relative_to_folder
+
+        absolute = Path("C:/Users/9090/stt/data/extracted/daf_yomi/audio/a.mp3")
+        self.assertEqual(relative_to_folder(absolute, "data/extracted/daf_yomi"), "audio/a.mp3")  # a relative folder
+        self.assertEqual(relative_to_folder(absolute, "C:/Users/9090/stt/data/extracted/daf_yomi"), "audio/a.mp3")  # an absolute folder
+        self.assertEqual(relative_to_folder(Path("data/extracted/daf_yomi/audio/a.mp3"), "data/extracted/daf_yomi"), "audio/a.mp3")  # both relative
+        self.assertEqual(relative_to_folder(absolute, "data/other"), absolute.as_posix())  # outside
+        self.assertEqual(relative_to_folder(absolute, None), absolute.as_posix())
+        self.assertEqual(relative_to_folder(Path("data/extracted/daf_yomi"), "data/extracted/daf_yomi"), "data/extracted/daf_yomi")  # nothing left to show
+
+
 if __name__ == "__main__":
     unittest.main()

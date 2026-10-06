@@ -218,6 +218,8 @@ def load_report_data(
         except Exception as exc:
             reader.problems.append(f"test-set count: {type(exc).__name__}: {exc}")
     model_path = ((config or {}).get("model") or {}).get("path")
+    data_section = (config or {}).get("data") or {}
+    data_folder = ((data_section.get("extract") or {}).get("dir")) or ((data_section.get("source") or {}).get("path"))  # where the audio lives: the extraction folder, else the source
     info = RunInfoView(
         experiment_id=root.name,
         generated_at=generated_at,
@@ -233,6 +235,7 @@ def load_report_data(
         code_version=(run or {}).get("code_version"),
         seed=(run or {}).get("seed"),
         search_seconds=sum(t.seconds for t in search.trials) if search is not None else None,
+        data_folder=str(data_folder) if data_folder else None,
     )
     if selection is not None and selection.confidence is None and card is not None and card.val is not None and card.val.confidence is not None:
         selection = replace(selection, confidence=card.val.confidence)  # the level of the table's intervals, from the card

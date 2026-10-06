@@ -15,9 +15,10 @@ from __future__ import annotations
 
 import logging
 import math
+import os
 from collections.abc import Callable, Sequence
 from html import escape
-from pathlib import Path
+from pathlib import Path, PurePath
 from urllib.parse import quote
 
 from stt.reportbuilder import svg
@@ -32,6 +33,7 @@ body{font-family:Segoe UI,Arial,sans-serif;max-width:980px;margin:24px auto;padd
 h1{font-size:26px;margin-bottom:4px}h2{font-size:20px;border-bottom:2px solid #0072B2;padding-bottom:3px;margin-top:34px}h3{font-size:16px;margin-top:20px}
 .panel{background:#f3f7fb;border:1px solid #b9cde0;border-radius:8px;padding:14px 18px;margin:14px 0}
 .verdict{font-size:22px;font-weight:bold;margin:0 0 8px}.win{color:#006b4f}.stay{color:#9a5a00}
+.vline{font-size:19px;padding:10px 16px;border-radius:8px;margin:14px 0}.vline.proven{background:#e3f4ec;border:2px solid #006b4f;color:#064}.vline.unproven{background:#fff3e0;border:2px solid #E69F00;color:#6b3d00}.vline.retained{background:#eef0f3;border:2px solid #666;color:#333}.noise{color:#8a3b00}
 table{border-collapse:collapse;width:100%;margin:10px 0;font-size:14px}th,td{border:1px solid #c8c8c8;padding:4px 7px;text-align:left;vertical-align:top}th{background:#eef2f6}
 td.num{text-align:right;font-variant-numeric:tabular-nums}.small{font-size:12.5px;color:#444}.na{color:#8a3b00;font-style:italic}
 .hint{border-left:5px solid #E69F00;padding:6px 12px;margin:10px 0;background:#fffaf0}.hint.info{border-left-color:#56B4E9;background:#f4faff}
@@ -77,10 +79,25 @@ def _hebrew(text: str) -> str:
     return f'<span class="rtl" dir="rtl" lang="he">{_e(text)}</span>'
 
 
-def _link(path: Path) -> str:
+def relative_to_folder(path: Path, folder: str | None) -> str:
+    """The audio path as shown: relative to the data `folder` when the file is inside it, else the path as stored. Pure string work on the path parts (no file system, no current folder), so the
+    result is the same wherever the page is built: the folder may be given relative (`data/extracted/daf_yomi`) while the path is absolute, or the other way round."""
+    if not folder:
+        return path.as_posix()
+    wanted = [os.path.normcase(part) for part in PurePath(folder).parts]
+    parts = PurePath(path).parts
+    names = [os.path.normcase(part) for part in parts]
+    for start in range(len(names) - len(wanted)):
+        if names[start : start + len(wanted)] == wanted:
+            return "/".join(parts[start + len(wanted) :])
+    return path.as_posix()
+
+
+def _link(path: Path, shown: str | None = None) -> str:
+    """The audio file as a link: the visible text is `shown` (a path relative to the data folder) or the full path; the link always points at the REAL file."""
     text = path.as_posix()
     target = ("file:///" + quote(text, safe="/:")) if (path.is_absolute() and ":" in text[:3]) else ("file://" + quote(text, safe="/:")) if path.is_absolute() else quote(text, safe="/:")
-    return f'<a href="{_e(target)}">{_e(text)}</a>'
+    return f'<a href="{_e(target)}">{_e(shown if shown is not None else text)}</a>'
 
 
 class ReportBuilder:
@@ -139,12 +156,19 @@ class ReportBuilder:
         if sel is None:
             return '<div class="panel"><p class="verdict">No verdict in this run</p><p class="na">Not available in this run: the selection. Needs: reports/selection.json (the select_and_register stage).</p></div>'
         level = f"{sel.confidence:.0%}" if sel.confidence is not None else "the configured level"
+        phrase, why, css = self._verdict_line(data)
+        banner = f'<p class="vline {css}"><b>{_e(phrase)}</b> &mdash; {_e(why)}</p>'
         lines = []
         if sel.winner_trial is not None:
             row = next((r for r in sel.table if r.trial_id == sel.winner_trial), None)
-            head = f'<p class="verdict win">WINNER: trial {sel.winner_trial} ({_e(_params(row.params) if row else "")})</p>'
+            params = _e(_params(row.params) if row else "")
+            who = "the winner" if phrase == "Proven improvement" else "the best finalist"  # the word winner is used only for a proven improvement
+            head = (
+                f'<p class="verdict win">WINNER: trial {sel.winner_trial} ({params})</p>' if phrase == "Proven improvement"
+                else f'<p class="verdict stay">Best finalist: trial {sel.winner_trial} ({params}) (not proven better than the baseline)</p>'
+            )
             if row is not None and base is not None:
-                lines.append(f"On the Val set the baseline has a WER of <b>{_num(base.wer)}</b> and the winner <b>{_num(row.val_wer)}</b> (a difference of <b>{_signed(row.delta_wer)}</b>; positive means the winner is better).")
+                lines.append(f"On the Val set the baseline has a WER of <b>{_num(base.wer)}</b> and {who} <b>{_num(row.val_wer)}</b> (a difference of <b>{_signed(row.delta_wer)}</b>; positive means {who} is better).")
                 if row.ci_low is not None and row.ci_high is not None:
                     lines.append(f"Interval of the difference at the {level} level (two one-sided bounds): <b>{_signed(row.ci_low)}</b> to <b>{_signed(row.ci_high)}</b>. Verdict against the baseline: <b>{_e(row.verdict)}</b>.")
         else:
@@ -154,19 +178,51 @@ class ReportBuilder:
             if sel.table:
                 best = sel.table[0]
                 lines.append(f"The best finalist, trial {best.trial_id} ({_e(_params(best.params))}), reached {_num(best.val_wer)} (difference {_signed(best.delta_wer)}, verdict {_e(best.verdict)}).")
-        lines.append(self._test_line(data))
+        lines.append(self._test_line(data, "winner" if phrase == "Proven improvement" else "best finalist"))
         flags = "".join(f'<p class="small">Flag: {_e(w)}</p>' for w in sel.warnings)
-        return f'<div class="panel">{head}<p>{" ".join(lines)}</p><p>{_e(sel.reason)}</p>{flags}</div>'
+        return f'{banner}<div class="panel">{head}<p>{" ".join(lines)}</p><p>{_e(sel.reason)}</p>{flags}</div>'
 
     @staticmethod
-    def _test_line(data: ReportData) -> str:
+    def _verdict_line(data: ReportData) -> tuple[str, str, str]:
+        """(phrase, one sentence, style) for the line at the top. DERIVED ONLY from the stored verdict, the Val verdict of the winner's row and the Test status:
+        `Baseline retained` when the baseline stays; `Proven improvement` when the winner is `improved` against the baseline on Val AND the one-time Test confirms it;
+        `No proven improvement` in every other case (the Val verdict is not `improved`, or the Test does not confirm it, or it was not evaluated)."""
+        sel = data.selection
+        assert sel is not None
+        if sel.winner_trial is None:
+            return "Baseline retained", "No finalist beat the baseline on Val, so the baseline model stays.", "retained"
+        row = next((r for r in sel.table if r.trial_id == sel.winner_trial), None)
+        val_verdict = row.verdict if row is not None else "unknown"
+        if val_verdict == "improved" and sel.test_status == "confirmed":
+            return "Proven improvement", "The winner is clearly better than the baseline on Val and the one-time Test confirms it.", "proven"
+        if val_verdict != "improved":
+            why = f"The best finalist is not clearly better than the baseline on Val (verdict: {val_verdict})."
+        elif sel.test_status == "not_confirmed":
+            why = "The winner looks better on Val, but the one-time Test does not confirm it."
+        else:
+            why = "The winner looks better on Val, but the Test was not evaluated, so the improvement is not confirmed."
+        return "No proven improvement", why, "unproven"
+
+    def _noise_note(self, data: ReportData, values: Sequence[float | None]) -> str:
+        """The note under a Val-loss chart whose plotted values vary by less than `report.loss_noise_range` (the axis stays automatic: it would otherwise stretch a tiny range to the full chart)."""
+        finite = [v for v in values if v is not None and math.isfinite(v)]
+        threshold = data.settings.loss_noise_range
+        if len(finite) < 2 or max(finite) - min(finite) >= threshold:
+            return ""
+        return (
+            f'<p class="small noise"><b>Differences this small are noise.</b> The Val loss in this chart varies by only {max(finite) - min(finite):.4g} '
+            f"(less than report.loss_noise_range = {threshold:g}): the axis is stretched to the data, so do not read a ranking or a trend into the picture.</p>"
+        )
+
+    @staticmethod
+    def _test_line(data: ReportData, who: str = "winner") -> str:
         sel = data.selection
         assert sel is not None
         if sel.test_status == "not_evaluated":
             why = f" ({_e(sel.test_error)})" if sel.test_error else " (the Test is looked at only for a winner)" if sel.winner_trial is None else ""
             return f"<b>Test confirmation:</b> the Test set was not evaluated{why}."
         base, win = data.test_results.get("baseline"), data.test_results.get(f"trial_{sel.winner_trial}")
-        numbers = f" Test WER: baseline {_num(base.wer)}, winner {_num(win.wer)}." if base is not None and win is not None else " (the stored Test results were not passed in)."
+        numbers = f" Test WER: baseline {_num(base.wer)}, {who} {_num(win.wer)}." if base is not None and win is not None else " (the stored Test results were not passed in)."
         word = "CONFIRMED by the Test" if sel.test_status == "confirmed" else "NOT confirmed by the Test (flagged, not dropped)"
         return f"<b>Test confirmation (looked at once):</b> {word}.{numbers}"
 
@@ -216,6 +272,7 @@ class ReportBuilder:
             out += "<h3>Retrained finalists: Val loss (solid) and training loss (dashed)</h3>" + svg.line_chart("Loss against step, retrained finalists", series, "step", "loss")
             if not any(m.val_loss is not None for h in data.final_histories.values() for m in h):
                 out += '<p class="na">These histories have no Val loss: only the training loss is drawn.</p>'
+            out += self._noise_note(data, [m.val_loss for h in data.final_histories.values() for m in h])
         if data.search_histories:
             series = []
             for i, trial in enumerate(sorted(data.search_histories)):
@@ -224,11 +281,14 @@ class ReportBuilder:
                     warnings.append(f"The curve of search trial {trial} was thinned to {cap} points.")
                 series.append((f"trial {trial}", points, svg.PALETTE[i % 8], False))
             out += "<h3>Search trials: Val loss</h3>" + svg.line_chart("Val loss against step, search trials", series, "step", "Val loss")
+            out += self._noise_note(data, [m.val_loss for h in data.search_histories.values() for m in h])
         return out, True
 
     # ---- (d) distribution and (e) groups --------------------------------------------------------------------------------------
     def _model_label(self, data: ReportData) -> str:
-        return "the winner" if data.selection is not None and data.selection.winner_trial is not None else "the baseline"
+        if data.selection is None or data.selection.winner_trial is None:
+            return "the baseline"
+        return "the winner" if self._verdict_line(data)[0] == "Proven improvement" else "the best finalist"  # the word winner only for a proven improvement
 
     def _distribution(self, data: ReportData) -> tuple[str, bool]:
         result = data.winner_val()
@@ -282,7 +342,8 @@ class ReportBuilder:
             if rho is not None and len(pts) < data.settings.min_points_for_correlation:
                 note = f"only {len(pts)} points (fewer than {data.settings.min_points_for_correlation}): indicative at most"
             corr.append([_e(name), _e(len(pts)), _num(rho, 3), _e(note)])
-            out += svg.scatter(f"Val loss against {name}", pts, name, "Val loss", log_x=spec.get("kind") == "log_float" and all(p[0] > 0 for p in pts))
+            chart = svg.scatter(f"Val loss against {name}", pts, name, "Val loss", log_x=spec.get("kind") == "log_float" and all(p[0] > 0 for p in pts))
+            out += f"<div>{chart}{self._noise_note(data, [p[1] for p in pts])}</div>"
         out += "</div>"
         if corr:
             out += "<h3>Rank correlation of each parameter with the Val loss</h3>" + _table(["parameter", "points", "rank correlation", "note"], corr, numeric=(1, 2))
@@ -358,11 +419,19 @@ class ReportBuilder:
         result = data.winner_val()
         if result is None or not result.review.entries:
             return self._na("the listening list", "the review list inside the Val result of the winner or the baseline")
+        folder = None if data.settings.absolute_audio_paths else data.run_info.data_folder
         rows = []
+        shortened = 0
         for e in result.review.entries:
-            rows.append([_e(e.reason), _e(e.sample_id), _num(e.wer, 2), _hebrew(e.reference), _hebrew(e.hypothesis), _hebrew(e.diff), _link(e.audio_path)])
+            shown = relative_to_folder(e.audio_path, folder)
+            shortened += shown != e.audio_path.as_posix()
+            rows.append([_e(e.reason), _e(e.sample_id), _num(e.wer, 2), _hebrew(e.reference), _hebrew(e.hypothesis), _hebrew(e.diff), _link(e.audio_path, shown)])
         text = f"<p>Files of {self._model_label(data)} on {_e(result.split_name)} to listen to (worst first, then random ones). Differences: <code>[a-&gt;b]</code> replaced, <code>[-a-]</code> missing, <code>[+b+]</code> extra. No audio is embedded: open the file path.</p>"
-        return text + _table(["why", "file", "WER", "reference", "model output", "differences", "audio file"], rows, numeric=(2,)), True
+        where = (
+            f"<p class='small'>Audio paths are shown relative to the data folder <code>{_e(folder)}</code> (the links point at the real files; report.absolute_audio_paths = true shows the full paths).</p>" if folder and shortened
+            else "<p class='small'>Audio paths are shown in full.</p>"
+        )
+        return text + _table(["why", "file", "WER", "reference", "model output", "differences", "audio file"], rows, numeric=(2,)) + where, True
 
     # ---- (k) run information --------------------------------------------------------------------------------------------------
     def _run_info(self, data: ReportData) -> tuple[str, bool]:
