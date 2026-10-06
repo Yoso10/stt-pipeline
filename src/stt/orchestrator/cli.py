@@ -3,6 +3,7 @@
 How to run (PowerShell, project root; set the path to the sources once per window):
     $env:PYTHONPATH = "src"
     python -m stt smoke                       # the whole chain on synthetic data and the tiny test model (about 1 minute)
+    python -m stt smoke --full                # the same data, the full `run` chain: search, finalists, selection (Test ONCE, synthetic), registry, `registry verify` (about 1 minute)
     python -m stt check                       # what is fine and what is not on this machine
     python -m stt prepare  --config my.yaml   # the data steps only, with the reports
     python -m stt train    --config my.yaml   # prepare + one training run
@@ -47,7 +48,7 @@ from stt.orchestrator.errors import OrchestratorError
 from stt.orchestrator.selection import check_config_registry_location
 from stt.orchestrator.orchestrator import Orchestrator
 from stt.orchestrator.sleepguard import default_sleep_guard
-from stt.orchestrator.smoke import write_smoke_data
+from stt.orchestrator.smoke import FULL_MIN_SAMPLES, full_overrides, write_smoke_data
 from stt.orchestrator.stopflag import InterruptFlag
 from stt.orchestrator.types import RunOutcome, RunPlan, StageContext
 from stt.orchestrator.wiring import RegistryWiring, Runtime, build_runtime, exit_code_for, library_versions, section_registry
@@ -76,7 +77,7 @@ def build_parser() -> argparse.ArgumentParser:
         "run": "python -m stt run --config my.yaml --set subsample.val_samples=100",
         "learning-curve": "python -m stt learning-curve --config my.yaml --params-from exp_0003",
         "benchmark": "python -m stt benchmark --config my.yaml --set benchmark.steps=5",
-        "smoke": "python -m stt smoke",
+        "smoke": "python -m stt smoke --full",
         "check": "python -m stt check --config configs/smoke.yaml",
     }
     helps = {
@@ -96,6 +97,8 @@ def build_parser() -> argparse.ArgumentParser:
         if name != "check":
             sub.add_argument("--parent", default=None, help="the new experiment extends this one, for example exp_0003")
             sub.add_argument("--experiment", default=None, help="continue this existing experiment instead of creating a new one, for example exp_0004")
+        if name == "smoke":
+            sub.add_argument("--full", action="store_true", help="also run the full `run` chain (search, finalists, selection with the one-time Test look on the SYNTHETIC Test clips, registration) and `registry verify`")
         if name == "learning-curve":
             sub.add_argument("--params-from", default=None, help="take the hyperparameters from this experiment (its winner, or its best finalist), for example exp_0003; sets learning_curve.params_from")
         if name == "evaluate":
@@ -166,7 +169,7 @@ def _error(message: str, code: int) -> int:
     return code
 
 
-def _run_pipeline(args: argparse.Namespace, config_overrides: Sequence[str], smoke: bool = False) -> int:
+def _run_pipeline(args: argparse.Namespace, config_overrides: Sequence[str], smoke: bool = False, full: bool = False) -> int:
     try:
         config = load_config(args.config, overrides=config_overrides, registry=section_registry())
     except ConfigError as exc:
@@ -174,7 +177,7 @@ def _run_pipeline(args: argparse.Namespace, config_overrides: Sequence[str], smo
     runtime = build_runtime(config, _now)
     run = config.section("run", RunConfig)
     pipeline = config.section("pipeline", PipelineConfig)
-    stages = list(pipeline.stages) if args.command == "run" else PLANS[args.command]
+    stages = list(pipeline.stages) if args.command == "run" or full else PLANS[args.command]  # `smoke --full` runs the stages of `run`
     if "select_and_register" in stages:  # before an experiment folder is made and before any hour of work: the registry must be outside the experiments
         try:
             check_config_registry_location(config)
@@ -195,6 +198,11 @@ def _run_pipeline(args: argparse.Namespace, config_overrides: Sequence[str], smo
         extra = _test_once_check(config, runtime, handle, flag) if smoke and outcome.exit_code == 0 else None
         if extra is not None and extra.get("test_once_rule") != "refused":
             outcome = RunOutcome(4, outcome.verdict, outcome.experiment_id, outcome.stage_results, outcome.status, "the Test-once rule was not enforced")
+        if full and extra is not None and outcome.exit_code == 0:
+            checks, problem = _full_checks(config, handle, outcome)
+            extra.update(checks)
+            if problem:
+                outcome = RunOutcome(4, outcome.verdict, outcome.experiment_id, outcome.stage_results, outcome.status, problem)
         _say_verdict(outcome)
         _how_to_look(handle, run.experiments_dir)
         print(json.dumps(_final_summary(handle, outcome, extra), indent=1, ensure_ascii=False))
@@ -203,6 +211,28 @@ def _run_pipeline(args: argparse.Namespace, config_overrides: Sequence[str], smo
         return _error(f"{type(exc).__name__}: {exc}", exit_code_for(exc))
     finally:
         runtime.log_setup.close()
+
+
+def _full_checks(config: Any, handle: ExperimentHandle, outcome: RunOutcome) -> tuple[dict[str, Any], str | None]:
+    """The extra checks of `smoke --full`: the Test was looked at ONCE per model (and not at all when the baseline stayed), and the registered entry verifies against its checksums.
+
+    Returns (what to print, a problem text or None)."""
+    selected = outcome.stage_results["select_and_register"].summary
+    entry_id = str(selected["entry_id"])
+    reports = handle.paths.reports
+    looked: list[str] = []
+    if (reports / "test_once.json").is_file():
+        looked = list(json.loads((reports / "test_once.json").read_text(encoding="utf-8"))["looked"])
+    expected = ["baseline", f"trial_{selected['winner_trial']}"] if outcome.verdict == "winner" else []
+    verified = RegistryWiring(config).verify(entry_id)
+    checks: dict[str, Any] = {
+        "full_chain": {"stages": {name: r.status for name, r in outcome.stage_results.items()}, "verdict": outcome.verdict, "test_status": selected["test_status"], "entry": entry_id},
+        "test_looked_at": sorted(looked),
+        "registry_verify": f"{entry_id}: {verified.files_checked} files match their checksums",
+    }
+    if sorted(looked) != sorted(expected) or len(looked) != len(set(looked)):
+        return checks, f"the Test look is wrong: looked at {sorted(looked)}, expected {sorted(expected)}, each once"
+    return checks, None
 
 
 def _test_once_check(config: Any, runtime: Runtime, handle: ExperimentHandle, flag: InterruptFlag) -> dict[str, Any]:
@@ -231,10 +261,13 @@ def _smoke(args: argparse.Namespace) -> int:
         return _error(f"The smoke settings are invalid: {exc}", 2)
     if not (settings.model_dir / "config.json").is_file():
         return _error(f"The tiny test model folder {settings.model_dir} does not exist. Create it once at home with: python tools/make_test_model.py --tokenizer-from models/whisper-tiny --out {settings.model_dir}", 2)
-    write_smoke_data(settings, seed, settings.work_dir)
+    full = bool(args.full)
+    write_smoke_data(settings.model_copy(update={"n_samples": max(settings.n_samples, FULL_MIN_SAMPLES)}) if full else settings, seed, settings.work_dir)
     derived = [f"data.source.path={settings.work_dir.as_posix()}", f"model.path={settings.model_dir.as_posix()}", f"train.hyperparams.max_steps={settings.steps}"]
+    if full:
+        derived += full_overrides(settings)
     args.config = path
-    return _run_pipeline(args, [*derived, *args.config_overrides], smoke=True)
+    return _run_pipeline(args, [*derived, *args.config_overrides], smoke=True, full=full)
 
 
 def _registry(args: argparse.Namespace) -> int:

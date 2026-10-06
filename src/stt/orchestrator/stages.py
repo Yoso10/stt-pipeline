@@ -156,8 +156,8 @@ class EvaluateStage:
         test_split = _pipeline_value(ctx.config, "test_split", "test")
         if split == test_split:
             raise OrchestratorError(
-                f"The evaluate stage refuses the Test split ('{split}'): the Test is evaluated ONCE, only for the winner, through the Selector, "
-                f"which is built in Wave 2. Evaluate the Val split ('{_pipeline_value(ctx.config, 'eval_split', 'val')}') instead.",
+                f"The evaluate stage refuses the Test split ('{split}'): the Test is evaluated ONCE, only for the winner and the baseline, by the "
+                f"select_and_register stage of `python -m stt run`. Evaluate the Val split ('{_pipeline_value(ctx.config, 'eval_split', 'val')}') instead.",
                 exit_code=2,
             )
         prepared = prepared_data(ctx)
