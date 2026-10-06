@@ -355,7 +355,7 @@ class RunCommandTests(unittest.TestCase):
 
     def test_the_default_stage_list_is_the_run_chain(self) -> None:
         self.assertEqual(PipelineConfig().stages, ["prepare", "evaluate", "search", "finalists", "select_and_register"])
-        self.assertEqual(sorted(cli.PLANS), ["evaluate", "prepare", "search", "smoke", "train"])  # `run` is not a fixed plan: it reads pipeline.stages
+        self.assertEqual(sorted(cli.PLANS), ["benchmark", "evaluate", "learning-curve", "prepare", "search", "smoke", "train"])  # `run` is not a fixed plan: it reads pipeline.stages
 
 
 

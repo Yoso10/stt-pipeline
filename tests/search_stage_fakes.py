@@ -133,8 +133,9 @@ class FakeEvaluation(EvaluationWiring):
     """Scores a model without a model: the number of wrong words per file (of six) comes from a table by model and split. `val_errors` and `test_errors` map a finalist's trial number
     to its errors; the baseline has `baseline_errors`. `calls` lists every (split, model name) that was scored."""
 
-    def __init__(self, config: Any, val_errors: dict[int, int] | None = None, test_errors: dict[int, int] | None = None, baseline_errors: int = 3) -> None:
+    def __init__(self, config: Any, val_errors: dict[int, int] | None = None, test_errors: dict[int, int] | None = None, baseline_errors: int = 3, curve_errors: dict[str, int] | None = None) -> None:
         super().__init__(config)
+        self.curve_errors = curve_errors or {}  # learning-curve points: preset name -> wrong words per file
         self.val_errors = val_errors if val_errors is not None else {0: 2, 1: 1, 2: 3, 3: 3}
         self.test_errors = test_errors if test_errors is not None else self.val_errors
         self.baseline_errors = baseline_errors
@@ -148,7 +149,8 @@ class FakeEvaluation(EvaluationWiring):
         self.calls.append((request.split_name, name))
         match = re.search(r"final_trial_(\d+)", name)
         table = self.test_errors if request.split_name == "test" else self.val_errors
-        errors = self.baseline_errors if match is None else table[int(match.group(1))]
+        curve = re.search(r"_curve_(\w+?)_step_", name)
+        errors = self.curve_errors.get(curve.group(1), self.baseline_errors) if curve else self.baseline_errors if match is None else table[int(match.group(1))]
         words = SIX_WORDS.split()
         files = []
         for item in request.items:

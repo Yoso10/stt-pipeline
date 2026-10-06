@@ -22,7 +22,7 @@ from stt.datasource import DataConfig, DataSourceError, create_data_source
 from stt.evaluator import Comparator, ComparisonResult, DecodeSettings, EvalConfig, EvalItem, EvalRequest, Evaluator, EvaluatorConfigError, EvaluatorError, EvalResult, make_decode_settings
 from stt.featurepipeline import FeaturePipeline, FeaturePipelineError, FeaturesConfig
 from stt.modelloader import LoadedModel, ModelConfig, ModelLoaderError, create_loader
-from stt.orchestrator.config import PipelineConfig, SmokeConfig
+from stt.orchestrator.config import BenchmarkConfig, LearningCurveConfig, PipelineConfig, SmokeConfig
 from stt.orchestrator.errors import OrchestratorError
 from stt.orchestrator.stages import StageRegistry, default_stage_registry
 from stt.orchestrator.types import FeatureBuilder, PreparedData, ScreeningSet, Services
@@ -73,6 +73,8 @@ def section_registry() -> SectionRegistry:
             "registry": RegistryConfig,
             "pipeline": PipelineConfig,
             "smoke": SmokeConfig,
+            "learning_curve": LearningCurveConfig,
+            "benchmark": BenchmarkConfig,
         }
     )
 
@@ -241,6 +243,16 @@ class SearchWiring:
     def search(self, spec: SearchSpec, runner: TrialRunner) -> SearchResult:
         """Run the search (errors: SearchConfigError, SearchError, SearchInterrupted)."""
         return HyperparamSearcher().search(spec, runner)
+
+    def subset(self, prepared: PreparedData, preset: str) -> ScreeningSet:
+        """The Train samples of a Subsampler preset for the learning curve: scope `train_only`, Val `fixed` (so the Val set is the same for every preset; `subsample.val_samples`
+        makes it a slice). Errors: SubsampleConfigError for an unknown preset, SubsampleError when the size cannot be made (it names the size)."""
+        c = self._config
+        names = c.section("split", SplitConfig).names
+        val_split = str(getattr(c.sections.get("pipeline"), "eval_split", "val"))
+        config = c.section("subsample", SubsampleConfig).model_copy(update={"enabled": True, "preset": preset, "scope": "train_only", "val": "fixed"})
+        result = resolve_subsample(config, c.runtime.seed, dict(prepared.kept), names[0], val_split)
+        return ScreeningSet(names[0], val_split, tuple(result.splits[names[0]]), tuple(result.splits[val_split]), result.report.summary(), result.fingerprint)
 
 
 class SelectionWiring:

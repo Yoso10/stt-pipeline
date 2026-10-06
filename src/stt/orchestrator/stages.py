@@ -4,7 +4,7 @@ How to run: this module is not a script; `Orchestrator.run` runs the stages by n
     $env:PYTHONPATH = "src"
     python -c "from stt.orchestrator import default_stage_registry; print(default_stage_registry().names())"
 Example output:
-    ['evaluate', 'finalists', 'prepare', 'search', 'select_and_register', 'train']
+    ['benchmark', 'evaluate', 'finalists', 'learning_curve', 'prepare', 'search', 'select_and_register', 'train']
 prepare  : load, split, normalize and filter the data; write the plain-text reports of each step into `reports/`.
 train    : one training run (trial) with the TrainerCore; the model folder is named after the experiment, the trial and the step
            (`exp_0004_trial_001_step_00100`); a trial folder with a complete checkpoint is RESUMED (the Orchestrator sets the resume itself, O69).
@@ -266,8 +266,10 @@ class StageRegistry:
 
 
 def default_stage_registry() -> StageRegistry:
-    """The registry with prepare, train, evaluate, search, finalists and select_and_register."""
-    from stt.orchestrator.finalists import FinalistsStage  # imported here: those modules use the helpers of this package, not this module
+    """The registry with prepare, train, evaluate, search, finalists, select_and_register, learning_curve and benchmark."""
+    from stt.orchestrator.benchmark import BenchmarkStage  # imported here: those modules use the helpers of this package, not this module
+    from stt.orchestrator.curve import LearningCurveStage
+    from stt.orchestrator.finalists import FinalistsStage
     from stt.orchestrator.selection import SelectAndRegisterStage
 
-    return StageRegistry({"prepare": PrepareStage, "train": TrainStage, "evaluate": EvaluateStage, "search": SearchStage, "finalists": FinalistsStage, "select_and_register": SelectAndRegisterStage})
+    return StageRegistry({"prepare": PrepareStage, "train": TrainStage, "evaluate": EvaluateStage, "search": SearchStage, "finalists": FinalistsStage, "select_and_register": SelectAndRegisterStage, "learning_curve": LearningCurveStage, "benchmark": BenchmarkStage})

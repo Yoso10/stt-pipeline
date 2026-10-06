@@ -10,6 +10,8 @@ How to run (PowerShell, project root; set the path to the sources once per windo
     python -m stt search   --config my.yaml   # prepare + the hyperparameter search (a few small trials on a screening subset, objective: Val loss)
     python -m stt run      --config my.yaml   # the whole pipeline: prepare, baseline on Val, search, finalists retrained on the full data, selection (Test ONCE), registry
     python -m stt registry list   --config my.yaml    # what is registered (read only); also: registry verify [model_0001], registry rebuild-index
+    python -m stt learning-curve --config my.yaml     # the same settings on increasing Train sizes, Val WER per size, and a plain reading (still improving or flat)
+    python -m stt benchmark --config my.yaml          # seconds per step on THIS machine and the planned time of a run
 Shared options: `--config FILE`, `--set a.b=value` (repeatable), `--parent exp_0003` (the new experiment extends that one), `--experiment exp_0004`
 (continue an existing experiment: finished stages are skipped, an interrupted training is resumed). Every command creates a numbered experiment folder
 `experiments/exp_NNNN/` and prints ONE JSON summary at the end (the only thing on stdout); the log lines go to the console (stderr) and to
@@ -20,7 +22,9 @@ finalists) and stores the study in `search/study.json`: after Ctrl+C or a crash 
 (an interrupted trial is resumed). `search.parallel_trials: 2` runs two trials at once, each with half of the threads. `run` runs the stages of `pipeline.stages` (default:
 prepare, evaluate, search, finalists, select_and_register); a rerun with `--experiment` skips the finished stages and continues; the Test split is looked at ONCE, for the winner and the baseline,
 and the verdict (`winner` or `baseline_retained`) is printed in plain words. `registry` reads the registry folder `registry.dir` (it must lie OUTSIDE `run.experiments_dir`); exit code 5 when a
-registered model does not match its checksums. Nothing is deleted by any command. Not in this version: report, export, learning-curve, benchmark, cleanup, config-docs (later parts and waves).
+registered model does not match its checksums. `learning-curve` trains the same hyperparameters on each Subsampler preset of `learning_curve.presets` (add `--params-from exp_0003` to take the
+winner's values of that experiment) and scores the SAME Val set; `benchmark` trains `benchmark.steps` steps, times a Val probe and prints the planned time of `run`; neither touches the Test split.
+Nothing is deleted by any command. Not in this version: report, export, cleanup, config-docs (later waves).
 """
 
 from __future__ import annotations
@@ -52,7 +56,7 @@ from stt.runmanager import ExperimentHandle, ExperimentSpec, RunConfig
 
 logger = logging.getLogger("stt.orchestrator")
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-PLANS = {"prepare": ["prepare"], "train": ["prepare", "train"], "evaluate": ["prepare", "evaluate"], "search": ["prepare", "search"], "smoke": ["prepare", "train", "evaluate"]}  # `run` uses pipeline.stages
+PLANS = {"prepare": ["prepare"], "train": ["prepare", "train"], "evaluate": ["prepare", "evaluate"], "search": ["prepare", "search"], "learning-curve": ["prepare", "learning_curve"], "benchmark": ["prepare", "benchmark"], "smoke": ["prepare", "train", "evaluate"]}  # `run` uses pipeline.stages
 DEFAULT_SMOKE_CONFIG = Path("configs/smoke.yaml")
 
 
@@ -70,6 +74,8 @@ def build_parser() -> argparse.ArgumentParser:
         "evaluate": "python -m stt evaluate --config my.yaml --experiment exp_0003",
         "search": "python -m stt search --config my.yaml --set search.n_trials=4",
         "run": "python -m stt run --config my.yaml --set subsample.val_samples=100",
+        "learning-curve": "python -m stt learning-curve --config my.yaml --params-from exp_0003",
+        "benchmark": "python -m stt benchmark --config my.yaml --set benchmark.steps=5",
         "smoke": "python -m stt smoke",
         "check": "python -m stt check --config configs/smoke.yaml",
     }
@@ -79,6 +85,8 @@ def build_parser() -> argparse.ArgumentParser:
         "evaluate": "prepare, then score the baseline (and the trained model of the experiment) on the Val split",
         "search": "prepare, then the hyperparameter search on a screening subset (objective: the Val loss); a rerun with --experiment continues it",
         "run": "the whole pipeline: prepare, baseline on Val, search, finalists on the full data, selection (the Test is looked at once) and registration; a rerun with --experiment continues it",
+        "learning-curve": "train the same settings on increasing Train sizes (learning_curve.presets), score the same Val set, print the table and a plain reading",
+        "benchmark": "measure seconds per training step and per Val evaluation on this machine and print the planned time of a run",
         "smoke": "run the whole chain on synthetic data and the tiny test model, to prove that the mechanics work",
         "check": "say what is fine and what is not on this machine",
     }
@@ -88,6 +96,8 @@ def build_parser() -> argparse.ArgumentParser:
         if name != "check":
             sub.add_argument("--parent", default=None, help="the new experiment extends this one, for example exp_0003")
             sub.add_argument("--experiment", default=None, help="continue this existing experiment instead of creating a new one, for example exp_0004")
+        if name == "learning-curve":
+            sub.add_argument("--params-from", default=None, help="take the hyperparameters from this experiment (its winner, or its best finalist), for example exp_0003; sets learning_curve.params_from")
         if name == "evaluate":
             sub.add_argument("--split", default=None, help="the split to score (default: pipeline.eval_split = val; the Test split is refused)")
     registry = commands.add_parser(
@@ -111,7 +121,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def _final_summary(handle: ExperimentHandle, outcome: RunOutcome, extra: dict[str, Any] | None = None) -> dict[str, Any]:
     where = handle.locations()
-    evaluate = outcome.stage_results.get("select_and_register") or outcome.stage_results.get("evaluate") or outcome.stage_results.get("search")  # the numbers a human looks at first
+    evaluate = outcome.stage_results.get("learning_curve") or outcome.stage_results.get("benchmark") or outcome.stage_results.get("select_and_register") or outcome.stage_results.get("evaluate") or outcome.stage_results.get("search")  # the numbers a human looks at first
     return {
         "experiment_id": outcome.experiment_id,
         "experiment_dir": str(handle.paths.root),
@@ -285,7 +295,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _smoke(args)
     if args.command == "registry":
         return _registry(args)
-    return _run_pipeline(args, args.config_overrides)
+    overrides = list(args.config_overrides)
+    if args.command == "learning-curve" and args.params_from:
+        overrides.append(f"learning_curve.params_from={args.params_from}")  # a config value, so it is stored with the experiment and part of the stage's fingerprint
+    return _run_pipeline(args, overrides)
 
 
 if __name__ == "__main__":

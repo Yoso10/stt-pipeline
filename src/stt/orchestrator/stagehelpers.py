@@ -12,7 +12,7 @@ Example output:
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +20,7 @@ from stt.config import AppConfig
 from stt.evaluator import EvalItem, EvalRequest, EvalResult
 from stt.orchestrator.errors import OrchestratorError
 from stt.orchestrator.types import PreparedData, StageContext
+from stt.textnormalizer import NormalizedSample
 
 logger = logging.getLogger("stt.orchestrator")
 BASELINE_RESULT_FILE = "eval_result_baseline.json"  # reports/: the codec text of the baseline Val result, written by the evaluate stage, read by select_and_register
@@ -44,10 +45,10 @@ def prepared_data(ctx: StageContext) -> PreparedData:
     return prepared
 
 
-def make_items(prepared: PreparedData, split: str, removed: frozenset[str], model_tokens: Callable[[str], int]) -> list[EvalItem]:
-    """The EvalItems of a split with the per-file attributes (duration, reference words, label tokens, numeric extra fields, text flags)."""
+def make_items(prepared: PreparedData, split: str, removed: frozenset[str], model_tokens: Callable[[str], int], samples: Sequence[NormalizedSample] | None = None) -> list[EvalItem]:
+    """The EvalItems of a split (or of the given `samples` of it) with the per-file attributes (duration, reference words, label tokens, numeric extra fields, text flags)."""
     items = []
-    for n in prepared.kept[split]:
+    for n in prepared.kept[split] if samples is None else samples:
         s = n.sample
         if s.id in removed:
             continue
@@ -62,8 +63,8 @@ def make_items(prepared: PreparedData, split: str, removed: frozenset[str], mode
     return items
 
 
-def evaluate_model(ctx: StageContext, split: str, path: Path | None, label: str, allow_test: bool = False) -> EvalResult:
-    """Score the model in the folder `path` (None = the base model of `model.path`) on `split` of the prepared data.
+def evaluate_model(ctx: StageContext, split: str, path: Path | None, label: str, allow_test: bool = False, samples: Sequence[NormalizedSample] | None = None) -> EvalResult:
+    """Score the model in the folder `path` (None = the base model of `model.path`) on `split` of the prepared data, or on the given `samples` of it (a Val slice).
 
     Errors: OrchestratorError (exit code 2) for the Test split without `allow_test`, or for an unknown split; evaluation errors (exit code 4).
     """
@@ -77,9 +78,10 @@ def evaluate_model(ctx: StageContext, split: str, path: Path | None, label: str,
     prepared = prepared_data(ctx)
     if split not in prepared.kept:
         raise OrchestratorError(f"The split '{split}' does not exist. Known splits: {', '.join(sorted(prepared.kept))}. Set pipeline.eval_split or --split.", exit_code=2)
+    chosen = prepared.kept[split] if samples is None else samples
     model = ctx.services.models.load(path)
-    features = ctx.services.models.features(model).build(prepared.kept[split], split)
-    items = make_items(prepared, split, frozenset(features.report.removed_label_ids), model.tokenizer.count_tokens)
+    features = ctx.services.models.features(model).build(chosen, split)
+    items = make_items(prepared, split, frozenset(features.report.removed_label_ids), model.tokenizer.count_tokens, chosen)
     request = EvalRequest(items, features.dataset, model, split, prepared.eval_version, prepared.normalize, ctx.services.evaluation.decode_settings(model, items))
     logger.info("Evaluating the %s model (%s) on %d files of '%s'.", label, model.info.name, len(items), split)
     return ctx.services.evaluation.evaluate(request)

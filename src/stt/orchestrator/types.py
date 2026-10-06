@@ -154,6 +154,10 @@ class SearchService(Protocol):
         """Run the search. Raises SearchConfigError, SearchError and SearchInterrupted."""
         ...
 
+    def subset(self, prepared: PreparedData, preset: str) -> ScreeningSet:
+        """The Train samples of the Subsampler preset `preset` (scope train_only, a fixed Val set that is the same for every preset), for the learning curve. Raises SubsampleError."""
+        ...
+
 
 class SelectionService(Protocol):
     """The Selector bound to the `select` section (DECISIONS 57)."""

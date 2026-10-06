@@ -240,7 +240,7 @@ class RunTests(OrchestratorTestCase):
         self.assertEqual((self.calls, self.handle.status().status), ([], "created"))
         with self.assertRaises(OrchestratorError) as ctx2:
             default_stage_registry().create("export")  # built in a later wave
-        self.assertIn("evaluate, finalists, prepare, search, select_and_register, train", str(ctx2.exception))
+        self.assertIn("benchmark, evaluate, finalists, learning_curve, prepare, search, select_and_register, train", str(ctx2.exception))
 
     def test_a_locked_experiment_fails_before_a_stage_runs(self) -> None:
         stage = FakeStage("a", calls=self.calls)

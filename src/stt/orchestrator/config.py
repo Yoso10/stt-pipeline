@@ -38,3 +38,23 @@ class SmokeConfig(SectionModel):
     steps: int = Field(default=3, ge=1, description="DEFAULT 3. Training steps of the smoke run (sets train.hyperparams.max_steps).")
     model_dir: Path = Field(default=Path("tests/assets/tiny_whisper"), description="DEFAULT tests/assets/tiny_whisper. The tiny random-weight test model (tools/make_test_model.py creates it).")
     work_dir: Path = Field(default=Path("data/smoke"), description="DEFAULT data/smoke (NEW key). Where the synthetic audio and manifest are written (git-ignored data folder).")
+
+
+class LearningCurveConfig(SectionModel):
+    """The `learning_curve` section (keys and DEFAULTS of the C13 brief)."""
+
+    presets: list[str] = Field(
+        default_factory=lambda: ["smoke", "tiny", "half", "full"],
+        min_length=1,
+        description="DEFAULT smoke, tiny, half, full. Subsampler preset names (built in or from `subsample.presets`): the Train sizes of the curve. Every point uses scope train_only and the same fixed Val set.",
+    )
+    params_from: str | None = Field(
+        default=None,
+        description="DEFAULT none = the fixed `train.hyperparams` of the config. An experiment id (for example exp_0003): its selected winner's searched values (or its best finalist's) replace the searched keys. The command line option `--params-from` sets it.",
+    )
+
+
+class BenchmarkConfig(SectionModel):
+    """The `benchmark` section (key and DEFAULT of the C13 brief)."""
+
+    steps: int = Field(default=3, ge=1, description="DEFAULT 3. Training steps to measure. The first steps are slower than the later ones: raise it for a steadier number. The Val probe is steps x eval.batch_size clips.")
