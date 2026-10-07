@@ -269,3 +269,7 @@ b. NEXT: phase A (resume the rehearsal), then B, C, D, E and the final report.
 ### Status after phase C (2026-10-08)
 a. DONE (DECISIONS 81): console hygiene. The red block is a PowerShell 5.1 quirk (two verified commands for the RUNBOOK); two known harmless transformers messages are hidden by a filter (evidence: identical decoding with and without an attention mask); no decoding result, JSON or exit code changed. NEW open points from the real rehearsal: O121 (the timing bug), O122 (the transient Windows rename failure).
 b. NEXT: phase D (the presets), then phase E (the documentation check), then the final report.
+
+### Status after phase D (2026-10-08)
+a. DONE (DECISIONS 82): the presets `home_full`, `work_like`, `work` (O60). No key, default or interface changed. The two validated files `data/rehearsal_run.yaml` and `data/full_run.yaml` were not edited.
+b. NEXT: phase E (the documentation check: RUNBOOK, TROUBLESHOOTING, DATA_ONBOARDING, START_HERE against the real CLI), then the final report.

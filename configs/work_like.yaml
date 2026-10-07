@@ -1,0 +1,23 @@
+# How to run: the REHEARSAL preset: whisper-tiny on about ONE TENTH of the Daf Yomi data (the Subsampler `work_like` preset: 10% of the audio by lesson over Train, Val and Test), 20 training steps. Use it with:
+#     python -m stt check     --config configs/work_like.yaml
+#     python -m stt benchmark --config configs/work_like.yaml      # run it TWICE with other programs closed and trust the LARGER planned time
+#     python -m stt run       --config configs/work_like.yaml      # about 35 minutes to 1 hour; it proves that the whole chain works and shows every screen of a run
+# It extends home_full.yaml and changes only what a rehearsal needs. 20 steps on one tenth of the data say whether the PIPELINE works, not how good the model can get. Values are those of the validated file data/rehearsal_run.yaml
+# (real run: Val 101 clips, Test 97 clips, planned 37 min, real 38 min, disk 4.3 GB). Its own folders keep the rehearsal results out of the history of the real runs.
+extends: home_full.yaml
+
+run:
+  experiments_dir: data/work_like/experiments
+registry:
+  dir: data/work_like/registry
+subsample:
+  enabled: true
+  preset: work_like              # one tenth of the audio by lesson, over ALL splits: Val about 101 clips, Test about 97 clips
+  val_samples: null              # a fixed Val slice cannot be combined with the work_like preset (it reduces every split): home_full.yaml's 100 is switched off here
+train:
+  hyperparams:
+    max_steps: 20
+    warmup_steps: 2
+  log_every_steps: 5
+  eval_every_steps: 10
+  save_every_steps: 20

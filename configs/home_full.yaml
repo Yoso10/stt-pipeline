@@ -1,0 +1,36 @@
+# How to run: the HOME preset for a real run of whisper-tiny on ALL the Daf Yomi data (the Hub data downloaded with tools/fetch_data.py). Use it with (PowerShell, project folder, after `$env:PYTHONPATH = "src"`):
+#     python -m stt check     --config configs/home_full.yaml      # what is fine and what is not on this machine
+#     python -m stt benchmark --config configs/home_full.yaml      # run it TWICE with other programs closed and trust the LARGER planned time
+#     python -m stt run       --config configs/home_full.yaml      # about 3.5 to 5 hours: baseline, search, finalists, one-time Test look, registry, export
+# Values are those of the validated file data/full_run.yaml (planned from the real benchmark: 3 h 22 min at 6.3 s per step, planned disk 3.7 GB, up to 6.4 GB). Every key is a documented key (docs/CONFIG_REFERENCE.md): nothing here is new.
+# Change a value for one run on the command line instead of editing this file:   --set train.hyperparams.max_steps=200
+extends: data_gmara.yaml
+
+model:
+  path: models/whisper-tiny      # the small base model; the next sizes (whisper-base, whisper-small) only if `benchmark` shows they are feasible on CPU
+subsample:
+  val_samples: 100               # the Val LOSS of a search trial uses 100 Val clips; every WER scoring uses the whole Val set
+train:
+  cpu_threads: 2
+  hyperparams:
+    max_steps: 100
+    warmup_steps: 3              # keep it at 3 or less: `benchmark` trains only 3 steps and fails when the warmup is longer (O119)
+    batch_size: 2
+    grad_accum_steps: 2
+  log_every_steps: 10
+  eval_every_steps: 50
+  save_every_steps: 100
+eval:
+  batch_size: 4
+search:
+  n_trials: 4
+  parameters:
+    learning_rate: {kind: log_float, low: 5.0e-6, high: 5.0e-5, points: 4}
+  pruning:
+    enabled: false
+  finalists:
+    k: 2
+progress:
+  interval_seconds: 30           # a progress line at most every 30 seconds
+report:
+  target_relative_wer_reduction: 0.10   # the target: a Val WER at least 10% below the baseline of the same Val set (no floor)
