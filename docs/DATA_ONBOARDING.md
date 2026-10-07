@@ -2,8 +2,11 @@
 
 ## How to run
 ```
-stt prepare --config configs/work.yaml        # prepare only, no training: reads, validates, splits, normalizes, filters
+Copy-Item configs\work.yaml configs\my_work.yaml                 # the template stays unchanged; you edit the COPY (O110)
+python -m stt check   --config configs\my_work.yaml        # lists every problem at once; the `<<< FILL IN ... >>>` markers show up here
+python -m stt prepare --config configs\my_work.yaml        # prepare only, no training: reads, validates, splits, normalizes, filters
 ```
+(PowerShell, in the project folder, after `.\.venv\Scripts\Activate.ps1` and `$env:PYTHONPATH = "src"`.)
 Then read `experiments/exp_NNNN/reports/` (load report, rejected list, split report, character inventory, filter report).
 
 ## 1. Collect before mapping
@@ -14,14 +17,14 @@ Then read `experiments/exp_NNNN/reports/` (load report, rejected list, split rep
 - [ ] How many hours, files and distinct groups
 - [ ] Which labels are verified (gold) and whether a quality score exists
 
-## 2. Map the columns in `configs/work.yaml`
+## 2. Map the columns in your copy `configs/my_work.yaml`
 ```
 data:
   source: {type: csv, path: <folder>}
   columns: {audio: <audio column>, text: <text column>, group: <group column>}
   group_fallback: fail          # leaving this means a missing group column stops the run, on purpose
 ```
-For a Hugging Face parquet folder use `type: hf_parquet`; nested `metadata` fields appear with the prefix `meta_`.
+For a Hugging Face parquet folder use `type: hf_parquet`; nested `metadata` fields appear with the prefix `meta_`. A column name that does not exist is reported by `prepare` with the list of the columns that do exist. The Daf Yomi mapping is a working example: `configs/data_gmara.yaml`.
 
 ## 3. Run `prepare` and read
 1. Rejected clips and reasons (`rejected.csv`): fix the mapping, do not raise the gate just to pass.

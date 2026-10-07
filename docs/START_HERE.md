@@ -31,17 +31,17 @@ Copy the files you downloaded from the chat:
 - `CLAUDE.md` goes in the repository ROOT (the agent reads it automatically).
 - These go into `docs\`: `PRD.md`, `DECISIONS.md`, `OPEN_ISSUES.md`, `COMPONENTS.md`, `BUILD_ORDER.md`, `TROUBLESHOOTING.md`, `RUNBOOK.md`, `DATA_ONBOARDING.md`, `START_HERE.md`.
 
-Create a file named `.gitignore` in the root with exactly this (large files must never enter the repository):
+Create a file named `.gitignore` in the root with exactly this (large files must never enter the repository; the leading `/` anchors a folder to the project root: without it a source folder of the same name, such as `src/stt/registry`, would be ignored too):
 ```
 .venv/
 __pycache__/
 *.pyc
 .env
-data/
-models/
-wheels/
-experiments/
-registry/
+/data/
+/models/
+/wheels/
+/experiments/
+/registry/
 *.egg-info/
 .pytest_cache/
 .mypy_cache/
@@ -108,7 +108,7 @@ Then STOP and wait for me.
 ```
 
 ## 5. The prompt for every next task (template)
-After you review the report, give one task at a time. Wave 1 order (from docs/BUILD_ORDER.md): C0 Config, C1 DataSource, C3 Splitter, C2 TextNormalizer, C1b SampleFilter, C5 ModelLoader, C4 FeaturePipeline, C6 TrainerCore, C7 Evaluator, C12 RunManager, then the minimal C13 Orchestrator.
+After you review the report, give one task at a time. Wave 1 order (from docs/BUILD_ORDER.md): C0 Config, C1 DataSource, C3 Splitter, C2 TextNormalizer, C1b SampleFilter, C5 ModelLoader, C4 FeaturePipeline, C6 TrainerCore, C7 Evaluator, C12 RunManager, then the minimal C13 Orchestrator. (Waves 1 to 3 are built; the order and the state are in docs/BUILD_ORDER.md and docs/COMPONENTS.md. To USE the finished pipeline, read docs/RUNBOOK.md: the commands are `python -m stt ...` and the ready configurations are in `configs/`.)
 ```
 TASK: build component [ID Name] (wave [N], docs/BUILD_ORDER.md).
 Before coding, read: CLAUDE.md, docs/DECISIONS.md, the brief of [ID] in docs/PRD.md, and the

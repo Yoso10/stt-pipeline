@@ -273,3 +273,7 @@ b. NEXT: phase D (the presets), then phase E (the documentation check), then the
 ### Status after phase D (2026-10-08)
 a. DONE (DECISIONS 82): the presets `home_full`, `work_like`, `work` (O60). No key, default or interface changed. The two validated files `data/rehearsal_run.yaml` and `data/full_run.yaml` were not edited.
 b. NEXT: phase E (the documentation check: RUNBOOK, TROUBLESHOOTING, DATA_ONBOARDING, START_HERE against the real CLI), then the final report.
+
+### Status after phase E and the end of the delegated sequence (2026-10-08)
+a. DONE: phases A to E (DECISIONS 80 to 83). Phase A/B: the rehearsal `exp_0002` finished (winner `model_0001`, Val WER 1.1318 -> 1.0279, 9.2% against the 10% target, Test confirmed, 35 min against 37 planned). Phase C: console hygiene. Phase D: the presets. Phase E: the documentation check.
+b. OPEN: O119 (the benchmark and a long warmup), O120 (the step time varies; largely O121), O121 (the TrainerCore timing bug), O122 (the transient Windows rename failure, which cost the rehearsal its best trial), the earlier O66, O77, O67, O75, O100. NOT started, only prepared: the full run on all data (`data/full_run.yaml`, equal to `configs/home_full.yaml` except the two folder keys).

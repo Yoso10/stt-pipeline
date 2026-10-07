@@ -32,8 +32,11 @@ The same seed gives the same result on the same machine. Results are not guarant
 | FAIL unknown key | typo in YAML or CLI `--set` | the message lists the valid keys; fix the name |
 | FAIL wrong type or range | value of the wrong type | fix the value in YAML |
 | YAML parse error | indentation or a tab character | the message gives the line; fix it |
-| an environment value is ignored | wrong prefix | environment keys use the `STT__SECTION__KEY` form (to be confirmed in implementation) |
+| an environment value is ignored | wrong prefix | environment keys use the `STT__SECTION__KEY` form, for example `STT__DATA__SOURCE__PATH` (the error message prints the exact name) |
 | the program tries to use the network | `runtime.online` is true | set it to false; online is for the home machine only |
+| `ERROR: Invalid configuration ... <<< FILL IN ... >>>` | you used `configs/work.yaml` (the template) without filling it in | copy it to a NEW name (`Copy-Item configs\work.yaml configs\my_work.yaml`), replace every `<<< FILL IN ... >>>` marker in the copy, and use the copy; `python -m stt check --config <copy>` lists what is left |
+| `warmup_steps must be between 0 and max_steps (3)` in `benchmark` | the benchmark trains only 3 steps but keeps your warmup | set `train.hyperparams.warmup_steps` to 3 or less in the config you benchmark (O119) |
+| `subsample.val_samples (a fixed Val slice) needs scope train_only` | `val_samples` was combined with the `work_like` preset, which reduces every split | remove `val_samples` (or set it to `null`) when `subsample.preset` is `work_like` |
 
 ## DataSource (C1)
 | Symptom | Likely cause | Minimal fix (does not change code structure) |
@@ -149,7 +152,8 @@ The same seed gives the same result on the same machine. Results are not guarant
 |---|---|---|
 | FAIL entry exists | two runs raced, or a leftover temp folder | remove the leftover temp folder named in the message; never delete a finished entry |
 | verify says files changed | corrupted copy between machines | copy the entry again from the source |
-| index does not match entries | index edited by hand or a crash | run `rebuild_index()` |
+| index does not match entries | index edited by hand or a crash | run `python -m stt registry rebuild-index --config <your config>` (the entry cards are the source of truth) |
+| `registry list` or `export` says `exports unreadable` | `exports.json` of an entry was damaged | the entry itself is not affected: look at the file, repeat the export with `python -m stt export model_NNNN --config <your config>` |
 | disk full on registration | large model, move across drives | free space, or set `registry.transfer: copy` knowingly |
 | `best` returns nothing | different `eval_version` or test set | compare only like with like; re-evaluate under the current profile |
 
@@ -168,14 +172,16 @@ The same seed gives the same result on the same machine. Results are not guarant
 |---|---|---|
 | FAIL missing package | converter not installed on the closed machine | bring the package in advance with the other wheels; do not enable online mode |
 | verification differs too much | conversion changed the outputs | inspect the difference first; raise `max_wer_diff` only knowingly |
-| FAIL target exists | repeated export | export to a new target folder or remove the failed one |
-| FAIL nothing to export | the winner was "baseline retained" | no export is needed |
+| a second export of the same entry | `python -m stt export` was repeated | allowed: a repeated `hf_safetensors` export adds a new record to `exports.json` (nothing is copied or overwritten) |
+| `export` says the registry entry kept the baseline (exit code 5) | the entry is a retained baseline: there is no new model to export | no export is needed; the automatic export after a run skips it and logs it |
+| `export` says an unknown entry or format (exit code 2) | the name is wrong | the message lists the existing entries or the registered formats |
+| a failed verification of an export | the model folder does not load or does not match | the failed record stays in `exports.json` marked `failed` (never hidden); fix the cause and repeat `python -m stt export model_NNNN` |
 
 ## RunManager (C12)
 | Symptom | Likely cause | Minimal fix |
 |---|---|---|
 | FAIL experiment is locked | another run is active | wait, or stop that run |
-| FAIL stale lock | a run died without releasing | check that no run is active, then delete the `run.lock` file named in the message |
+| FAIL stale lock | a run died without releasing (for example Ctrl+C inside a PowerShell pipe) | check that no run is active (`Get-Process python`), then RENAME the `run.lock` file named in the message (`Rename-Item <that file> run.lock.stale`); it is never deleted automatically, and the same command then continues |
 | FAIL config differs on resume | config edited after the run started | restore the stored config, or start a new experiment with `extends` |
 | warning path too long | experiments folder deep in the tree | move `run.experiments_dir` closer to the drive root |
 | no console output from components | console level too high | lower `run.log.console_level`; details are always in `logs/run.log` |
@@ -190,6 +196,13 @@ The same seed gives the same result on the same machine. Results are not guarant
 | rerun does nothing | all stages completed | use a new experiment (`--parent`), or change the config |
 | rerun repeats a stage | its config slice changed | intended; check the diff in `config_diff.yaml` |
 | the machine went to sleep | sleep prevention off or blocked by policy | check `run.prevent_sleep`; ask the machine owner about power policy |
+| a red `python : INFO ... NativeCommandError` block at the first line | the command was written `... 2>&1 \| Tee-Object`: Windows PowerShell 5.1 turns every error-stream line into an error record (the program writes its log there on purpose) | use `... 2>&1 \| ForEach-Object { "$_" } \| Tee-Object -FilePath data\run.log` or `cmd /c "... 2>&1" \| Tee-Object -FilePath data\run.log`; or no pipe at all (the log is always in `experiments\exp_NNNN\logs\run.log`) |
+| Ctrl+C left a stale `run.lock` and the running trial was lost | Ctrl+C inside a PowerShell pipe kills the program at once | run without a pipe so that Ctrl+C is graceful; rename the lock and resume with `--experiment exp_NNNN` (RUNBOOK section 8) |
+| `remaining` and `s/step` of the TRAINING lines look about 3 times too high | a known timing error of the TrainerCore (O121); the elapsed time and the percent are right | read the elapsed time; the benchmark's planned time is on the safe side |
+| a search trial `failed` with `PermissionError: [WinError 5] Access is denied` at the end of its training | another program held the new model folder for a moment (antivirus, indexer, sync tool; O122) | exclude the project folder from the antivirus and the sync tools; resume the experiment (the other trials are kept) |
+| `PLAN: no benchmark numbers for this model and thread count` | no `benchmark` was run for this model and thread count | run `python -m stt benchmark --config <your config>` (twice, other programs closed); the run goes on without a planned time |
+| the WER is above 1.0 (for example 1.13) | more word errors than reference words: the untouched whisper-tiny loops or invents text in Hebrew (see `hit_length_cap` in the log) | not an error of the program; compare the baseline with the best model and read the verdict |
+| the improvement line says `reached. Point estimate only` | the number reaches the target but the verdict is not `Proven improvement` | read the verdict first; do not treat it as proven |
 
 ## Standalone tools (T)
 | Symptom | Likely cause | Minimal fix |
