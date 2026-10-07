@@ -22,6 +22,7 @@ from pathlib import Path, PurePath
 from urllib.parse import quote
 
 from stt.reportbuilder import svg
+from stt.reportbuilder.improvement import improvement_line, relative_reduction
 from stt.reportbuilder.correlation import correlation_row, spearman, thin
 from stt.reportbuilder.hints import RuleRegistry, default_rule_registry, group_errors
 from stt.reportbuilder.types import CorrelationRow, DiagnosisHint, ReportData, ReportOutput
@@ -114,6 +115,7 @@ class ReportBuilder:
         warnings: list[str] = []
         produced: list[str] = []
         sections: list[tuple[str, str, Callable[[], tuple[str, bool]]]] = [
+            ("history", "History: the Val WER of each registered experiment", lambda: self._history(data)),
             ("finalists", "Finalists compared with the baseline", lambda: self._finalists(data)),
             ("wer_bars", "WER of the baseline and the finalists", lambda: self._wer_bars(data)),
             ("training_curves", "Training curves", lambda: self._curves(data, warnings)),
@@ -180,7 +182,9 @@ class ReportBuilder:
                 lines.append(f"The best finalist, trial {best.trial_id} ({_e(_params(best.params))}), reached {_num(best.val_wer)} (difference {_signed(best.delta_wer)}, verdict {_e(best.verdict)}).")
         lines.append(self._test_line(data, "winner" if phrase == "Proven improvement" else "best finalist"))
         flags = "".join(f'<p class="small">Flag: {_e(w)}</p>' for w in sel.warnings)
-        return f'{banner}<div class="panel">{head}<p>{" ".join(lines)}</p><p>{_e(sel.reason)}</p>{flags}</div>'
+        best_row = next((r for r in sel.table if r.trial_id == sel.winner_trial), None) if sel.winner_trial is not None else (sel.table[0] if sel.table else None)
+        improvement = improvement_line(base.wer if base is not None else None, best_row.val_wer if best_row is not None else None, data.settings.target_relative_wer_reduction, phrase == "Proven improvement")
+        return f'{banner}<div class="panel">{head}<p>{" ".join(lines)}</p><p class="improve"><b>{_e(improvement)}</b></p><p>{_e(sel.reason)}</p>{flags}</div>'
 
     @staticmethod
     def _verdict_line(data: ReportData) -> tuple[str, str, str]:
@@ -361,6 +365,37 @@ class ReportBuilder:
         rows = [[_e(p.preset), _e(p.train_samples), f"{p.train_minutes:.1f}", _num(p.val_wer), _num(p.val_cer), _num(p.val_loss), _e(p.steps)] for p in c.points]
         out += _table(["preset", "Train samples", "minutes", "Val WER", "Val CER", "Val loss", "steps"], rows, numeric=(1, 2, 3, 4, 5, 6))
         return out + f"<p><b>Reading:</b> {_e(c.reading)}</p><p class='small'>Same hyperparameters ({_e(c.hyperparameters_from)}) and steps for every size, the same {_e(c.val_files)} Val files.</p>", True
+
+    # ---- history ---------------------------------------------------------------------------------------------------------------
+    def _history(self, data: ReportData) -> tuple[str, bool]:
+        """The Val WER of the baseline and of the best model of each registered experiment, with the target when it is set (the numbers come from the stored cards; nothing is recomputed)."""
+        points = list(data.history)
+        if not points:
+            return self._na("the history of the registered experiments", data.history_problem or "a registry with at least one entry (run python -m stt run)")
+        target = data.settings.target_relative_wer_reduction
+        base = [(float(i), p.baseline_wer) for i, p in enumerate(points, 1) if p.baseline_wer is not None]
+        best = [(float(i), p.best_wer) for i, p in enumerate(points, 1) if p.best_wer is not None]
+        series = [("baseline Val WER", base, svg.PALETTE[1], False), ("best model Val WER", best, svg.PALETTE[0], False)]
+        if target is not None:
+            series.append((f"target: {100.0 * target:g}% below the baseline", [(x, y * (1.0 - target)) for x, y in base], svg.PALETTE[2], True))
+        out = svg.line_chart("Val WER of each registered experiment (the best model against its baseline)", series, "registered experiment (registry order)", "Val WER")
+        headers = ["#", "entry", "experiment", "kind", "baseline Val WER", "best Val WER", "relative reduction"] + (["target Val WER", "target"] if target is not None else [])
+        rows = []
+        for i, p in enumerate(points, 1):
+            reduction = relative_reduction(p.baseline_wer, p.best_wer)
+            row = [_e(i), _e(p.entry_id), _e(p.experiment_id), "baseline kept" if p.kind != "model" else "model", _num(p.baseline_wer), _num(p.best_wer), "-" if reduction is None else f"{100.0 * reduction:.1f}%"]
+            if target is not None:
+                goal = None if p.baseline_wer is None else p.baseline_wer * (1.0 - target)
+                row += [_num(goal), "-" if reduction is None else ("reached" if reduction >= target - 1e-12 else "not reached")]
+            rows.append(row)
+        out += _table(headers, rows, numeric=(0, 4, 5, 6, 7))
+        note = (
+            f"<p class='small'>{len(points)} registered experiment(s), from the stored model cards (nothing is recomputed). For `baseline kept` the best Val WER is the best finalist's: it did not beat the baseline. "
+            + ("The dashed line is the target." if target is not None else "No target is set (report.target_relative_wer_reduction).")
+            + (f" Not shown: {_e(data.history_problem)}." if data.history_problem else "")
+            + "</p>"
+        )
+        return out + note, True
 
     # ---- (h) correlations -----------------------------------------------------------------------------------------------------
     def _correlations(self, data: ReportData, warnings: list[str]) -> tuple[str, bool]:

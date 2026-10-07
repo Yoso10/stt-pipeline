@@ -26,6 +26,7 @@ from stt.config import AppConfig
 from stt.evaluator import eval_result_from_json, eval_result_to_json
 from stt.orchestrator import reporting
 from stt.orchestrator.errors import OrchestratorError, StageInterrupted
+from stt.orchestrator.progress import ItemProgress
 from stt.orchestrator.stagehelpers import evaluate_model, pipeline_value, prepared_data, section
 from stt.orchestrator.trials import prepare_trial_folder
 from stt.orchestrator.types import StageContext, StageResult
@@ -103,7 +104,9 @@ class FinalistsStage:
         eval_split = pipeline_value(ctx.config, "eval_split", "val")
         logger.info("Retraining %d finalist(s) on %d Train samples (Val loss on %d samples, WER on the %d samples of '%s').", len(finalists), len(prepared.kept[screening.train_split]), len(screening.val), len(prepared.kept[eval_split]), eval_split)
         artifacts: list[Path] = []
-        for trial_id, params in finalists:
+        counter = ItemProgress("finalists", "finalist", len(finalists))  # one line when each finalist starts: its retraining and then its WER scoring
+        for number, (trial_id, params) in enumerate(finalists, 1):
+            counter.starting(number, f" (trial {trial_id}: retraining, then its WER scoring on '{eval_split}')")
             artifacts += self._one(ctx, trial_id, params, screening.train_split, screening.val, screening.val_split, eval_split)
         candidates = load_finalists(experiment)
         report = experiment.write_report("finalists_report.txt", reporting.finalists_report_text(candidates))

@@ -59,6 +59,7 @@ from stt.orchestrator.orchestrator import Orchestrator
 from stt.orchestrator.sleepguard import default_sleep_guard
 from stt.orchestrator.smoke import FULL_MIN_SAMPLES, full_overrides, write_smoke_data
 from stt.orchestrator.stopflag import InterruptFlag
+from stt.orchestrator.improvement import improvement_line
 from stt.orchestrator.cleanupcmd import megabytes, propose_cleanup, render_proposal, total_size, write_proposal
 from stt.orchestrator.configdocs import count_keys, render_config_reference, write_reference
 from stt.orchestrator.types import RunOutcome, RunPlan, StageContext
@@ -205,14 +206,24 @@ def _how_to_look(handle: ExperimentHandle, runtime_dir: Path) -> None:
     logger.info("  python -m stt check")
 
 
-def _say_verdict(outcome: RunOutcome) -> None:
-    """The verdict of the selection in plain words, on the console (the log file has it too)."""
+def _number(value: Any) -> float | None:
+    """A stored WER as a float, or None (a missing value or the text `none`)."""
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _say_verdict(outcome: RunOutcome, target: float | None = None) -> None:
+    """The verdict of the selection in plain words, on the console (the log file has it too), then the improvement line from the STORED Val WER numbers (`report.target_relative_wer_reduction`: the target, or none)."""
     selected = outcome.stage_results.get("select_and_register")
     if selected is None or selected.status == "failed" or outcome.verdict == "n/a":
         return
     s = selected.summary
     logger.info("VERDICT: %s. %s", outcome.verdict, s.get("reason", ""))
     logger.info("Test: %s. Registered as %s in %s.", s.get("test_status", "?"), s.get("entry_id", "?"), s.get("registry_dir", "?"))
+    proven: bool | None = None if "best_val_verdict" not in s else (s.get("best_val_verdict") == "improved" and s.get("test_status") == "confirmed" and s.get("winner_trial", "none") != "none")
+    logger.info("%s", improvement_line(_number(s.get("baseline_val_wer")), _number(s.get("best_val_wer")), target, proven))
 
 
 def _error(message: str, code: int) -> int:
@@ -244,6 +255,8 @@ def _run_pipeline(args: argparse.Namespace, config_overrides: Sequence[str], smo
         flag = InterruptFlag()
         orchestrator = Orchestrator(config, runtime.services, runtime.stages, flag, default_sleep_guard(run.prevent_sleep), pipeline.skip_completed)
         options = {"split": args.split} if getattr(args, "split", None) else {}
+        if args.command in ("run", "search", "learning-curve"):
+            options["announce_plan"] = args.command  # the planned total time is written right after `prepare` (DECISIONS 78)
         with flag.installed():
             outcome = orchestrator.run(RunPlan(stages, handle, options))
         extra = _test_once_check(config, runtime, handle, flag) if smoke and outcome.exit_code == 0 else None
@@ -254,7 +267,7 @@ def _run_pipeline(args: argparse.Namespace, config_overrides: Sequence[str], smo
             extra.update(checks)
             if problem:
                 outcome = RunOutcome(4, outcome.verdict, outcome.experiment_id, outcome.stage_results, outcome.status, problem)
-        _say_verdict(outcome)
+        _say_verdict(outcome, getattr(config.sections.get("report"), "target_relative_wer_reduction", None))
         _how_to_look(handle, run.experiments_dir)
         print(json.dumps(_final_summary(handle, outcome, extra), indent=1, ensure_ascii=False))
         return outcome.exit_code
@@ -327,9 +340,10 @@ def _report(args: argparse.Namespace) -> int:
         tree = apply_overrides(load_yaml_with_extends(args.config) if args.config is not None else {}, [parse_set(item) for item in args.config_overrides])
         run = RunConfig.model_validate(tree.get("run", {}))
         settings = ReportConfig.model_validate(tree.get("report", {}))  # only the sections the report needs: no data or model settings
+        registry_dir = str(RegistryConfig.model_validate(tree.get("registry", {})).dir)  # the history of the registered experiments is read from here when selection.json names no registry
         store = experiment_catalog(run)
         handle = store.open(args.experiment or latest_experiment(store))
-        result = build_report(handle, run.experiments_dir, settings, ReportWiring(), _now(), lambda folder: RegistryWiring(RegistryConfig(dir=Path(folder))), args.curve_from, args.benchmark_from)
+        result = build_report(handle, run.experiments_dir, settings, ReportWiring(), _now(), lambda folder: RegistryWiring(RegistryConfig(dir=Path(folder))), args.curve_from, args.benchmark_from, registry_dir)
     except Exception as exc:
         return _error(f"{type(exc).__name__}: {exc}", exit_code_for(exc))
     print(f"The report is in: {result.report_file}", file=sys.stderr)

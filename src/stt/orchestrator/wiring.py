@@ -24,7 +24,8 @@ from stt.datasource import DataConfig, DataSourceError, create_data_source
 from stt.evaluator import Comparator, ComparisonResult, DecodeSettings, EvalConfig, EvalItem, EvalRequest, Evaluator, EvaluatorConfigError, EvaluatorError, EvalResult, make_decode_settings
 from stt.featurepipeline import FeaturePipeline, FeaturePipelineError, FeaturesConfig
 from stt.modelloader import LoadedModel, ModelConfig, ModelLoaderError, create_loader
-from stt.orchestrator.config import BenchmarkConfig, LearningCurveConfig, PipelineConfig, SmokeConfig
+from stt.orchestrator.config import BenchmarkConfig, LearningCurveConfig, PipelineConfig, ProgressConfig, SmokeConfig
+from stt.orchestrator.progress import ThrottledSink, progress_interval
 from stt.orchestrator.errors import OrchestratorError
 from stt.orchestrator.reportdata import read_metrics_csv
 from stt.orchestrator.stages import StageRegistry, default_stage_registry
@@ -76,6 +77,7 @@ def section_registry() -> SectionRegistry:
             "search": SearchConfig,
             "report": ReportConfig,
             "export": ExportConfig,
+            "progress": ProgressConfig,
             "select": SelectConfig,
             "registry": RegistryConfig,
             "pipeline": PipelineConfig,
@@ -190,7 +192,14 @@ class TrainingWiring:
         if threads is not None:
             update["cpu_threads"] = threads
         config = self._config.section("train", TrainConfig).model_copy(update=update)
-        sinks = SinkRegistry({"csv": lambda ctx: CsvMetricsSink(SinkContext(metrics_dir, ctx.resume_step)), "console": ConsoleMetricsSink, "html": lambda ctx: self._progress_sink(metrics_dir, ctx.resume_step)})
+        interval = progress_interval(self._config)  # the console line of a training is written at most once per `progress.interval_seconds` (the CSV file gets every record)
+        sinks = SinkRegistry(
+            {
+                "csv": lambda ctx: CsvMetricsSink(SinkContext(metrics_dir, ctx.resume_step)),
+                "console": lambda ctx: ThrottledSink(ConsoleMetricsSink(ctx), interval, ctx.max_steps),
+                "html": lambda ctx: self._progress_sink(metrics_dir, ctx.resume_step),
+            }
+        )
         return TrainerCore(config, sink_registry=sinks).train(request)
 
 

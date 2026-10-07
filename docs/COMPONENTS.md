@@ -197,6 +197,7 @@ How to use: one entry per component. The agent writes or updates the entry at th
   - `train.output_dir` (per experiment; set by the RunManager later; the caller copies it into `TrainRequest.output_dir`)
   - `train.sinks` [DEFAULT: `csv`, `console`]
   - The search space of the hyperparameters belongs to the HyperparamSearcher, not here.
+- Wave 3 task 7 (DECISIONS 79): `SinkContext` has the optional field `max_steps` (the TrainerCore fills it with `train.hyperparams.max_steps`). The console sink writes `[<run folder name>] step 40 of 400 (10.0%) ... elapsed H:MM:SS remaining H:MM:SS` (without `max_steps` the old shape `step 40 (epoch ...)`); `clock_text(seconds)` formats the times. The Orchestrator throttles the console line to `progress.interval_seconds`; `train.sinks` and its default are unchanged.
 
 ## C7 Evaluator
 - Status: built (wave 1); checked once on 16 real Daf Yomi VAL clips with `models/whisper-tiny` (baseline and a 4-step trained model; the Test split was never used)
@@ -220,6 +221,7 @@ How to use: one entry per component. The agent writes or updates the entry at th
   - `eval.review.n_random` [DEFAULT: 20], `eval.review.n_worst` [DEFAULT: 10]
   - `eval.sanity.max_baseline_wer` [DEFAULT: null = off]
   - the seed comes from `runtime.seed` (given to the Evaluator and the Comparator by the composition root)
+- Wave 3 task 7 (DECISIONS 79): `EvalRequest.on_progress` (optional, default none): `(examples transcribed, total)` after every batch. `Transcriber.transcribe(model, dataset, settings, progress=None)`: the Evaluator passes `progress` only when the request has one, so a transcriber without the parameter keeps working; the Hugging Face adapter calls it after every batch and ignores an error in it. The Orchestrator sets it in `evaluate_model`, the one place where a model is scored.
 
 ## C8 HyperparamSearcher
 - Status: built (wave 2); NOT wired into the Orchestrator yet (the `search` stage is a separate later task); checked with a fake trial runner and once with a real two-trial search on the tiny test model through the TrainerCore
@@ -247,6 +249,7 @@ How to use: one entry per component. The agent writes or updates the entry at th
   - `search.screening.preset` [DEFAULT: `tiny`; to revise after the step times, O11]
   - `search.study_dir` (set by the RunManager)
   - the seed comes from `runtime.seed`
+- Wave 3 task 7 (DECISIONS 79): the log line of a finished trial starts `Search progress: trial i of N finished (P%), elapsed H:MM:SS, remaining about H:MM:SS (up to N trials; a grid with fewer points stops earlier).` and keeps the old sentence (`Trial 3 complete {...} (Val loss ...)`). Text only; the estimate uses the trials finished in this run.
 
 ## C9 Selector
 - Status: built (wave 2); NOT wired into the Orchestrator yet (the selection stage is a separate later task); run on the stored Val evaluation of `experiments/exp_0001` and on three readable scenarios of fake results (no Test evaluation)
@@ -312,6 +315,7 @@ How to use: one entry per component. The agent writes or updates the entry at th
   - `report.loss_noise_range` [NEW, DEFAULT: 0.01; a Val-loss chart whose values vary by less gets the note `Differences this small are noise`], `report.absolute_audio_paths` [NEW, DEFAULT: false; false = audio paths relative to the data folder]
   - `report.hints.enabled_rules` [DEFAULT: all registered]; thresholds [DEFAULT, to calibrate]: `overfitting_last_k_evals` 3, `no_learning_min_rel_improvement` 0.01, `unstable_spike_factor` 2.0, `gain_top_group_fraction` 0.1, `gain_share` 0.5, `short_clip_quantile` 0.25, `short_clip_wer_ratio` 1.5, `length_cap_share` 0.05, `failed_share` 0.3
   - `report.progress.refresh_seconds` [DEFAULT: 10], `report.progress.every_n_records` [DEFAULT: 1]
+- Wave 3 task 7 (DECISIONS 79): the new optional key `report.target_relative_wer_reduction` (DEFAULT none; 0.10 = 10%). The verdict section has the line `Relative reduction of the Val WER against the baseline: X% (target: 10%): reached / not reached` (from the stored numbers; `Point estimate only` when reached but not a proven improvement). The new first section `history` (`ReportData.history`, `ReportData.history_problem`, `HistoryPoint`): the Val WER of the baseline and of the best model of each registered experiment, a dashed target line when set, a table; missing history is named. The loader reads the registry cards (`RegistryReader.entries()` is new).
 
 ## C11 ModelExporter
 - Status: built (wave 3, task 4; APPROVED 2026-10-07, DECISIONS 70). The Orchestrator side is built too (Wave 3 task 5, DECISIONS 71; waits for the owner's approval): the `export` command, the automatic export after a registration and the exports column of `registry list` (see C13).
@@ -404,6 +408,15 @@ How to use: one entry per component. The agent writes or updates the entry at th
   - `smoke.n_samples` [DEFAULT: 12], `smoke.duration_sec` [DEFAULT: 3], `smoke.steps` [DEFAULT: 3], `smoke.model_dir` [DEFAULT: `tests/assets/tiny_whisper`], `smoke.work_dir` [NEW, DEFAULT: `data/smoke`]
   - `learning_curve.presets` [DEFAULT: `smoke`, `tiny`, `half`, `full`], `learning_curve.params_from` [DEFAULT: none; also `--params-from`]
   - `benchmark.steps` [DEFAULT: 3]
+- Wave 3 task 7 (DECISIONS 79; waits for the owner's approval). LIVE PROGRESS: every long phase writes plain lines `PROGRESS <phase>: <unit> i of N (P%), elapsed H:MM:SS, remaining about H:MM:SS` at most every `progress.interval_seconds` (DEFAULT 30; new section `progress`): the clips of every WER scoring, the training steps (`[<run folder>] step 40 of 400 (10.0%) ... train_loss ...`), `Search progress: trial i of N ...`, `PROGRESS finalists: starting finalist i of N`, `PROGRESS learning curve: starting point i of N`. Same text on a console and in a redirected file, also in `logs/run.log`; no ANSI. Example of what the owner sees:
+  ```
+  INFO PLAN: planned time of `python -m stt run` with the current settings: about 2 h 58 min (from the benchmark of exp_0003: whisper-tiny, 2 thread(s), 4.77 s per step, 1.93 s per clip; Val 875 clips, Test 875 clips)
+  INFO PROGRESS WER scoring of the baseline on 'val': clip 120 of 875 (13.7%), elapsed 0:03:51, remaining about 0:24:13
+  INFO [exp_0004_trial_003] step 40 of 400 (10.0%) (epoch 0.40) train_loss 2.5000 val_loss - lr 1e-05 grad_norm 0.700 4.77 s/step elapsed 0:03:11 remaining 0:28:37
+  INFO VERDICT: winner. ...
+  INFO Relative reduction of the Val WER against the baseline: 10.0% (target: 10%): reached
+  ```
+THE PLAN: right after `prepare`, `run`, `search` and `learning-curve` print `PLAN:` lines from the latest `reports/benchmark.json` of an experiment with the same model folder name and thread count, or `PLAN: no benchmark numbers for this model and thread count: run python -m stt benchmark`. THE IMPROVEMENT LINE: under `VERDICT:` at the end of `run` (`report.target_relative_wer_reduction`). THE BENCHMARK now also reports the size of the measuring trial folder, the peak memory (Windows) and the planned disk of a whole `run`. New config keys: `progress.interval_seconds` [NEW, DEFAULT 30]; `report.target_relative_wer_reduction` [NEW, DEFAULT none]. Tests: `tests/test_progress_display.py` (progress, throttling, the Evaluator hook, the plan, the searcher line, the resources), `tests/test_improvement_and_history.py`, additions in `tests/test_orchestrator_exit.py`, `test_orchestrator_report.py` and `test_orchestrator_curve.py`.
 
 ## T Standalone tools
 - Status: built (Step 0 and Wave 3 task 6, DECISIONS 73; `make_manifest` waits for the owner's approval): `fetch_model`, `fetch_data`, `fetch_wheels`, `make_test_model`, the extra `inspect_audio` and `make_manifest`.

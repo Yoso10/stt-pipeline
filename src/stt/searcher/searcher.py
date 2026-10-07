@@ -129,7 +129,22 @@ class _Run:
         self.strategy.tell(trial.trial_id, trial.params, final)
         if self.spec.study_dir is not None:
             self.store.save(self.spec.study_dir, self.spec, self.records)
-        logger.info("Trial %d %s %s (Val loss %s).", trial.trial_id, final.status, dict(trial.params), "-" if final.val_loss is None else f"{final.val_loss:.4f}")
+        finished = len(self.records)  # including the trials of an earlier run of this study
+        new = finished - self.n_resumed
+        elapsed = self.clock() - self.started_at
+        total = self.spec.n_trials
+        remaining = "remaining unknown" if new <= 0 else f"remaining about {_clock_text(elapsed / new * max(0, total - finished))}"
+        logger.info(
+            "Search progress: trial %d of %d finished (%.1f%%), elapsed %s, %s (up to %d trials; a grid with fewer points stops earlier). Trial %d %s %s (Val loss %s).",
+            finished, total, 100.0 * min(finished, total) / total, _clock_text(elapsed), remaining, total,
+            trial.trial_id, final.status, dict(trial.params), "-" if final.val_loss is None else f"{final.val_loss:.4f}",
+        )
+
+
+def _clock_text(seconds: float) -> str:
+    """A duration as `H:MM:SS` (for the progress line)."""
+    whole = max(0, int(round(seconds)))
+    return f"{whole // 3600}:{whole % 3600 // 60:02d}:{whole % 60:02d}"
 
 
 class HyperparamSearcher:

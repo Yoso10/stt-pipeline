@@ -18,16 +18,17 @@ from __future__ import annotations
 import csv
 import json
 import logging
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Protocol
 
 from stt.evaluator import ComparisonResult, EvalResult, EvaluatorError, eval_result_from_json
-from stt.registry import ModelCard, test_set_fingerprint
+from stt.registry import ModelCard, RegistryEntry, test_set_fingerprint
 from stt.reportbuilder import (
     BenchmarkView,
     CurvePointView,
+    HistoryPoint,
     LearningCurveView,
     ReportConfig,
     ReportData,
@@ -51,6 +52,10 @@ class RegistryReader(Protocol):
 
     def test_set_count(self, test_fingerprint: str) -> int:
         """How many registered entries carry this Test-set fingerprint."""
+        ...
+
+    def entries(self) -> Sequence[RegistryEntry]:
+        """All registered entries in registry order (the history chart reads the card of each)."""
         ...
 
 
@@ -157,6 +162,7 @@ def load_report_data(
     registry_for: Callable[[str], RegistryReader] | None = None,
     curve_root: Path | None = None,
     benchmark_root: Path | None = None,
+    registry_dir: str | None = None,
 ) -> LoadedReport:
     """The report views of the experiment folder `root` (see the module docstring). `generated_at` is passed in (the builder never reads the clock); `registry` gives the card of the registered entry
     and the number of times the Test set was evaluated: `registry_for(registry_dir)` is called with the registry folder that `selection.json` names (None: the run information says they are not known)."""
@@ -210,6 +216,9 @@ def load_report_data(
             reader.found["registry_card"] = f"unreadable ({entry})"
     else:
         reader.found["registry_card"] = "missing (nothing registered, or the registry was not given)"
+    history_dir = sel_raw.get("registry_dir") or registry_dir  # the registry of the selection; else the configured one (an experiment without a selection can still show the history)
+    history_registry = registry if (registry is not None and sel_raw.get("registry_dir")) else (registry_for(str(history_dir)) if registry_for is not None and history_dir else None)
+    history, history_problem = _history(history_registry, reader)
     test_fp = card.test_fingerprint if card is not None and card.test_fingerprint else (test_set_fingerprint(next(iter(tests.values()))) if tests else None)
     count: int | None = None
     if registry is not None and card is not None and test_fp:  # a registry that could not be read gives no count: `unknown`, never a false 0
@@ -239,8 +248,46 @@ def load_report_data(
     )
     if selection is not None and selection.confidence is None and card is not None and card.val is not None and card.val.confidence is not None:
         selection = replace(selection, confidence=card.val.confidence)  # the level of the table's intervals, from the card
-    data = ReportData(info, settings, selection, baseline, finalists, tests, final_histories, search_histories, search, curve, benchmark)
+    data = ReportData(info, settings, selection, baseline, finalists, tests, final_histories, search_histories, search, curve, benchmark, history, history_problem)
     return LoadedReport(data, dict(sorted(reader.found.items())), tuple(reader.problems))
+
+
+def _history(registry: RegistryReader | None, reader: _Reader) -> tuple[tuple[HistoryPoint, ...], str | None]:
+    """The history points of every registered entry (read from the stored cards; nothing is recomputed) and, when there are none, the reason in plain words. A card that cannot be read is a named problem."""
+    if registry is None:
+        reader.found["history"] = "missing (no registry was given and selection.json names none)"
+        return (), "no registry was given: pass --set registry.dir=... or run the select_and_register stage"
+    lister = getattr(registry, "entries", None)
+    if lister is None:
+        reader.found["history"] = "missing (this registry reader cannot list its entries)"
+        return (), "this registry reader cannot list its entries"
+    try:
+        entries = list(lister())
+    except Exception as exc:  # a registry that cannot be listed is a named problem
+        reader.problems.append(f"registry entries: {type(exc).__name__}: {exc}")
+        reader.found["history"] = "unreadable"
+        return (), f"the registry could not be listed ({type(exc).__name__}: {exc})"
+    points: list[HistoryPoint] = []
+    skipped: list[str] = []
+    for entry in entries:
+        try:
+            card = registry.card(entry.entry_id)
+        except Exception as exc:
+            reader.problems.append(f"registry card {entry.entry_id}: {type(exc).__name__}: {exc}")
+            skipped.append(f"{entry.entry_id} (card unreadable)")
+            continue
+        if card.val is None:
+            skipped.append(f"{entry.entry_id} (no Val result in its card)")
+            continue
+        if card.kind == "model":
+            baseline, best = card.val.baseline_wer, card.val.wer
+        else:  # a retained baseline: the card's Val result is the baseline's own; the best finalist is in the finalists table
+            baseline, best = card.val.wer, min((f.val_wer for f in card.finalists), default=None)
+        points.append(HistoryPoint(entry.entry_id, entry.experiment_id, card.kind, baseline, best))
+    reader.found["history"] = f"{len(points)} registered experiment(s)" if points else "missing (the registry has no entry with a Val result)"
+    if points:
+        return tuple(points), ("; ".join(skipped) if skipped else None)
+    return (), ("the registry has no entry yet" if not entries else "; ".join(skipped))
 
 
 def _read_yaml(path: Path) -> Any:

@@ -61,5 +61,12 @@ class ReportConfig(SectionModel):
         default=False,
         description="NEW, DEFAULT false (owner decision 2026-10-07). false: the listening list shows each audio path relative to the data folder (when the file is inside it); true: the full path as stored.",
     )
+    target_relative_wer_reduction: float | None = Field(
+        default=None, gt=0.0, le=1.0,
+        description=(
+            "NEW, DEFAULT none (owner decision 2026-10-07). The improvement target: a relative reduction of the Val WER against the baseline of the same Val set; 0.10 means 10% (baseline 0.60 -> 0.54 or lower). "
+            "When set, the report and the summary of `run` say `reached` or `not reached`, and the history chart draws the target. none: the line only shows the reduction (`no target set`)."
+        ),
+    )
     hints: HintsConfig = HintsConfig()
     progress: ProgressConfig = ProgressConfig()

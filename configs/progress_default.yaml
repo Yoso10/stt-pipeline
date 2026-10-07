@@ -1,0 +1,12 @@
+# How to run: example `progress` section; every value shown is the DEFAULT. Extend it:
+#     extends: progress_default.yaml
+#     $env:PYTHONPATH = "src"
+#     python -c "from pathlib import Path; from stt.config import SectionRegistry, load_config; from stt.orchestrator.config import ProgressConfig; print(load_config(Path('configs/progress_default.yaml'), registry=SectionRegistry({'progress': ProgressConfig})).section('progress', ProgressConfig).interval_seconds)"
+# Live progress in the terminal: every long phase (the training steps, the clips of a WER scoring) writes ONE plain line at most every `interval_seconds` with the phase, the position and the total,
+# the percent, the elapsed time and the estimated time remaining. The same lines appear on a console and in a file the output is redirected to, and they are saved in logs/run.log.
+# On the command line: --set progress.interval_seconds=10
+extends: base.yaml
+
+progress:
+  # Seconds between two progress lines of a long phase (the first and the last line of a phase are always written).
+  interval_seconds: 30

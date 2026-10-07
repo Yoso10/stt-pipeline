@@ -1,4 +1,4 @@
-"""The `pipeline` and `smoke` configuration sections, owned by the Orchestrator component.
+"""The `pipeline`, `smoke`, `learning_curve`, `benchmark` and `progress` configuration sections, owned by the Orchestrator component.
 
 How to run: this module is not a script. The composition root (`wiring.section_registry()`) registers the sections. Example YAML with every
 key and its DEFAULT: configs/pipeline_default.yaml (and the complete smoke setup in configs/smoke.yaml). `run.prevent_sleep` is a key of the
@@ -28,6 +28,19 @@ class PipelineConfig(SectionModel):
     skip_completed: bool = Field(default=True, description="DEFAULT true. A stage with a completion marker and an unchanged config slice is skipped.")
     eval_split: str = Field(default="val", description="DEFAULT val (NEW key). The split the evaluate stage scores. Model choice and checks use Val.")
     test_split: str = Field(default="test", description="DEFAULT test (NEW key). The Test split: the evaluate stage REFUSES it; it is scored once, for the winner, through the Selector (Wave 2).")
+
+
+class ProgressConfig(SectionModel):
+    """The `progress` section (Wave 3 task 7; DECISIONS 78): how often the live progress lines of the long phases are written."""
+
+    interval_seconds: float = Field(
+        default=30.0,
+        gt=0,
+        description=(
+            "DEFAULT 30 (NEW key). Seconds between two live progress lines of a long phase (the training steps, the clips of a WER scoring); the first and the last line of a phase are always written. "
+            "The lines are plain text through the logger: the same on a console and in a redirected file, also in logs/run.log."
+        ),
+    )
 
 
 class SmokeConfig(SectionModel):

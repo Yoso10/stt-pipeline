@@ -11,6 +11,7 @@ example is in docs/COMPONENTS.md, C7). It does the following and nothing else:
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 import numpy as np
@@ -31,8 +32,10 @@ class HfTranscriber:
     def __init__(self, threads: int | None = None) -> None:
         self._threads = threads
 
-    def transcribe(self, model: LoadedModel, dataset: FeatureDataset, settings: DecodeSettings) -> list[RawHypothesis]:
-        """One hypothesis per example, in dataset order.
+    def transcribe(
+        self, model: LoadedModel, dataset: FeatureDataset, settings: DecodeSettings, progress: Callable[[int, int], None] | None = None
+    ) -> list[RawHypothesis]:
+        """One hypothesis per example, in dataset order. `progress(done, total)` is called after every batch; an error in it is ignored (it never stops the transcription).
 
         Errors: EvaluatorError when the model runs out of memory (lower eval.batch_size).
         """
@@ -62,6 +65,11 @@ class HfTranscriber:
                         hit = first_eos >= cap
                         text = model.tokenizer.decode(row[: min(first_eos, cap)], skip_special_tokens=True)
                         results.append(RawHypothesis(example.sample_id, text, hit))
+                    if progress is not None:
+                        try:
+                            progress(len(results), len(dataset))
+                        except Exception:  # noqa: BLE001  a progress display must never stop a long transcription
+                            pass
         finally:
             native.train(was_training)
             torch.set_num_threads(previous_threads)

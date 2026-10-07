@@ -124,7 +124,7 @@ class WriteTests(unittest.TestCase):
             code, out, err = run_cli("config-docs", "--out", str(target))
             self.assertEqual(code, 0, err)
             body = json.loads(out)
-            self.assertEqual((body["sections"], body["exit_code"]), (20, 0))
+            self.assertEqual((body["sections"], body["exit_code"]), (len(documented_sections()), 0))  # one table per section (the number follows the sections, so a new section does not break this test)
             self.assertGreater(body["keys"], 100)
             self.assertEqual(target.read_text(encoding="utf-8"), render_config_reference(documented_sections()))
             self.assertEqual(run_cli("config-docs", "--out", str(target))[0], 0)  # a file made by the command is replaced

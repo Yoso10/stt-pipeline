@@ -31,6 +31,7 @@ logger = logging.getLogger("stt.orchestrator")
 REPORT_FILE = "report.html"
 REPORT_SECTIONS = (
     ("summary", "Summary"),
+    ("history", "History: the Val WER of each registered experiment"),
     ("finalists", "Finalists compared with the baseline"),
     ("wer_bars", "WER of the baseline and the finalists"),
     ("training_curves", "Training curves"),
@@ -108,12 +109,13 @@ def build_report(
     registry_for: Callable[[str], RegistryReader] | None,
     curve_from: str | None = None,
     benchmark_from: str | None = None,
+    registry_dir: str | None = None,
 ) -> ReportResult:
     """Load, build and write the report of `handle`. Errors: OrchestratorError (exit code 2) for an unknown `curve_from` / `benchmark_from`; RunManagerError when the experiment is locked;
     ReportConfigError and ReportError from the builder; the report page is written through the RunManager (`reports/report.html`)."""
     curve_root = other_experiment(experiments_dir, curve_from, "--curve-from")
     benchmark_root = other_experiment(experiments_dir, benchmark_from, "--benchmark-from")
-    loaded = load_report_data(handle.paths.root, settings, generated_at, registry_for, curve_root, benchmark_root)
+    loaded = load_report_data(handle.paths.root, settings, generated_at, registry_for, curve_root, benchmark_root, registry_dir)
     output = service.build(loaded.data)
     with handle.lock():
         path = handle.write_report(REPORT_FILE, output.html)

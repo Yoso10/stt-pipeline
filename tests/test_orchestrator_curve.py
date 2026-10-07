@@ -355,6 +355,29 @@ class RealCurveTests(unittest.TestCase):
         self.assertTrue((root / "candidates" / "exp_0002_benchmark").is_dir())  # kept: nothing is deleted
         self.assertEqual(sorted(p.name for p in (root / "reports").glob("*test*")), [])
 
+    def test_the_benchmark_also_reports_the_trial_folder_size_the_peak_memory_and_the_planned_disk(self) -> None:
+        """Wave 3 task 7 (O118): the numbers that decide the next model size, besides the time."""
+        code, out, err = self.bench
+        self.assertEqual(code, 0, err)
+        root = self.tmp / "experiments" / "exp_0002"
+        text = (root / "reports" / "benchmark.txt").read_text(encoding="utf-8")
+        self.assertIn("Resources (measured on the benchmark's own training):", text)
+        self.assertIn("disk of the measuring trial folder:", text)
+        self.assertIn("planned disk of `python -m stt run`: about", text)
+        self.assertTrue("peak memory of this process:" in text or "peak memory: NOT MEASURED" in text)  # said plainly either way
+        resources = json.loads((root / "reports" / "benchmark.json").read_text(encoding="utf-8"))["resources"]
+        self.assertGreater(resources["trial_folder_bytes"], 1_000_000)  # the measuring folder holds a real model and a checkpoint
+        self.assertGreaterEqual(resources["checkpoint_folders"], 1)
+        self.assertGreater(resources["trial_folders_of_a_run"], 0)
+        if sys.platform == "win32":
+            self.assertGreater(resources["peak_memory_bytes"], 10_000_000)
+        self.assertIn("Resources", err)  # also on the console
+        summary = json.loads(out)["stages"]["benchmark"]["summary"]
+        self.assertIn("trial_folder", summary)
+        self.assertIn("peak_memory", summary)
+        measured = json.loads((root / "reports" / "benchmark.json").read_text(encoding="utf-8"))["measured"]
+        self.assertEqual(set(measured), {"model", "threads", "steps", "batch_size", "grad_accum_steps", "seconds_per_step", "seconds_per_val_loss_example", "val_loss_probe", "seconds_per_decode_clip", "decode_probe"})  # the old fields are unchanged
+
 
 if __name__ == "__main__":
     unittest.main()

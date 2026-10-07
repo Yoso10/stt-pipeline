@@ -128,6 +128,18 @@ class RunInfoView:
 
 
 @dataclass(frozen=True)
+class HistoryPoint:
+    """One registered experiment in the history chart. The numbers are read from its stored model card (nothing is recomputed): for a registered model `baseline_wer` is the baseline Val WER of the comparison and
+    `best_wer` the Val WER of the registered winner; for a retained baseline `baseline_wer` is the baseline's own Val WER and `best_wer` the best finalist's Val WER (None when the card lists no finalist)."""
+
+    entry_id: str
+    experiment_id: str
+    kind: str
+    baseline_wer: float | None
+    best_wer: float | None
+
+
+@dataclass(frozen=True)
 class ReportData:
     """Everything one report needs. `finalist_val` maps a trial id to the lossless Val result of its retrained model; `test_results` maps `baseline` or `trial_<id>` to the stored Test result
     of the one-time look; `final_histories` and `search_histories` map a trial id to its training records (the metrics file of the trial)."""
@@ -143,6 +155,8 @@ class ReportData:
     search: SearchView | None = None
     learning_curve: LearningCurveView | None = None
     benchmark: BenchmarkView | None = None
+    history: tuple[HistoryPoint, ...] = ()  # one point per registered experiment, in registry order (Wave 3 task 7); empty = no history
+    history_problem: str | None = None  # why there is no history, in plain words (named in the report instead of an empty chart)
 
     def winner_val(self) -> EvalResult | None:
         """The Val result of the winner, or of the baseline when the baseline stays (the model the per-file sections describe)."""

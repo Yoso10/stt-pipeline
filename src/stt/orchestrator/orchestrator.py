@@ -22,6 +22,7 @@ from typing import Any
 
 from stt.config import AppConfig
 from stt.orchestrator.errors import OrchestratorError, StageInterrupted
+from stt.orchestrator.planned import announce_plan
 from stt.orchestrator.sleepguard import NoopSleepGuard, SleepGuard
 from stt.orchestrator.stageio import load_result, save_result
 from stt.orchestrator.stages import StageRegistry
@@ -72,6 +73,8 @@ class Orchestrator:
                     logger.info("Stage %s is already done with the same settings: skipped.", stage.name)
                     results[stage.name] = StageResult("skipped", stored.summary, stored.artifacts)
                     fingerprints[stage.name] = current
+                    if stage.name == "prepare":
+                        self._announce(plan, handle, results, shared)
                     continue
                 invalidated = True
                 logger.info("Stage %s starts.", stage.name)
@@ -95,6 +98,8 @@ class Orchestrator:
                 fingerprints[stage.name] = current
                 results[stage.name] = result
                 logger.info("Stage %s finished.", stage.name)
+                if stage.name == "prepare":
+                    self._announce(plan, handle, results, shared)
                 if self._stop() and index + 1 < len(stages):
                     return self._stopped(handle, results, f"stop requested after stage {stage.name}")
             if handle.status().status != "completed" or any(r.status == "ok" for r in results.values()):
@@ -102,6 +107,16 @@ class Orchestrator:
         selected = results.get("select_and_register")
         verdict = str(selected.summary.get("verdict", "n/a")) if selected is not None else "n/a"  # the Selector's verdict once the selection stage ran
         return RunOutcome(EXIT_OK, verdict, handle.experiment_id, results, "completed")
+
+    def _announce(self, plan: RunPlan, handle: ExperimentHandle, results: dict[str, StageResult], shared: dict[str, Any]) -> None:
+        """Right after `prepare`: write the planned total time of `run`, `search` or `learning-curve` (`plan.options['announce_plan']`; DECISIONS 78, O114). A problem is logged and never stops the run."""
+        kind = plan.options.get("announce_plan")
+        if not kind:
+            return
+        try:
+            announce_plan(StageContext(self._config, handle, self._services, self._stop, dict(results), dict(plan.options), shared=shared), kind)
+        except Exception as exc:  # noqa: BLE001  the planned time is information only
+            logger.warning("The planned time could not be worked out (%s: %s); the run goes on.", type(exc).__name__, exc)
 
     @staticmethod
     def _stored_fingerprint(handle: ExperimentHandle, stage: str) -> str | None:

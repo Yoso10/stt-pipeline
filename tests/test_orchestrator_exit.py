@@ -67,6 +67,19 @@ class SmokeFullTests(unittest.TestCase):
         self.assertEqual(s["test_once_rule"], "refused")  # the evaluate stage still refuses the Test split
         self.assertIn("VERDICT: winner", self.err)
 
+    def test_the_terminal_shows_the_position_the_percent_the_times_and_the_improvement_line(self) -> None:
+        """Wave 3 task 7 on the REAL tiny model: every long phase writes a plain progress line (no ANSI), and the summary ends with the improvement line."""
+        err = self.err
+        self.assertRegex(err, r"step \d+ of \d+ \(\d+\.\d%\) .*elapsed \d+:\d\d:\d\d remaining \d+:\d\d:\d\d")  # training: step i of N, percent, elapsed, remaining
+        self.assertRegex(err, r"\[exp_0001_trial_\d{3}\] step ")  # the trial's folder name tells the lines of different trials apart
+        self.assertRegex(err, r"PROGRESS WER scoring of the baseline on 'val': clip \d+ of \d+ \(100\.0%\), elapsed \d+:\d\d:\d\d, done")  # the baseline scoring
+        self.assertRegex(err, r"PROGRESS WER scoring of the finalist trial \d+ on 'val': clip \d+ of \d+")
+        self.assertRegex(err, r"PROGRESS WER scoring of the Test, baseline on 'test': clip \d+ of \d+")  # the one-time Test look reports progress too (synthetic Test clips)
+        self.assertIn("PROGRESS finalists: starting finalist 1 of", err)
+        self.assertRegex(err, r"Search progress: trial 1 of \d+ finished \(\d+\.\d%\), elapsed \d+:\d\d:\d\d")
+        self.assertRegex(err, r"VERDICT: winner.*\n.*Test: .*\n.*Relative reduction of the Val WER against the baseline: -?\d+\.\d% \(no target set\)\.")
+        self.assertNotIn("\x1b", err)  # no ANSI escape anywhere in the output
+
     def test_the_data_is_synthetic_and_large_enough_and_the_registry_is_outside_the_experiments(self) -> None:
         manifest = (self.tmp / "smoke" / "manifest.csv").read_text(encoding="utf-8").splitlines()
         self.assertEqual(len(manifest) - 1, FULL_MIN_SAMPLES)  # 60 clips, so that Val and Test have 6 groups each

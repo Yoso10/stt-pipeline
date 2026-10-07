@@ -85,7 +85,10 @@ class Evaluator:
         if not items:
             raise EvaluatorError("There is nothing to evaluate: the item list is empty. Check the split and the SampleFilter report.")
         started = self._clock()
-        raw = self._transcriber.transcribe(request.model, request.dataset, request.settings)
+        if request.on_progress is None:
+            raw = self._transcriber.transcribe(request.model, request.dataset, request.settings)
+        else:  # the callback is passed only when there is one, so a transcriber without the optional parameter keeps working
+            raw = self._transcriber.transcribe(request.model, request.dataset, request.settings, progress=request.on_progress)
         elapsed = self._clock() - started
         if len(raw) != len(items) or any(h.sample_id != i.sample_id for h, i in zip(raw, items, strict=False)):
             bad = next((i.sample_id for h, i in zip(raw, items, strict=False) if h.sample_id != i.sample_id), None)

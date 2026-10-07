@@ -19,6 +19,7 @@ from typing import Any
 from stt.config import AppConfig
 from stt.evaluator import EvalItem, EvalRequest, EvalResult
 from stt.orchestrator.errors import OrchestratorError
+from stt.orchestrator.progress import Progress, progress_interval
 from stt.orchestrator.types import PreparedData, StageContext
 from stt.textnormalizer import NormalizedSample
 
@@ -82,6 +83,7 @@ def evaluate_model(ctx: StageContext, split: str, path: Path | None, label: str,
     model = ctx.services.models.load(path)
     features = ctx.services.models.features(model).build(chosen, split)
     items = make_items(prepared, split, frozenset(features.report.removed_label_ids), model.tokenizer.count_tokens, chosen)
-    request = EvalRequest(items, features.dataset, model, split, prepared.eval_version, prepared.normalize, ctx.services.evaluation.decode_settings(model, items))
+    progress = Progress(f"WER scoring of the {label} on '{split}'", "clip", progress_interval(ctx.config))  # a line at most every `progress.interval_seconds` while the clips are decoded
+    request = EvalRequest(items, features.dataset, model, split, prepared.eval_version, prepared.normalize, ctx.services.evaluation.decode_settings(model, items), on_progress=progress.update)
     logger.info("Evaluating the %s model (%s) on %d files of '%s'.", label, model.info.name, len(items), split)
     return ctx.services.evaluation.evaluate(request)

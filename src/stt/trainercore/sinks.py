@@ -68,28 +68,42 @@ class CsvMetricsSink:
             self._warn(exc)
 
 
+def clock_text(seconds: float) -> str:
+    """A duration as `H:MM:SS` (for example `1:05:09`)."""
+    whole = max(0, int(round(seconds)))
+    return f"{whole // 3600}:{whole % 3600 // 60:02d}:{whole % 60:02d}"
+
+
 class ConsoleMetricsSink:
-    """One log line per record (the log goes to the console and, later, to the run's log file)."""
+    """One log line per record (the log goes to the console and, later, to the run's log file).
+
+    With the total number of steps (`SinkContext.max_steps`) the line says `step 40 of 400 (10.0%)`, and it always shows the elapsed time and the time remaining as `H:MM:SS`;
+    the run folder's name (for example `exp_0004_trial_003`) starts the line, so that the lines of different trials can be told apart."""
 
     def __init__(self, context: SinkContext) -> None:
-        del context  # nothing to prepare
+        self._max_steps = context.max_steps
+        self._label = context.output_dir.name
 
     def write(self, record: StepMetrics) -> None:
         """Log the record."""
         def number(value: float | None, spec: str) -> str:
             return "-" if value is None else format(value, spec)
 
+        where = f"step {record.step}"
+        if self._max_steps:
+            where += f" of {self._max_steps} ({min(100.0, 100.0 * record.step / self._max_steps):.1f}%)"
         logger.info(
-            "step %d (epoch %.2f) train_loss %s val_loss %s lr %s grad_norm %s %.2f s/step elapsed %.0f s eta %s",
-            record.step,
+            "%s%s (epoch %.2f) train_loss %s val_loss %s lr %s grad_norm %s %.2f s/step elapsed %s remaining %s",
+            f"[{self._label}] " if self._label else "",
+            where,
             record.epoch_fraction,
             number(record.train_loss, ".4f"),
             number(record.val_loss, ".4f"),
             number(record.learning_rate, ".3g"),
             number(record.grad_norm, ".3f"),
             record.seconds_per_step,
-            record.elapsed_sec,
-            "-" if record.eta_sec is None else f"{record.eta_sec:.0f} s",
+            clock_text(record.elapsed_sec),
+            "-" if record.eta_sec is None else clock_text(record.eta_sec),
         )
 
 

@@ -28,6 +28,7 @@ from stt.config import AppConfig
 from stt.evaluator import ComparisonResult, EvalResult, eval_result_from_json, eval_result_to_json
 from stt.orchestrator import reporting
 from stt.orchestrator.errors import OrchestratorError, StageInterrupted
+from stt.orchestrator.progress import ItemProgress
 from stt.orchestrator.stagehelpers import evaluate_model, prepared_data, section
 from stt.orchestrator.trials import prepare_trial_folder
 from stt.orchestrator.types import StageContext, StageResult
@@ -155,7 +156,9 @@ class LearningCurveStage:
         logger.info("Learning curve on %s with the hyperparameters from %s.", ", ".join(settings["presets"]), source)
         prepared = prepared_data(ctx)
         val_ids: list[str] | None = None
-        for preset in settings["presets"]:
+        counter = ItemProgress("learning curve", "point", len(settings["presets"]))  # one line when each point starts
+        for number, preset in enumerate(settings["presets"], 1):
+            counter.starting(number, f" (preset '{preset}')")
             subset = service.subset(prepared, preset)  # a size larger than the data fails here, naming the size
             ids = [n.sample.id for n in subset.val]
             if val_ids is not None and ids != val_ids:

@@ -138,10 +138,11 @@ class MetricsSink(Protocol):
 
 @dataclass(frozen=True)
 class SinkContext:
-    """What a sink factory may use: the run's output folder and, when resuming, the step that was resumed from."""
+    """What a sink factory may use: the run's output folder, when resuming the step that was resumed from, and (optional, Wave 3 task 7) the total number of steps of the run."""
 
     output_dir: Path
     resume_step: int | None = None
+    max_steps: int | None = None
 
 
 @dataclass

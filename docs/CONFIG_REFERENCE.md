@@ -20,8 +20,9 @@ Status column: the tag at the start of the key's description in the code (`DEFAU
 - [`eval`](#section-eval): 15 keys
 - [`run`](#section-run): 9 keys
 - [`search`](#section-search): 13 keys
-- [`report`](#section-report): 20 keys
+- [`report`](#section-report): 21 keys
 - [`export`](#section-export): 4 keys
+- [`progress`](#section-progress): 1 keys
 - [`select`](#section-select): 4 keys
 - [`registry`](#section-registry): 5 keys
 - [`pipeline`](#section-pipeline): 4 keys
@@ -274,6 +275,7 @@ The `report` section.
 | `report.histogram_bins` | int | 20 | NEW | NEW, DEFAULT 20. Bins of the per-file WER histogram. |
 | `report.loss_noise_range` | float | 0.01 | NEW | NEW, DEFAULT 0.01 (owner decision 2026-10-07). A Val-loss chart whose plotted values vary by less than this (in loss units) gets the note `Differences this small are noise`; the axis stays automatic. |
 | `report.absolute_audio_paths` | bool | false | NEW | NEW, DEFAULT false (owner decision 2026-10-07). false: the listening list shows each audio path relative to the data folder (when the file is inside it); true: the full path as stored. |
+| `report.target_relative_wer_reduction` | float \| None | null | NEW | NEW, DEFAULT none (owner decision 2026-10-07). The improvement target: a relative reduction of the Val WER against the baseline of the same Val set; 0.10 means 10% (baseline 0.60 -> 0.54 or lower). When set, the report and the summary of `run` say `reached` or `not reached`, and the history chart draws the target. none: the line only shows the reduction (`no target set`). |
 | `report.hints.enabled_rules` | list[str] \| None | null | DEFAULT | DEFAULT none = every registered rule. Registered: overfitting, no_learning, unstable_training, gain_concentrated, short_clip_weakness, length_cap_or_empty, edge_of_range, failed_or_pruned. |
 | `report.hints.overfitting_last_k_evals` | int | 3 | DEFAULT | DEFAULT 3. overfitting: the Val loss rose at each of the last K evaluations while the training loss fell over the same span. |
 | `report.hints.no_learning_min_rel_improvement` | float | 0.01 | DEFAULT | DEFAULT 0.01. no_learning: the best Val loss is less than this share better than the first one. |
@@ -298,6 +300,15 @@ The `export` section.
 | `export.verify` | bool | true | DEFAULT | DEFAULT true. Verify every export (hf_safetensors: the folder loads through the ModelLoader and its architecture and parameter count match). false: the export is recorded as `unverified`. |
 | `export.verify_samples` | int | 5 | DEFAULT | DEFAULT 5. How many files a transcription check uses (for exporters that verify at the `transcribe` level; the caller picks the files). |
 | `export.max_wer_diff` | float | 0.02 | DEFAULT | DEFAULT 0.02. The absolute WER difference allowed between an exported model and the registered one on the check files (transcribe level). |
+
+<a id="section-progress"></a>
+## `progress`
+
+The `progress` section (Wave 3 task 7; DECISIONS 78): how often the live progress lines of the long phases are written.
+
+| Key | Type | Default | Status | Description |
+|---|---|---|---|---|
+| `progress.interval_seconds` | float | 30.0 | DEFAULT | DEFAULT 30 (NEW key). Seconds between two live progress lines of a long phase (the training steps, the clips of a WER scoring); the first and the last line of a phase are always written. The lines are plain text through the logger: the same on a console and in a redirected file, also in logs/run.log. |
 
 <a id="section-select"></a>
 ## `select`
@@ -368,4 +379,4 @@ The `benchmark` section (key and DEFAULT of the C13 brief).
 |---|---|---|---|---|
 | `benchmark.steps` | int | 3 | DEFAULT | DEFAULT 3. Training steps to measure. The first steps are slower than the later ones: raise it for a steadier number. The Val probe is steps x eval.batch_size clips. |
 
-Total: 20 sections, 179 keys.
+Total: 21 sections, 181 keys.

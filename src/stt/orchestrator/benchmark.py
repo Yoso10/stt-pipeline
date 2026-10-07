@@ -22,10 +22,13 @@ from typing import Any
 
 from stt.config import AppConfig
 from stt.orchestrator.errors import OrchestratorError, StageInterrupted
-from stt.orchestrator.planning import Measured, Sizes, benchmark_text, format_duration, project
+from stt.orchestrator.planned import run_sizes
+from stt.orchestrator.resources import folder_size, human_bytes, peak_memory_bytes, resources_text
+from stt.orchestrator.planning import Measured, benchmark_text, format_duration, project
 from stt.orchestrator.stagehelpers import evaluate_model, pipeline_value, prepared_data, section
 from stt.orchestrator.types import StageContext, StageResult
 from stt.trainercore import TrainConfig, TrainRequest, resolve_threads
+from stt.trainercore.run_folder import checkpoints_dir, list_checkpoints
 
 logger = logging.getLogger("stt.orchestrator")
 
@@ -80,23 +83,23 @@ class BenchmarkStage:
         per_val = t.eval_seconds / (t.eval_runs * len(val.dataset)) if t.eval_runs else float("nan")
         scored = evaluate_model(ctx, eval_split, None, "benchmark probe", samples=val_samples)
         per_clip = scored.seconds / max(1, scored.n_files)
-        search = section(ctx.config, "search")
         measured = Measured(model.info.name, resolve_threads(ctx.config.section("train", TrainConfig)), steps, hp.batch_size, hp.grad_accum_steps, t.mean_seconds_per_step, per_val, len(val.dataset), per_clip, scored.n_files)
-        sizes = Sizes(
-            max_steps=base.max_steps,
-            eval_every_steps=int(section(ctx.config, "train")["eval_every_steps"]),
-            n_trials=int(search["n_trials"]),
-            finalists_k=int(search["finalists"]["k"]),
-            parallel_trials=int(search["parallel_trials"]),
-            screening_val=min(len(prepared.kept[eval_split]), int(section(ctx.config, "subsample").get("val_samples") or len(prepared.kept[eval_split]))),  # the Val slice of a trial: a COUNT from the config, no subset is made
-            val_files=len(prepared.kept[eval_split]),
-            test_files=len(prepared.kept.get(test_split, ())),  # a COUNT only: the Test split is not built and not scored
-        )
+        sizes = run_sizes(ctx, prepared)  # the same numbers the plan at the start of a run uses
         projection = project(measured, sizes)
-        text = benchmark_text(measured, sizes, projection)
+        checkpoint_folders = [folder for _, folder in list_checkpoints(checkpoints_dir(output))]
+        resources = {
+            "trial_folder_bytes": folder_size(output),
+            "checkpoint_folders": len(checkpoint_folders),
+            "largest_checkpoint_bytes": max((folder_size(p) for p in checkpoint_folders), default=0),
+            "peak_memory_bytes": peak_memory_bytes(),  # None when it cannot be measured (not Windows, or the call failed)
+            "trial_folders_of_a_run": sizes.n_trials + sizes.finalists_k,
+        }
+        text = benchmark_text(measured, sizes, projection) + "\n" + "\n".join(
+            resources_text(resources["trial_folder_bytes"], resources["checkpoint_folders"], resources["largest_checkpoint_bytes"], resources["peak_memory_bytes"], resources["trial_folders_of_a_run"])
+        ) + "\n"
         for line in text.splitlines():
             logger.info("%s", line)
-        body = {"measured": asdict(measured), "sizes": asdict(sizes), "parts": [{"part": label, "seconds": seconds} for label, seconds in projection.parts], "total_seconds": projection.total_seconds, "notes": list(projection.notes)}
+        body = {"measured": asdict(measured), "sizes": asdict(sizes), "parts": [{"part": label, "seconds": seconds} for label, seconds in projection.parts], "total_seconds": projection.total_seconds, "notes": list(projection.notes), "resources": resources}
         artifacts = [experiment.write_report("benchmark.txt", text), experiment.write_report("benchmark.json", json.dumps(body, indent=1, ensure_ascii=False))]
         summary: dict[str, str | float | int] = {
             "seconds_per_step": round(measured.seconds_per_step, 3),
@@ -108,6 +111,8 @@ class BenchmarkStage:
             "projected_run": format_duration(projection.total_seconds),
             "projection": json.dumps({label: round(seconds) for label, seconds in projection.parts}, ensure_ascii=False),
             "measuring_model_dir": str(result.model_dir),
+            "trial_folder": human_bytes(resources["trial_folder_bytes"]),
+            "peak_memory": human_bytes(resources["peak_memory_bytes"]) if resources["peak_memory_bytes"] is not None else "not measured",
         }
         return StageResult("ok", summary, artifacts)
 

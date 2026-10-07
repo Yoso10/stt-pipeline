@@ -141,6 +141,10 @@ class SelectAndRegisterStage:
             "registry_dir": registry_dir,
             "reason": selection.reason,
         }
+        rows = list(selection.comparison_table)  # the best model for the improvement line: the winner's row, else the best finalist (the first row), as the report shows it
+        best = next((r for r in rows if selection.winner is not None and r.trial_id == selection.winner.trial_id), rows[0] if rows else None)
+        if best is not None:
+            summary.update({"best_trial": best.trial_id, "best_val_wer": round(best.val_wer, 4), "best_val_verdict": str(best.verdict)})
         if selection.test_baseline is not None and selection.test_winner is not None:
             summary.update({"test_baseline_wer": round(selection.test_baseline.wer, 4), "test_winner_wer": round(selection.test_winner.wer, 4)})
         if selection.test_error:

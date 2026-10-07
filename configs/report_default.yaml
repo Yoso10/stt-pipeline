@@ -8,6 +8,9 @@ extends: base.yaml
 report:
   # Empty = the experiment name.
   title: null
+  # The improvement target: a relative reduction of the Val WER against the baseline of the same Val set. 0.10 = 10% (baseline 0.60 -> 0.54 or lower). null = no target:
+  # the report and the end of `run` then only show the reduction (`no target set`). When set, they say `reached` or `not reached` and the history chart draws the target.
+  target_relative_wer_reduction: null
   # The per-file attributes whose rank correlation with the per-file WER is shown. They are the keys the Orchestrator gives the Evaluator:
   # duration, ref_words, label_tokens, extra_<column> (for example extra_meta_quality_score, shown only if present), flag_<text flag> (a file without the flag counts as 0).
   attributes: [duration, label_tokens, ref_words, extra_meta_quality_score, flag_had_digits, flag_had_latin, flag_had_brackets]

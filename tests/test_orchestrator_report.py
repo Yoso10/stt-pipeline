@@ -116,6 +116,35 @@ class ReportCommandTests(ReportCase):
         html = (self.experiments / "exp_0001" / "reports" / "report.html").read_text(encoding="utf-8")
         self.assertIn("Not available in this run: the learning curve", html)
 
+    def test_the_history_chart_reads_the_registry_cards_and_the_target_adds_the_dashed_line_and_the_verdict_line(self) -> None:
+        """Wave 3 task 7: one point per registered experiment from the stored cards; the target comes from report.target_relative_wer_reduction."""
+        code, summary, err = self.report("--experiment", "exp_0001", "--set", "report.target_relative_wer_reduction=0.1")
+        self.assertEqual(code, 0, err)
+        assert summary is not None
+        self.assertEqual(summary["inputs"]["history"], "1 registered experiment(s)")
+        html = (self.experiments / "exp_0001" / "reports" / "report.html").read_text(encoding="utf-8")
+        part = html.split('<h2 id="history">')[1].split("<h2")[0]
+        self.assertIn("model_0001", part)
+        self.assertIn("target: 10% below the baseline", part)
+        self.assertEqual(part.count("stroke-dasharray"), 1)
+        self.assertIn("Relative reduction of the Val WER against the baseline:", html.split("<h2")[0])  # in the verdict section at the top
+        self.assertIn("(target: 10%)", html.split("<h2")[0])
+        code, no_target, err = self.report("--experiment", "exp_0001")
+        self.assertIn("(no target set)", (self.experiments / "exp_0001" / "reports" / "report.html").read_text(encoding="utf-8").split("<h2")[0])
+
+    def test_an_experiment_without_a_selection_takes_the_history_from_the_configured_registry_or_names_it_missing(self) -> None:
+        code, summary, err = self.report("--experiment", "exp_0003", "--set", f"registry.dir={(self.tmp / 'registry').as_posix()}")
+        self.assertEqual(code, 0, err)
+        assert summary is not None
+        self.assertEqual(summary["inputs"]["history"], "1 registered experiment(s)")
+        empty = self.tmp / "no_registry_here"
+        code, summary, err = self.report("--experiment", "exp_0003", "--set", f"registry.dir={empty.as_posix()}")
+        self.assertEqual(code, 0, err)
+        assert summary is not None
+        self.assertIn("missing", summary["inputs"]["history"])
+        self.assertIn("History: the Val WER of each registered experiment", summary["sections_without_data"])  # named, never an empty chart
+        self.assertFalse(empty.exists())  # reading a registry that is not there creates nothing
+
     def test_an_experiment_with_its_own_curve_file_uses_it_and_the_default_experiment_is_the_latest(self) -> None:
         code, summary, err = self.report("--experiment", "exp_0002")
         self.assertEqual(code, 0, err)

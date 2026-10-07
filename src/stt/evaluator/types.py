@@ -59,8 +59,11 @@ class RawHypothesis:
 class Transcriber(Protocol):
     """Transcribes every example of a dataset. The Hugging Face adapter is the only implementation that needs the model."""
 
-    def transcribe(self, model: LoadedModel, dataset: FeatureDataset, settings: DecodeSettings) -> list[RawHypothesis]:
-        """Return one hypothesis per example, in dataset order."""
+    def transcribe(
+        self, model: LoadedModel, dataset: FeatureDataset, settings: DecodeSettings, progress: Callable[[int, int], None] | None = None
+    ) -> list[RawHypothesis]:
+        """Return one hypothesis per example, in dataset order. `progress(done, total)` is optional (Wave 3 task 7): when given, the implementation calls it after every batch with the number of
+        examples transcribed so far; a failing callback must not stop the transcription. The Evaluator passes it ONLY when the request has one."""
         ...
 
 
@@ -93,6 +96,7 @@ class EvalRequest:
     eval_version: int
     normalize: Callable[[str], str]
     settings: DecodeSettings
+    on_progress: Callable[[int, int], None] | None = field(default=None, compare=False, repr=False)  # optional (Wave 3 task 7): (examples transcribed, total) after every batch
 
 
 @dataclass(frozen=True)

@@ -108,7 +108,7 @@ class TrainerCore:
         logger.info(
             "Freeze policy %s: %d of %d parameters are trained.", freeze_report.policy, freeze_report.trainable_params, freeze_report.total_params
         )
-        context = SinkContext(output_dir, resume_step)
+        context = SinkContext(output_dir, resume_step, request.hyperparams.max_steps)
         job = TrainingJob(
             request=request,
             checkpoints_dir=checkpoints,
