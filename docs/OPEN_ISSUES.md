@@ -259,3 +259,7 @@ b. NEXT: build the approved parts of Wave 3 task 7 with tests and the real check
 ### Status after Wave 3 task 7 (2026-10-07)
 a. BUILT, AWAITING THE OWNER'S APPROVAL: live progress, the planned time, the improvement line, the history chart and the benchmark resources (DECISIONS 79). New key `progress.interval_seconds` (30) and `report.target_relative_wer_reduction` (none); additive hooks `EvalRequest.on_progress`, `Transcriber.transcribe(progress=)`, `SinkContext.max_steps`; the searcher's finish line text. Real checks: `data/load_out/part11_real_progress_check.txt` (a short `run` live and redirected, the verdict line, the history chart) and the real `benchmark` on 100 Val clips. The owner starts the first REAL training himself: the commands are in the report of this task.
 b. NEXT: Wave 3 task 8: the presets (`home_full` for whisper-tiny with the 10% target, `work_like`, `work`), then the RUNBOOK check (O91). NEW open points from the real checks: O119 (the benchmark and a long warmup), O120 (the step time varies between measurements).
+
+### Status after the owner's delegation (2026-10-08)
+a. DELEGATED (DECISIONS 80): phases A to E in order. Authorized real run: ONLY `data/rehearsal_run.yaml` resumed as `exp_0002`. NOT authorized: `data/full_run.yaml` (prepared only).
+b. NEXT: phase A (resume the rehearsal), then B, C, D, E and the final report.
