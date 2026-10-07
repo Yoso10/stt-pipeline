@@ -6,9 +6,9 @@ How to run: this module is not a script; `check` and the experiment records use 
 Example output:
     0.0.0
 Option (a), owner decision 2026-10-05 (O71): the version is the constant `stt.__version__`. Option (b), the hash of the sources, is prepared:
-when a `MANIFEST.sha256` file exists in the project root (made by `tools/make_manifest.py`, a Wave 3 tool that does not exist yet), the
+when a `MANIFEST.sha256` file exists in the project root (made by `tools/make_manifest.py`, Wave 3 task 6), the
 first 8 characters of its hash are appended (`0.0.0+1a2b3c4d`). Verifying the sources against the manifest is the job of that tool and of `check`
-once the tool exists; today `check` only says whether the manifest is there.
+once the tool exists; today `check` only says whether the manifest is there (the verification is `python tools/make_manifest.py --verify`, DECISIONS 73).
 """
 
 from __future__ import annotations

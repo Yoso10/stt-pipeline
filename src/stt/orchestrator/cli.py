@@ -10,6 +10,8 @@ How to run (PowerShell, project root; set the path to the sources once per windo
     python -m stt evaluate --config my.yaml   # prepare + baseline (and trained) model on the Val split
     python -m stt search   --config my.yaml   # prepare + the hyperparameter search (a few small trials on a screening subset, objective: Val loss)
     python -m stt run      --config my.yaml   # the whole pipeline: prepare, baseline on Val, search, finalists retrained on the full data, selection (Test ONCE), registry
+    python -m stt cleanup --config my.yaml            # PROPOSE what could be deleted (sizes, reasons) into a text file; it never deletes anything
+    python -m stt config-docs                         # write docs/CONFIG_REFERENCE.md from the config schemas
     python -m stt registry list   --config my.yaml    # what is registered, with the number of exports of each entry (read only); also: registry verify [model_0001], registry rebuild-index
     python -m stt export model_0001 --config my.yaml  # export a registered model (default: the latest entry) in the formats of export.formats and record it in the entry's exports.json
     python -m stt learning-curve --config my.yaml     # the same settings on increasing Train sizes, Val WER per size, and a plain reading (still improving or flat)
@@ -31,7 +33,7 @@ winner's values of that experiment) and scores the SAME Val set; `benchmark` tra
 learning curve and the benchmark with `--curve-from` and `--benchmark-from`; the `report.*` settings come from `--config` / `--set`. The live progress page of a trial is switched on with
 `--set 'train.sinks=["csv","console","html"]'` and is `metrics/<trial>/progress.html`. `run` also exports the registered winner automatically (the formats of `export.formats`, default hf_safetensors: nothing is
 copied, the folder is verified to load; skipped for a retained baseline); `export` repeats or adds an export for any existing registry entry (it only writes `exports.json` and `exports/` of that entry; exit code 2 for
-an unknown entry or format, 5 for a failed export or verification). Nothing is deleted by any command. Not in this version: cleanup, config-docs (later waves).
+an unknown entry or format, 5 for a failed export or verification). Nothing is deleted by any command (`cleanup` only writes a proposal).
 """
 
 from __future__ import annotations
@@ -57,8 +59,10 @@ from stt.orchestrator.orchestrator import Orchestrator
 from stt.orchestrator.sleepguard import default_sleep_guard
 from stt.orchestrator.smoke import FULL_MIN_SAMPLES, full_overrides, write_smoke_data
 from stt.orchestrator.stopflag import InterruptFlag
+from stt.orchestrator.cleanupcmd import megabytes, propose_cleanup, render_proposal, total_size, write_proposal
+from stt.orchestrator.configdocs import count_keys, render_config_reference, write_reference
 from stt.orchestrator.types import RunOutcome, RunPlan, StageContext
-from stt.orchestrator.wiring import ExportWiring, RegistryWiring, ReportWiring, Runtime, experiment_catalog, build_runtime, exit_code_for, library_versions, section_registry
+from stt.orchestrator.wiring import ExportWiring, RegistryWiring, ReportWiring, Runtime, documented_sections, experiment_catalog, build_runtime, exit_code_for, library_versions, section_registry
 from stt.modelexporter import ExportConfig, ExportConfigError, ExportError
 from stt.registry import RegistryConfig
 from stt.reportbuilder import ReportConfig
@@ -68,6 +72,7 @@ logger = logging.getLogger("stt.orchestrator")
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 PLANS = {"prepare": ["prepare"], "train": ["prepare", "train"], "evaluate": ["prepare", "evaluate"], "search": ["prepare", "search"], "learning-curve": ["prepare", "learning_curve"], "benchmark": ["prepare", "benchmark"], "smoke": ["prepare", "train", "evaluate"]}  # `run` uses pipeline.stages
 DEFAULT_SMOKE_CONFIG = Path("configs/smoke.yaml")
+DEFAULT_CONFIG_REFERENCE = Path("docs/CONFIG_REFERENCE.md")
 
 
 def _now() -> str:
@@ -132,6 +137,23 @@ def build_parser() -> argparse.ArgumentParser:
     add_config_arguments(export)
     export.add_argument("entry", nargs="?", default=None, help="the registry entry, for example model_0001 (default: the latest entry)")
     export.add_argument("--format", action="append", default=None, help="an exporter name (repeatable); default: export.formats")
+    cleanup = commands.add_parser(
+        "cleanup",
+        help="PROPOSE what could be deleted (checkpoint and candidate folders of completed experiments) into a text file; it never deletes anything",
+        description="Write a proposal of what could be deleted, with sizes and reasons. NOTHING is deleted by this command; you delete by hand.\nExample:  python -m stt cleanup --config my.yaml --older-than-days 30",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    add_config_arguments(cleanup)
+    cleanup.add_argument("--older-than-days", type=int, default=None, help="only experiments created at least this many days ago (default: no age filter)")
+    cleanup.add_argument("--include-failed", action="store_true", help="also list the whole folders of FAILED experiments (never listed by default)")
+    cleanup.add_argument("--out", type=Path, default=None, help="the proposal file (default: cleanup_proposal_<date>.txt next to the experiments folder; an existing file is never overwritten)")
+    config_docs = commands.add_parser(
+        "config-docs",
+        help="write the key reference docs/CONFIG_REFERENCE.md from the config schemas",
+        description="Generate the config key reference from the code (key, type, default, status, explanation).\nExample:  python -m stt config-docs --out docs/CONFIG_REFERENCE.md",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    config_docs.add_argument("--out", type=Path, default=None, help=f"the file to write (default: {DEFAULT_CONFIG_REFERENCE.as_posix()}; an existing file that this command did not make is not overwritten)")
     registry = commands.add_parser(
         "registry",
         help="look at the model registry (read only): list, verify, rebuild-index",
@@ -378,6 +400,57 @@ def _export(args: argparse.Namespace) -> int:
     return int(body["exit_code"])  # type: ignore[call-overload]
 
 
+def _cleanup(args: argparse.Namespace) -> int:
+    """`cleanup`: write a PROPOSAL of what could be deleted. Reads the experiments folder; writes only the proposal file; deletes nothing."""
+    try:
+        tree = apply_overrides(load_yaml_with_extends(args.config) if args.config is not None else {}, [parse_set(item) for item in args.config_overrides])
+        run = RunConfig.model_validate(tree.get("run", {}))
+        registry_dir = RegistryConfig.model_validate(tree.get("registry", {})).dir  # only the sections the command needs: no data or model settings
+        now = _now()
+        proposal = propose_cleanup(experiment_catalog(run), run.experiments_dir, registry_dir, now, args.older_than_days, args.include_failed)
+        stamp = now.replace("-", "").replace(":", "")
+        target = args.out if args.out is not None else run.experiments_dir.resolve().parent / f"cleanup_proposal_{stamp}.txt"
+        write_proposal(render_proposal(proposal), target)
+    except Exception as exc:
+        return _error(f"{type(exc).__name__}: {exc}", exit_code_for(exc))
+    print(f"Proposal written to: {target}", file=sys.stderr)
+    print(
+        f"Nothing was deleted. Checkpoint folders: {len(proposal.checkpoints)} ({megabytes(total_size(proposal.checkpoints))}); candidate folders: {len(proposal.candidates)} "
+        f"({megabytes(total_size(proposal.candidates))}, includes the checkpoints)" + (f"; failed experiments: {len(proposal.failed)} ({megabytes(total_size(proposal.failed))})" if args.include_failed else "")
+        + f"; not proposed: {len(proposal.skipped)}.",
+        file=sys.stderr,
+    )
+    body = {
+        "proposal_file": str(target),
+        "experiments_dir": str(run.experiments_dir),
+        "checkpoint_folders": len(proposal.checkpoints),
+        "checkpoint_bytes": total_size(proposal.checkpoints),
+        "candidate_folders": len(proposal.candidates),
+        "candidate_bytes": total_size(proposal.candidates),
+        "failed_experiments": len(proposal.failed),
+        "failed_bytes": total_size(proposal.failed),
+        "not_proposed": len(proposal.skipped),
+        "deleted": 0,
+        "exit_code": 0,
+    }
+    print(json.dumps(body, indent=1, ensure_ascii=False))
+    return 0
+
+
+def _config_docs(args: argparse.Namespace) -> int:
+    """`config-docs`: write the key reference from the config schemas. It only reads the schemas; writes only the reference file."""
+    target = args.out if args.out is not None else DEFAULT_CONFIG_REFERENCE
+    try:
+        text = render_config_reference(documented_sections())
+        write_reference(text, target)
+    except Exception as exc:
+        return _error(f"{type(exc).__name__}: {exc}", exit_code_for(exc))
+    sections, keys = count_keys(text)
+    print(f"Wrote {target}: {sections} sections, {keys} keys.", file=sys.stderr)
+    print(json.dumps({"reference_file": str(target), "sections": sections, "keys": keys, "exit_code": 0}, indent=1, ensure_ascii=False))
+    return 0
+
+
 def _registry(args: argparse.Namespace) -> int:
     """`registry list|verify|rebuild-index`: the registry folder of the config, no experiment is made. Read only except `rebuild-index`."""
     try:
@@ -445,6 +518,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _report(args)
     if args.command == "export":
         return _export(args)
+    if args.command == "cleanup":
+        return _cleanup(args)
+    if args.command == "config-docs":
+        return _config_docs(args)
     overrides = list(args.config_overrides)
     if args.command == "learning-curve" and args.params_from:
         overrides.append(f"learning_curve.params_from={args.params_from}")  # a config value, so it is stored with the experiment and part of the stage's fingerprint

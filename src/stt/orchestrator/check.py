@@ -8,7 +8,7 @@ Example output:
     OK       Python 3.12.14 (tested with 3.12)
     OK       package torch 2.14.1
     ...
-    INFO     code version 0.0.0 (the manifest MANIFEST.sha256 is not there: made by tools/make_manifest.py, a later tool)
+    INFO     code version 0.0.0 (the manifest MANIFEST.sha256 is not there: made at home by tools/make_manifest.py)
     Everything checked is fine.            (exit code 0)   or   2 problem(s) found: ...   (exit code 2)
 Checks: the Python version, every required package (read from the installed metadata, nothing heavy is imported), the model and data folders of the
 config when one is given, the free disk space, the memory, the number of cores, the code version and the manifest. The Python version, the disk, the memory
@@ -81,7 +81,7 @@ def run_checks(config: AppConfig | None, project_root: Path, disk_path: Path) ->
     memory = memory_gb()
     lines.append(CheckLine("INFO", f"memory: {memory:.1f} GB" if memory is not None else "memory: could not be read"))
     lines.append(CheckLine("INFO", f"cores: {os.cpu_count()}"))
-    suffix = "" if manifest_hash(project_root) is not None else f" (the manifest {MANIFEST_NAME} is not there: it is made by tools/make_manifest.py, a later tool, so the code was not verified)"
+    suffix = "" if manifest_hash(project_root) is not None else f" (the manifest {MANIFEST_NAME} is not there: it is made at home by tools/make_manifest.py; verify with `python tools/make_manifest.py --verify`)"
     lines.append(CheckLine("INFO", f"code version {code_version(project_root)}{suffix}"))
     return lines
 

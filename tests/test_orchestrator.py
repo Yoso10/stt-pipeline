@@ -464,7 +464,7 @@ class CommandLineTests(unittest.TestCase):
 
     def test_an_unknown_command_is_refused_by_the_parser(self) -> None:
         with contextlib.redirect_stderr(io.StringIO()) as err, self.assertRaises(SystemExit) as ctx:
-            cli.main(["cleanup"])
+            cli.main(["deploy"])
         self.assertEqual(ctx.exception.code, 2)
         self.assertIn("invalid choice", err.getvalue())
 

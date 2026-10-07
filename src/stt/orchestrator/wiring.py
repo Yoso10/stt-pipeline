@@ -17,7 +17,9 @@ from datetime import datetime
 from importlib import metadata
 from pathlib import Path
 
-from stt.config import AppConfig, ConfigError, SectionRegistry, load_config
+from pydantic import BaseModel
+
+from stt.config import AppConfig, ConfigError, RuntimeConfig, SectionRegistry, load_config
 from stt.datasource import DataConfig, DataSourceError, create_data_source
 from stt.evaluator import Comparator, ComparisonResult, DecodeSettings, EvalConfig, EvalItem, EvalRequest, Evaluator, EvaluatorConfigError, EvaluatorError, EvalResult, make_decode_settings
 from stt.featurepipeline import FeaturePipeline, FeaturePipelineError, FeaturesConfig
@@ -82,6 +84,11 @@ def section_registry() -> SectionRegistry:
             "benchmark": BenchmarkConfig,
         }
     )
+
+
+def documented_sections() -> dict[str, type[BaseModel]]:
+    """Every config section that `config-docs` documents: `runtime` (always present) and the registered sections, in this order."""
+    return {"runtime": RuntimeConfig, **section_registry().sections}
 
 
 def library_versions() -> dict[str, str]:
