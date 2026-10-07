@@ -222,6 +222,7 @@ How to use: one entry per component. The agent writes or updates the entry at th
   - `eval.sanity.max_baseline_wer` [DEFAULT: null = off]
   - the seed comes from `runtime.seed` (given to the Evaluator and the Comparator by the composition root)
 - Wave 3 task 7 (DECISIONS 79): `EvalRequest.on_progress` (optional, default none): `(examples transcribed, total)` after every batch. `Transcriber.transcribe(model, dataset, settings, progress=None)`: the Evaluator passes `progress` only when the request has one, so a transcriber without the parameter keeps working; the Hugging Face adapter calls it after every batch and ignores an error in it. The Orchestrator sets it in `evaluate_model`, the one place where a model is scored.
+- Phase C (DECISIONS 81): `HfTranscriber()` installs the log filter `KnownHarmlessWarnings` on the logger `transformers.generation.utils` (once): it hides two known harmless messages (`Both `max_new_tokens` and `max_length` ...`, written at every batch, and `The attention mask is not set with a batched input`) and nothing else. Evidence that the mask message does not change a transcription: `data/load_out/phaseC_attention_mask_evidence.txt`. Tests: `tests/test_console_hygiene.py`.
 
 ## C8 HyperparamSearcher
 - Status: built (wave 2); NOT wired into the Orchestrator yet (the `search` stage is a separate later task); checked with a fake trial runner and once with a real two-trial search on the tiny test model through the TrainerCore

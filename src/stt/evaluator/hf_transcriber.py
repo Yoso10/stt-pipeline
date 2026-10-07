@@ -6,11 +6,13 @@ example is in docs/COMPONENTS.md, C7). It does the following and nothing else:
   - uses the language and task that the ModelLoader wrote into the model (no timestamps are generated);
   - applies the token cap of each file (`settings.token_caps`, else `settings.max_new_tokens`, clamped to what the model can hold) and flags
     an output that used its whole cap without ending as `hit_length_cap` (the text is cut at the cap);
-  - applies an optional thread limit (`threads`, wired by the composition root, for example from `train.cpu_threads`) during the call only.
+  - applies an optional thread limit (`threads`, wired by the composition root, for example from `train.cpu_threads`) during the call only;
+  - hides TWO known harmless messages that the transformers library writes at every batch (Wave 3 task 7b, DECISIONS 81), and nothing else: see `KnownHarmlessWarnings`.
 """
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from typing import Any
 
@@ -24,6 +26,29 @@ from stt.modelloader import LoadedModel
 
 _OOM_SIGNS = ("out of memory", "defaultcpuallocator", "can't allocate memory", "not enough memory")
 _PROMPT_TOKENS = 5  # the decoder prefix (start, language, task, no timestamps) and one token of margin
+GENERATION_LOGGER = "transformers.generation.utils"  # the logger that writes the two messages below (checked with a spy handler)
+HARMLESS_PREFIXES = (
+    # `max_new_tokens` and the model's own `max_length` are both set: the library says itself that `max_new_tokens` takes precedence, and the transcriber ALWAYS passes `max_new_tokens`.
+    "Both `max_new_tokens`",
+    # Whisper's encoder takes fixed 30 s features and ignores this mask, and every decoder prompt of a batch has the same length. EVIDENCE (12 real Val clips, three ways of decoding: no mask, an all-ones mask,
+    # a mask of the real audio): identical token ids in 12 of 12 clips and identical WER (data/load_out/phaseC_attention_mask_evidence.txt).
+    "The attention mask is not set with a batched input",
+)
+
+
+class KnownHarmlessWarnings(logging.Filter):
+    """A log filter that drops the records whose message starts with one of `HARMLESS_PREFIXES` and passes every other record (also the other warnings of the same logger)."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        """False (drop) for the two known harmless messages, True for everything else."""
+        return not record.getMessage().startswith(HARMLESS_PREFIXES)
+
+
+def hide_known_harmless_warnings() -> None:
+    """Install the filter on the generation logger of transformers (once: calling it again does nothing). It changes no decoding result; it only keeps two messages out of the console."""
+    logger = logging.getLogger(GENERATION_LOGGER)
+    if not any(isinstance(f, KnownHarmlessWarnings) for f in logger.filters):
+        logger.addFilter(KnownHarmlessWarnings())
 
 
 class HfTranscriber:
@@ -31,6 +56,7 @@ class HfTranscriber:
 
     def __init__(self, threads: int | None = None) -> None:
         self._threads = threads
+        hide_known_harmless_warnings()
 
     def transcribe(
         self, model: LoadedModel, dataset: FeatureDataset, settings: DecodeSettings, progress: Callable[[int, int], None] | None = None
