@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 sys.path.insert(0, str(ROOT / "tests"))  # worker processes inherit sys.path, so search_fakes can be imported there too
 
-from search_fakes import BowlRunner, ClockRunner, DyingRunner, InterruptingRunner, RecordingRunner, ScriptedRunner, bowl, metrics  # noqa: E402
+from search_fakes import BowlRunner, ClockRunner, DyingRunner, InterruptingRunner, RecordingRunner, ScriptedRunner, bowl, metrics, read_trial_log  # noqa: E402
 
 from stt.config import SectionRegistry, load_config  # noqa: E402
 from stt.searcher import (  # noqa: E402
@@ -275,7 +275,7 @@ class ParallelTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             log = str(Path(tmp) / "trials.jsonl")
             result = searcher().search(make_spec(n_trials=4, parallel_trials=2, total_threads=4), RecordingRunner(log, sleep=0.2))
-            rows = [json.loads(line) for line in Path(log).read_text(encoding="utf-8").splitlines()]
+            rows = read_trial_log(log)  # one file per worker process (O108)
         self.assertEqual(sorted(r["trial"] for r in rows), [0, 1, 2, 3])  # every trial ran exactly once
         self.assertEqual(sorted(r.trial.trial_id for r in result.trials), [0, 1, 2, 3])  # and is recorded once
         self.assertEqual({r["threads"] for r in rows}, {2})  # 4 threads divided by 2 parallel trials
@@ -292,7 +292,7 @@ class ParallelTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             log = str(Path(tmp) / "t.jsonl")
             searcher().search(make_spec(n_trials=2, parallel_trials=1, total_threads=4), RecordingRunner(log))
-            rows = [json.loads(line) for line in Path(log).read_text(encoding="utf-8").splitlines()]
+            rows = read_trial_log(log)
         self.assertEqual({r["threads"] for r in rows}, {4})
 
     def test_a_worker_that_dies_is_recorded_as_a_failed_trial_and_more_parallel_trials_than_cores_fail(self) -> None:

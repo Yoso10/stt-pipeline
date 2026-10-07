@@ -10,6 +10,7 @@ import math
 import os
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 from stt.searcher import Trial, TrialOutcome
 from stt.trainercore import StepMetrics
@@ -60,8 +61,19 @@ class ScriptedRunner:
         return TrialOutcome("complete", bowl(dict(trial.params)), 50, 0.1)
 
 
+def read_trial_log(path: str) -> list[dict[str, Any]]:
+    """Every record that `RecordingRunner(path)` wrote, from all of its per-process files (`<path>.<pid>`), in file-name order."""
+    folder, prefix = Path(path).parent, Path(path).name + "."
+    rows: list[dict[str, Any]] = []
+    for part in sorted(p for p in folder.iterdir() if p.name.startswith(prefix)):
+        rows.extend(json.loads(line) for line in part.read_text(encoding="utf-8").splitlines())
+    return rows
+
+
 class RecordingRunner:
-    """Appends one JSON line per trial (trial id, process id, thread limit) to a file, then behaves like the bowl; used to verify parallel mode."""
+    """Appends one JSON line per trial (trial id, process id, thread limit) to a file of ITS OWN PROCESS (`<path>.<pid>`), then behaves like the bowl; used to verify parallel mode.
+
+    One file per process, never one shared file: concurrent appends from two processes are not atomic on Windows and lost or corrupted lines (O108, DECISIONS 75). Read the records with `read_trial_log(path)`."""
 
     def __init__(self, path: str, sleep: float = 0.0) -> None:
         self.path = path
@@ -72,7 +84,7 @@ class RecordingRunner:
 
         time.sleep(self.sleep)
         stop = report(metrics(50, bowl(dict(trial.params))))
-        with open(self.path, "a", encoding="utf-8") as handle:  # one short append per trial: safe enough for the test
+        with open(f"{self.path}.{os.getpid()}", "a", encoding="utf-8") as handle:  # only this process appends to this file
             handle.write(json.dumps({"trial": trial.trial_id, "pid": os.getpid(), "threads": trial.threads, "stop": stop}) + "\n")
         return TrialOutcome("complete", bowl(dict(trial.params)), 50, 0.1)
 
