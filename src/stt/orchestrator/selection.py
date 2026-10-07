@@ -12,7 +12,11 @@ winner and the baseline (never when the baseline stays), the Test split is score
 experiment is returned instead of a second look (`testlook.py`); (4) writes `reports/selection.json`, `selection_table.csv` and `selection_reason.txt`; (5) fills the model card
 (`card_from_selection`: the fingerprints of the prepare stage, the base model, the config reference, the library versions, the seed, the code version, the time) and registers it with the
 review list of the winner. NOTHING IS DELETED: the request names no finalist folder, so the registry removes no finalist and no checkpoint (owner rule, DECISIONS 56); only the winner's model
-folder is moved into the registry (`registry.transfer`, see C10). After a registration the winner's model is at `registry/model_NNNN/model`.
+folder is moved into the registry (`registry.transfer`, see C10). After a registration the winner's model is at `registry/model_NNNN/model`. (6) AUTOMATIC EXPORT (C11, Wave 3 task 5, DECISIONS 71): when a winner was
+registered, the model is exported for every format of `export.formats` (default `hf_safetensors`: no copy, verified at the load level) and recorded in the entry's `exports.json`; for a retained baseline
+the step is skipped and logged. A failed export fails the stage with exit code 5 (the registration stays: it is already done); a rerun does not register or export again unless the entry has no export yet,
+and it fails again while the LATEST export of a format is `failed` (`python -m stt export` repeats an export). The `export` section is part of the stage's fingerprint only when it differs from the defaults,
+so experiments that finished before the export existed keep their completed stage.
 """
 
 from __future__ import annotations
@@ -25,6 +29,7 @@ from typing import Any
 from stt.config import AppConfig
 from stt.evaluator import EvalResult, eval_result_from_json
 from stt.orchestrator import reporting
+from stt.modelexporter import ExportConfig, ExportError, ExportRecord
 from stt.orchestrator.errors import OrchestratorError
 from stt.orchestrator.finalists import load_finalists
 from stt.orchestrator.stageio import load_result
@@ -66,7 +71,12 @@ class SelectAndRegisterStage:
 
     def config_slice(self, config: AppConfig) -> Mapping[str, Any]:
         """select, registry, eval, model, text, the data sections, subsample, the pipeline split names and the seed."""
-        return {"seed": config.runtime.seed, **{n: section(config, n) for n in ("select", "registry", "eval", "model", "text", "subsample", "data", "split", "filter", "pipeline")}}
+        names = ("select", "registry", "eval", "model", "text", "subsample", "data", "split", "filter", "pipeline")
+        slice_: dict[str, Any] = {"seed": config.runtime.seed, **{n: section(config, n) for n in names}}
+        export = section(config, "export")
+        if export and export != ExportConfig().model_dump(mode="json"):  # only a CHANGED export section counts, so experiments that finished before the export existed keep their completed stage
+            slice_["export"] = export
+        return slice_
 
     def run(self, ctx: StageContext) -> StageResult:
         """Select and register. Errors: OrchestratorError (exit code 2) for a registry inside the experiments, a missing baseline or finalist result; SelectorError (exit code 4, also when
@@ -80,7 +90,8 @@ class SelectAndRegisterStage:
         if existing:
             entry = existing[-1]
             logger.info("This experiment is already registered as %s: nothing is selected or registered again.", entry.entry_id)
-            return StageResult("ok", {"verdict": "winner" if entry.kind == "model" else "baseline_retained", "entry_id": entry.entry_id, "already_registered": 1, "registry_dir": str(services.registry.location())}, [entry.card_path])
+            exported, export_files = self._automatic_export(ctx, entry.entry_id, entry.kind, rerun=True)
+            return StageResult("ok", {"verdict": "winner" if entry.kind == "model" else "baseline_retained", "entry_id": entry.entry_id, "already_registered": 1, "registry_dir": str(services.registry.location()), "export": exported}, [entry.card_path, *export_files])
         baseline = self._baseline(ctx)
         candidates = load_finalists(experiment)
         test_split = pipeline_value(ctx.config, "test_split", "test")
@@ -134,7 +145,35 @@ class SelectAndRegisterStage:
             summary.update({"test_baseline_wer": round(selection.test_baseline.wer, 4), "test_winner_wer": round(selection.test_winner.wer, 4)})
         if selection.test_error:
             summary["test_error"] = selection.test_error
-        return StageResult("ok", summary, [*artifacts, entry.card_path])
+        summary["export"], export_files = self._automatic_export(ctx, entry.entry_id, entry.kind, rerun=False)  # an ExportError here is exit code 5; the registration above stays
+        return StageResult("ok", summary, [*artifacts, entry.card_path, *export_files])
+
+    @staticmethod
+    def _automatic_export(ctx: StageContext, entry_id: str, kind: str, rerun: bool) -> tuple[str, list[Path]]:
+        """The automatic export after a registration: (a short text for the summary, the files it made). Skipped and logged for a retained baseline or when no export service is wired.
+
+        On a rerun of an already registered experiment: an entry with no export yet is exported; an entry whose LATEST export of some format is `failed` fails again (the failure is not hidden);
+        otherwise nothing is exported again. Errors: ExportError (exit code 5), ExportConfigError (exit code 2)."""
+        service = ctx.services.export
+        if service is None:
+            return "not wired", []
+        if kind != "model":
+            logger.info("The registry entry %s kept the baseline: nothing to export, the automatic export is skipped.", entry_id)
+            return "skipped (the baseline was retained: nothing to export)", []
+        now = (ctx.services.now or (lambda: ""))()
+        if rerun:
+            latest: dict[str, ExportRecord] = {}
+            for record in service.records(entry_id):
+                latest[record.exporter] = record
+            failed = [name for name, record in latest.items() if record.status == "failed"]
+            if failed:
+                raise ExportError(f"The latest export of {entry_id} with {', '.join(failed)} failed (see its exports.json). Look at the detail there, fix the cause, and repeat it with `python -m stt export {entry_id}`.")
+            if latest:
+                return "done earlier (" + ", ".join(f"{n} {r.status}" for n, r in sorted(latest.items())) + ")", []
+        records = service.export(entry_id, None, explicit=False, exported_at=now)
+        entry_dir = ctx.services.registry.location() / entry_id if ctx.services.registry is not None else None
+        files = [entry_dir / "exports.json"] if entry_dir is not None and records else []
+        return ", ".join(f"{r.exporter} {r.status}" for r in records) or "nothing to export", files
 
     @staticmethod
     def _baseline(ctx: StageContext) -> EvalResult:

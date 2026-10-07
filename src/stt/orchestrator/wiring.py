@@ -28,6 +28,7 @@ from stt.orchestrator.reportdata import read_metrics_csv
 from stt.orchestrator.stages import StageRegistry, default_stage_registry
 from stt.orchestrator.types import FeatureBuilder, PreparedData, ScreeningSet, Services
 from stt.runmanager import ExperimentStore, LogSetup, RunConfig, RunManagerError
+from stt.modelexporter import EntryAccess, ExporterRegistry, ExportConfig, ExportConfigError, ExportError, ExportRecord, ModelExportService, read_exports
 from stt.reportbuilder import HtmlProgressSink, ReportBuilder, ReportConfig, ReportConfigError, ReportData, ReportError, ReportOutput
 from stt.registry import ModelCard, ModelRegistry, RegisterRequest, RegistryConfig, RegistryEntry, RegistryError, RegistryVerifyError, VerifyReport
 from stt.samplefilter import FilterConfig, FilterError, SampleFilter
@@ -72,6 +73,7 @@ def section_registry() -> SectionRegistry:
             "run": RunConfig,
             "search": SearchConfig,
             "report": ReportConfig,
+            "export": ExportConfig,
             "select": SelectConfig,
             "registry": RegistryConfig,
             "pipeline": PipelineConfig,
@@ -99,8 +101,10 @@ def exit_code_for(exc: BaseException) -> int:
         return exc.exit_code
     if isinstance(exc, RegistryVerifyError):
         return 5  # a registered model does not match its checksums (tested before RegistryError, its parent)
-    if isinstance(exc, ConfigError | ModelLoaderError | TrainerConfigError | EvaluatorConfigError | RunManagerError | TextNormalizerError | SubsampleConfigError | SearchConfigError | ReportConfigError):
-        return 2  # SearchConfigError is a SearchError: it is tested here first
+    if isinstance(exc, ConfigError | ModelLoaderError | TrainerConfigError | EvaluatorConfigError | RunManagerError | TextNormalizerError | SubsampleConfigError | SearchConfigError | ReportConfigError | ExportConfigError):
+        return 2  # SearchConfigError is a SearchError and ExportConfigError an ExportError: they are tested here first
+    if isinstance(exc, ExportError):
+        return 5  # an export or its verification failed (C13 brief, rule 4)
     if isinstance(exc, DataSourceError | SplitError | FilterError | FeaturePipelineError | SubsampleError):
         return 3
     if isinstance(exc, TrainerCoreError | EvaluatorError | SearchError | SelectorError | RegistryError | ReportError):
@@ -306,6 +310,14 @@ class RegistryWiring:
         """The card of an entry (read only)."""
         return self._registry.card(entry_id)
 
+    def get(self, entry_id: str) -> RegistryEntry:
+        """One entry (read only; errors: RegistryError listing the existing entries)."""
+        return self._registry.get(entry_id)
+
+    def exports(self, entry_id: str) -> list[ExportRecord]:
+        """The exports recorded in the entry's `exports.json` (read only; errors: ExportError for a damaged file)."""
+        return read_exports(self._registry.get(entry_id).card_path.parent)
+
     def verify(self, entry_id: str) -> VerifyReport:
         """Check an entry against its checksums (errors: RegistryVerifyError, exit code 5)."""
         return self._registry.verify(entry_id)
@@ -317,6 +329,21 @@ class RegistryWiring:
     def test_set_count(self, test_fingerprint: str) -> int:
         """How many registered entries were evaluated on the Test set with this fingerprint (read only; the run information of the report shows it)."""
         return self._registry.test_set_count(test_fingerprint)
+
+
+class ExportWiring:
+    """The ModelExporter bound to the `export` section and a registry (the `EntryAccess` of the exporter: `get`, `verify`, `card`). `exporters` is injectable for tests."""
+
+    def __init__(self, settings: ExportConfig, entries: EntryAccess, exporters: ExporterRegistry | None = None) -> None:
+        self._service = ModelExportService(settings, entries, exporters)
+
+    def export(self, entry_id: str, formats: Sequence[str] | None = None, explicit: bool = True, exported_at: str = "") -> list[ExportRecord]:
+        """Export an entry (errors: ExportConfigError exit code 2; ExportError exit code 5, also after the records of a failed verification were written)."""
+        return self._service.export(entry_id, formats, None, exported_at, explicit)
+
+    def records(self, entry_id: str) -> list[ExportRecord]:
+        """The exports of an entry (read only)."""
+        return self._service.records(entry_id)
 
 
 class ReportWiring:
@@ -341,8 +368,10 @@ def _now() -> str:
 
 def build_services(config: AppConfig) -> Services:
     """All the services of a run, built from the config."""
+    registry = RegistryWiring(config)
     return Services(
-        DataPipeline(config), ModelWiring(config), TrainingWiring(config), EvaluationWiring(config), exit_code_for, SearchWiring(config), SelectionWiring(config), RegistryWiring(config), _now
+        DataPipeline(config), ModelWiring(config), TrainingWiring(config), EvaluationWiring(config), exit_code_for, SearchWiring(config), SelectionWiring(config), registry, _now,
+        ExportWiring(config.section("export", ExportConfig), registry),
     )
 
 

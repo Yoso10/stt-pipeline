@@ -464,7 +464,7 @@ class CommandLineTests(unittest.TestCase):
 
     def test_an_unknown_command_is_refused_by_the_parser(self) -> None:
         with contextlib.redirect_stderr(io.StringIO()) as err, self.assertRaises(SystemExit) as ctx:
-            cli.main(["export"])
+            cli.main(["cleanup"])
         self.assertEqual(ctx.exception.code, 2)
         self.assertIn("invalid choice", err.getvalue())
 
@@ -590,7 +590,7 @@ class ImportRuleTests(unittest.TestCase):
     CONCRETE = {
         "create_data_source", "create_loader", "resolve_split", "TextNormalizer", "SampleFilter", "FeaturePipeline", "TrainerCore", "Evaluator",
         "Comparator", "HfTranscriber", "ExperimentStore", "LogSetup", "CsvMetricsSink", "ConsoleMetricsSink", "SinkRegistry",
-        "HyperparamSearcher", "resolve_subsample", "Selector", "ModelRegistry", "ReportBuilder", "HtmlProgressSink",  # the search service and the screening choice are wired in wiring.py only
+        "HyperparamSearcher", "resolve_subsample", "Selector", "ModelRegistry", "ReportBuilder", "HtmlProgressSink", "ModelExportService",  # the search service and the screening choice are wired in wiring.py only
     }
 
     def test_12_only_wiring_imports_concrete_classes_and_nothing_imports_torch_or_prompts(self) -> None:

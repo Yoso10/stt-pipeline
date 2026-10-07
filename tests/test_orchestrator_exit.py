@@ -60,6 +60,7 @@ class SmokeFullTests(unittest.TestCase):
         self.assertEqual(list(s["stages"]), ["prepare", "evaluate", "search", "finalists", "select_and_register"])
         self.assertTrue(all(r["status"] == "ok" for r in s["stages"].values()))
         self.assertEqual(s["full_chain"]["entry"], "model_0001")
+        self.assertEqual(s["full_chain"]["export"], "hf_safetensors ok")  # the automatic export after the registration (Wave 3 task 5)
         winner = s["stages"]["select_and_register"]["summary"]["winner_trial"]
         self.assertEqual(sorted(s["test_looked_at"]), sorted(["baseline", f"trial_{winner}"]))  # the Test: the winner and the baseline, once each
         self.assertIn("12 files match their checksums", s["registry_verify"])

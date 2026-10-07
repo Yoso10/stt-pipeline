@@ -10,7 +10,8 @@ How to run (PowerShell, project root; set the path to the sources once per windo
     python -m stt evaluate --config my.yaml   # prepare + baseline (and trained) model on the Val split
     python -m stt search   --config my.yaml   # prepare + the hyperparameter search (a few small trials on a screening subset, objective: Val loss)
     python -m stt run      --config my.yaml   # the whole pipeline: prepare, baseline on Val, search, finalists retrained on the full data, selection (Test ONCE), registry
-    python -m stt registry list   --config my.yaml    # what is registered (read only); also: registry verify [model_0001], registry rebuild-index
+    python -m stt registry list   --config my.yaml    # what is registered, with the number of exports of each entry (read only); also: registry verify [model_0001], registry rebuild-index
+    python -m stt export model_0001 --config my.yaml  # export a registered model (default: the latest entry) in the formats of export.formats and record it in the entry's exports.json
     python -m stt learning-curve --config my.yaml     # the same settings on increasing Train sizes, Val WER per size, and a plain reading (still improving or flat)
     python -m stt benchmark --config my.yaml          # seconds per step on THIS machine and the planned time of a run
     python -m stt report --experiment exp_0004        # rebuild reports/report.html of an existing experiment from its stored files (nothing is recomputed)
@@ -28,7 +29,9 @@ registered model does not match its checksums. `learning-curve` trains the same 
 winner's values of that experiment) and scores the SAME Val set; `benchmark` trains `benchmark.steps` steps, times a Val probe and prints the planned time of `run`; neither touches the Test split.
 `report` reads the stored files of an existing experiment (the latest one without `--experiment`) and writes `reports/report.html`: one self-contained page, no network; name the experiments that hold the
 learning curve and the benchmark with `--curve-from` and `--benchmark-from`; the `report.*` settings come from `--config` / `--set`. The live progress page of a trial is switched on with
-`--set 'train.sinks=["csv","console","html"]'` and is `metrics/<trial>/progress.html`. Nothing is deleted by any command. Not in this version: export, cleanup, config-docs (later waves).
+`--set 'train.sinks=["csv","console","html"]'` and is `metrics/<trial>/progress.html`. `run` also exports the registered winner automatically (the formats of `export.formats`, default hf_safetensors: nothing is
+copied, the folder is verified to load; skipped for a retained baseline); `export` repeats or adds an export for any existing registry entry (it only writes `exports.json` and `exports/` of that entry; exit code 2 for
+an unknown entry or format, 5 for a failed export or verification). Nothing is deleted by any command. Not in this version: cleanup, config-docs (later waves).
 """
 
 from __future__ import annotations
@@ -55,7 +58,8 @@ from stt.orchestrator.sleepguard import default_sleep_guard
 from stt.orchestrator.smoke import FULL_MIN_SAMPLES, full_overrides, write_smoke_data
 from stt.orchestrator.stopflag import InterruptFlag
 from stt.orchestrator.types import RunOutcome, RunPlan, StageContext
-from stt.orchestrator.wiring import RegistryWiring, ReportWiring, Runtime, experiment_catalog, build_runtime, exit_code_for, library_versions, section_registry
+from stt.orchestrator.wiring import ExportWiring, RegistryWiring, ReportWiring, Runtime, experiment_catalog, build_runtime, exit_code_for, library_versions, section_registry
+from stt.modelexporter import ExportConfig, ExportConfigError, ExportError
 from stt.registry import RegistryConfig
 from stt.reportbuilder import ReportConfig
 from stt.runmanager import ExperimentHandle, ExperimentSpec, RunConfig
@@ -119,6 +123,15 @@ def build_parser() -> argparse.ArgumentParser:
     report.add_argument("--experiment", default=None, help="the experiment to report on, for example exp_0004 (default: the latest one)")
     report.add_argument("--curve-from", default=None, help="the experiment that holds the learning curve (reports/learning_curve.json), for example exp_0005")
     report.add_argument("--benchmark-from", default=None, help="the experiment that holds the benchmark (reports/benchmark.json), for example exp_0006")
+    export = commands.add_parser(
+        "export",
+        help="export a registered model (default: the latest entry) in the formats of export.formats and record it in the entry",
+        description="Export a registered model and verify the export. It writes only `exports.json` and `exports/` of that entry.\nExample:  python -m stt export model_0001 --format hf_safetensors --config my.yaml",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    add_config_arguments(export)
+    export.add_argument("entry", nargs="?", default=None, help="the registry entry, for example model_0001 (default: the latest entry)")
+    export.add_argument("--format", action="append", default=None, help="an exporter name (repeatable); default: export.formats")
     registry = commands.add_parser(
         "registry",
         help="look at the model registry (read only): list, verify, rebuild-index",
@@ -242,7 +255,7 @@ def _full_checks(config: Any, handle: ExperimentHandle, outcome: RunOutcome) -> 
     expected = ["baseline", f"trial_{selected['winner_trial']}"] if outcome.verdict == "winner" else []
     verified = RegistryWiring(config).verify(entry_id)
     checks: dict[str, Any] = {
-        "full_chain": {"stages": {name: r.status for name, r in outcome.stage_results.items()}, "verdict": outcome.verdict, "test_status": selected["test_status"], "entry": entry_id},
+        "full_chain": {"stages": {name: r.status for name, r in outcome.stage_results.items()}, "verdict": outcome.verdict, "test_status": selected["test_status"], "entry": entry_id, "export": selected.get("export")},
         "test_looked_at": sorted(looked),
         "registry_verify": f"{entry_id}: {verified.files_checked} files match their checksums",
     }
@@ -324,6 +337,47 @@ def _report(args: argparse.Namespace) -> int:
     return 0
 
 
+def _export(args: argparse.Namespace) -> int:
+    """`export`: export a registered model and record it. Reads the registry; writes only `exports.json` and `exports/` of the chosen entry; deletes nothing."""
+    try:
+        tree = apply_overrides(load_yaml_with_extends(args.config) if args.config is not None else {}, [parse_set(item) for item in args.config_overrides])
+        registry = RegistryWiring(RegistryConfig.model_validate(tree.get("registry", {})))  # only the sections the command needs (no data or model settings)
+        settings = ExportConfig.model_validate(tree.get("export", {}))
+        known = [e.entry_id for e in registry.entries()]
+        if not known:
+            raise OrchestratorError(f"The registry {registry.location()} has no entries to export. Run `python -m stt run` first, or point registry.dir at your registry (--set registry.dir=...).", exit_code=2)
+        entry_id = args.entry or known[-1]
+        if entry_id not in known:
+            raise OrchestratorError(f"The registry entry '{entry_id}' does not exist in {registry.location()}. Existing entries: {', '.join(known)}.", exit_code=2)
+        service = ExportWiring(settings, registry)
+        before = len(service.records(entry_id))
+        error: ExportError | None = None
+        try:
+            service.export(entry_id, args.format, explicit=True, exported_at=_now())
+        except ExportConfigError:
+            raise  # a wrong setting: exit code 2, nothing was recorded
+        except ExportError as exc:  # a failed export or verification: the records were written, say what they hold, exit code 5
+            error = exc
+        recorded = service.records(entry_id)[before:]
+    except Exception as exc:
+        return _error(f"{type(exc).__name__}: {exc}", exit_code_for(exc))
+    entry_dir = registry.location() / entry_id
+    print(f"Entry {entry_id}: {len(recorded)} export(s) recorded in {entry_dir / 'exports.json'}.", file=sys.stderr)
+    for r in recorded:
+        print(f"  {r.exporter}: {r.status}" + (f" ({r.verify.level} level) {r.verify.detail}" if r.verify is not None else " (not verified: export.verify is false)"), file=sys.stderr)
+    if error is not None:
+        print(f"ERROR: {error}", file=sys.stderr)
+    body = {
+        "entry_id": entry_id,
+        "exports_file": str(entry_dir / "exports.json"),
+        "recorded": [{"exporter": r.exporter, "status": r.status, "target_dir": r.target_dir, "files": len(r.files), "verify": None if r.verify is None else {"level": r.verify.level, "ok": r.verify.ok, "detail": r.verify.detail}, "exported_at": r.exported_at} for r in recorded],
+        "error": None if error is None else str(error),
+        "exit_code": 0 if error is None else exit_code_for(error),
+    }
+    print(json.dumps(body, indent=1, ensure_ascii=False))
+    return int(body["exit_code"])  # type: ignore[call-overload]
+
+
 def _registry(args: argparse.Namespace) -> int:
     """`registry list|verify|rebuild-index`: the registry folder of the config, no experiment is made. Read only except `rebuild-index`."""
     try:
@@ -336,7 +390,12 @@ def _registry(args: argparse.Namespace) -> int:
                 card = service.card(e.entry_id)
                 val = "-" if card.val is None else f"{card.val.wer:.4f}"
                 test = "-" if card.test is None else f"{card.test.wer:.4f}"
-                print(f"  {e.entry_id}  from {e.experiment_id}  {card.kind:<17} verdict {card.verdict:<17} Val WER {val}  Test WER {test}  Test status {card.test_status}  {card.generated_at}")
+                try:
+                    exports = service.exports(e.entry_id)
+                    shown = f"exports {len(exports)}" + (f" ({sum(1 for r in exports if r.status == 'failed')} FAILED)" if any(r.status == "failed" for r in exports) else "")
+                except ExportError:
+                    shown = "exports unreadable"
+                print(f"  {e.entry_id}  from {e.experiment_id}  {card.kind:<17} verdict {card.verdict:<17} Val WER {val}  Test WER {test}  Test status {card.test_status}  {shown}  {card.generated_at}")
             return 0
         if args.registry_command == "rebuild-index":
             service.rebuild_index()
@@ -384,6 +443,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _registry(args)
     if args.command == "report":
         return _report(args)
+    if args.command == "export":
+        return _export(args)
     overrides = list(args.config_overrides)
     if args.command == "learning-curve" and args.params_from:
         overrides.append(f"learning_curve.params_from={args.params_from}")  # a config value, so it is stored with the experiment and part of the stage's fingerprint

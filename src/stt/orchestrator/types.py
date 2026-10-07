@@ -20,6 +20,7 @@ from typing import Any, Literal, Protocol
 from stt.config import AppConfig
 from stt.evaluator import ComparisonResult, DecodeSettings, EvalItem, EvalRequest, EvalResult
 from stt.featurepipeline import FeatureResult
+from stt.modelexporter import ExportRecord
 from stt.modelloader import LoadedModel
 from stt.registry import RegisterRequest, RegistryEntry
 from stt.runmanager import ExperimentHandle
@@ -183,10 +184,22 @@ class RegistryService(Protocol):
         ...
 
 
+class ExportService(Protocol):
+    """The ModelExporter bound to the `export` section and the registry (Wave 3 task 5, DECISIONS 71)."""
+
+    def export(self, entry_id: str, formats: Sequence[str] | None = None, explicit: bool = True, exported_at: str = "") -> list[ExportRecord]:
+        """Export a registry entry in `formats` (default `export.formats`); `explicit` False is the automatic step (a retained baseline is skipped). Raises ExportError."""
+        ...
+
+    def records(self, entry_id: str) -> list[ExportRecord]:
+        """The exports of an entry, from its `exports.json` (read only)."""
+        ...
+
+
 @dataclass(frozen=True)
 class Services:
     """Everything the stages may use, built once by `wiring.build_services`. `exit_code_for` maps an exception to the process exit code.
-    `search`, `selection`, `registry` and `now` are None where they are not wired (a test with fakes); `now` gives the date and time text of a registration."""
+    `search`, `selection`, `registry`, `export` and `now` are None where they are not wired (a test with fakes); `now` gives the date and time text of a registration."""
 
     data: DataService
     models: ModelService
@@ -197,6 +210,7 @@ class Services:
     selection: SelectionService | None = None
     registry: RegistryService | None = None
     now: Callable[[], str] | None = None
+    export: ExportService | None = None
 
 
 class StopFlag(Protocol):

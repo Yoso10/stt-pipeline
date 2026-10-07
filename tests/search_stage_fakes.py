@@ -177,6 +177,6 @@ class FakeSearchWiring(SearchWiring):
     services_provider = staticmethod(fake_provider)
 
 
-def fake_services(config: Any, hook: Callable[[int, int], None] | None = None, fail: frozenset[str] = frozenset(), evaluation: FakeEvaluation | None = None) -> Services:
-    """Fake data, models, training and evaluation; the REAL search, selection and registry services."""
-    return Services(FakeData(), FakeModels(), FakeTraining(hook, fail), evaluation or FakeEvaluation(config), exit_code_for, FakeSearchWiring(config), SelectionWiring(config), RegistryWiring(config), lambda: "2026-10-06T10:00:00")
+def fake_services(config: Any, hook: Callable[[int, int], None] | None = None, fail: frozenset[str] = frozenset(), evaluation: FakeEvaluation | None = None, export: Any = None) -> Services:
+    """Fake data, models, training and evaluation; the REAL search, selection and registry services. `export` is None (not wired) unless a test passes an export service."""
+    return Services(FakeData(), FakeModels(), FakeTraining(hook, fail), evaluation or FakeEvaluation(config), exit_code_for, FakeSearchWiring(config), SelectionWiring(config), RegistryWiring(config), lambda: "2026-10-06T10:00:00", export)
