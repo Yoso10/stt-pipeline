@@ -1,0 +1,16 @@
+# How to run: example `export` section; every value shown is the DEFAULT. Extend it:
+#     extends: export_default.yaml
+#     $env:PYTHONPATH = "src"
+#     python -c "from pathlib import Path; from stt.config import SectionRegistry, load_config; from stt.modelexporter import ExportConfig; print(load_config(Path('configs/export_default.yaml'), registry=SectionRegistry({'export': ExportConfig})).section('export', ExportConfig).formats)"
+# v1 has one exporter, hf_safetensors (the format the registry already stores; it copies nothing and verifies that the folder loads). Other target formats are added when the target is known,
+# each with its own approval for its dependency. The exports of a registry entry are recorded in `<entry>/exports.json` and live in `<entry>/exports/<exporter>/`.
+extends: base.yaml
+
+export:
+  # The exporters that run after a winner is registered.
+  formats: [hf_safetensors]
+  # Verify every export. false: the export is recorded as `unverified`.
+  verify: true
+  # For exporters that verify by transcription: how many check files, and the allowed absolute WER difference between the exported and the registered model.
+  verify_samples: 5
+  max_wer_diff: 0.02

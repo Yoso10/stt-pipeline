@@ -247,7 +247,7 @@ class ModelRegistry:
     @staticmethod
     def _copy_verified(src: Path, dst: Path) -> None:
         shutil.copytree(src, dst)
-        for rel in hashing.list_files(src, exclude=()):
+        for rel in hashing.list_files(src, exclude=(), skip_exports=False):
             if hashing.sha256_file(src / rel) != hashing.sha256_file(dst / rel):
                 raise RegistryError(f"The copy of {src / rel} is not identical to the original (a disk or drive problem). Nothing was registered; the original is untouched.")
 

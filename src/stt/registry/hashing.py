@@ -6,6 +6,8 @@ How to run: this module is not a script; the registry uses it. Example (PowerShe
 The file `SHA256SUMS` has one line per file: the hash, two spaces, and the path relative to the entry folder with forward slashes (the format of `sha256sum -c`),
 UTF-8, sorted by path. It lists every file of the entry except itself. It detects a corrupted or changed copy after the registry was moved between machines on a
 removable drive. It is a transfer-integrity check; it is independent of how the ModelLoader identifies a model (by name and path).
+EXPORTS (ModelExporter C11, DECISIONS 69): `exports.json` and everything under `exports/` are written into an entry AFTER it was registered; they are not part of its checksums, so an export never
+makes `verify` fail and never changes `SHA256SUMS`. The entry's model files and its card stay checksummed exactly as before; the export record lists what an export made.
 """
 
 from __future__ import annotations
@@ -17,6 +19,8 @@ from stt.registry.types import VerifyReport
 
 SUMS_NAME = "SHA256SUMS"
 CHUNK = 1024 * 1024
+EXPORTS_FILE = "exports.json"
+EXPORTS_FOLDER = "exports"
 
 
 def sha256_file(path: Path) -> str:
@@ -28,9 +32,15 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def list_files(folder: Path, exclude: tuple[str, ...] = (SUMS_NAME,)) -> list[str]:
-    """The files under `folder` as sorted relative paths with forward slashes, without the excluded names (at the top level)."""
-    return sorted(p.relative_to(folder).as_posix() for p in folder.rglob("*") if p.is_file() and p.relative_to(folder).as_posix() not in exclude)
+def _is_export(rel: str) -> bool:
+    return rel == EXPORTS_FILE or rel.startswith(EXPORTS_FOLDER + "/")
+
+
+def list_files(folder: Path, exclude: tuple[str, ...] = (SUMS_NAME,), skip_exports: bool = True) -> list[str]:
+    """The files under `folder` as sorted relative paths with forward slashes, without the excluded names (at the top level) and, with `skip_exports`, without `exports.json` and `exports/`
+    (the exports of the ModelExporter are not part of the entry's checksums)."""
+    rels = (p.relative_to(folder).as_posix() for p in folder.rglob("*") if p.is_file())
+    return sorted(rel for rel in rels if rel not in exclude and not (skip_exports and _is_export(rel)))
 
 
 def render_sums(folder: Path) -> str:
