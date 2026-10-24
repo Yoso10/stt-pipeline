@@ -22,7 +22,7 @@ from stt.trainercore.config import TrainConfig, resolve_threads
 from stt.trainercore.errors import TrainerConfigError, TrainerCoreError
 from stt.trainercore.final_model import INFO_NAME, build_model_dir
 from stt.trainercore.registry import FreezeRegistry, SinkRegistry, default_freeze_registry, default_sink_registry
-from stt.trainercore.run_folder import MODEL, checkpoints_dir, fingerprint, list_checkpoints, prepare, read_state
+from stt.trainercore.run_folder import MODEL, OPTIMIZER_FILE, checkpoints_dir, fingerprint, list_checkpoints, prepare, read_state
 from stt.trainercore.types import (
     FreezeReport,
     RunState,
@@ -83,7 +83,8 @@ class TrainerCore:
         Inputs: a TrainRequest (model, Train and Val datasets, collator, hyperparameters, output folder, optional stop callback).
         Output: a TrainResult whose `model_dir` loads through the ModelLoader.
         Errors: TrainerConfigError (exit code 2: wrong settings, unknown policy or sink, output folder not empty, resume without a matching
-        checkpoint) and TrainerCoreError (exit code 4: NaN loss, out of memory, damaged state).
+        checkpoint, resume in the weights-only mode `train.save_optimizer_state` false or from a checkpoint made in it) and TrainerCoreError
+        (exit code 4: NaN loss, out of memory, damaged state, the finished model folder could not be renamed into place).
         """
         config = self._config
         if len(request.train) == 0 or len(request.val) == 0:
@@ -92,6 +93,12 @@ class TrainerCore:
                 "Check the split and the SampleFilter report."
             )
         check_hyperparams(request.hyperparams)
+        if config.resume and not config.save_optimizer_state:
+            raise TrainerConfigError(
+                "train.resume is true but train.save_optimizer_state is false. In that mode a checkpoint holds only the model weights (no optimizer, scheduler or random state), "
+                "so a run cannot be continued from it. Fix: set train.save_optimizer_state to true (the default) for a run that may have to be resumed, or set train.resume to false "
+                "and use a new output folder."
+            )
         if request.model_name is not None and not re.fullmatch(r"[A-Za-z0-9_.-]+", request.model_name):
             raise TrainerConfigError(f"TrainRequest.model_name '{request.model_name}' may only contain letters, digits, '_', '.' and '-' (it becomes a folder name).")
         policy = self._freeze.create(config.freeze_policy)  # unknown names fail here, before any folder is made
@@ -103,6 +110,11 @@ class TrainerCore:
         checkpoint, state = resumed if resumed is not None else (None, RunState())
         resume_step = int(checkpoint.name.rsplit("-", 1)[1]) if checkpoint is not None else None
         if checkpoint is not None:
+            if not (checkpoint / OPTIMIZER_FILE).is_file():
+                raise TrainerConfigError(
+                    f"Cannot resume: the checkpoint {checkpoint} holds no {OPTIMIZER_FILE}. It was saved with train.save_optimizer_state false (model weights only), "
+                    "which cannot be continued. Use a new output folder and start the training again."
+                )
             logger.info("Resuming from %s (step %d).", checkpoint, resume_step)
         freeze_report = policy.apply(request.model.model)
         logger.info(
@@ -123,6 +135,7 @@ class TrainerCore:
             min_delta=config.early_stopping.min_delta,
             max_runtime_seconds=None if config.max_runtime_minutes is None else config.max_runtime_minutes * 60.0,
             clock=self._clock,
+            save_optimizer_state=config.save_optimizer_state,
         )
         from stt.trainercore.hf_trainer import run_training  # imported only when a run starts
 
@@ -163,7 +176,14 @@ class TrainerCore:
             for old in request.output_dir.glob(f"{request.model_name}_step_*"):  # the model of an earlier part of a resumed run is replaced
                 if old.name != name and (old / INFO_NAME).is_file():
                     shutil.rmtree(old, ignore_errors=True)
-        model_dir = build_model_dir(by_step[chosen_step], request.model.info.path, request.output_dir / name, info)
+        model_dir = build_model_dir(
+            by_step[chosen_step],
+            request.model.info.path,
+            request.output_dir / name,
+            info,
+            rename_retries=self._config.rename_retries,
+            rename_retry_seconds=self._config.rename_retry_seconds,
+        )
         logger.info("Run ended (%s). Model of step %d saved in %s (%s).", reason, chosen_step, model_dir, INFO_NAME)
         return TrainResult(
             model_dir=model_dir,

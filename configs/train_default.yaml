@@ -36,6 +36,14 @@ train:
   cpu_threads: null
   # false (DEFAULT): the output folder must be new or empty. true: continue the run in it (same settings required).
   resume: false
+  # true (DEFAULT): a checkpoint holds the weights AND the optimizer, scheduler and random state, so a run can be resumed.
+  # false: a checkpoint holds only the model weights (about one third of the disk space); the run CANNOT be resumed, and train.resume true is refused with a clear message.
+  save_optimizer_state: true
+  # When the finished model folder cannot be renamed into place (Windows: the antivirus, the indexer or a sync tool holds it for a moment; O122), the rename is tried this many
+  # times again (0 = no retry) ...
+  rename_retries: 5
+  # ... waiting this many seconds before each new attempt. If every attempt fails, the .tmp folder with the model and the finished checkpoint are KEPT and the error says how to continue.
+  rename_retry_seconds: 2.0
   # Set per experiment (the RunManager does it later); the caller copies it into the TrainRequest.
   # output_dir: runs/exp_0001/train
   # Where the records go while the run is in progress: csv (live file), console (log lines).

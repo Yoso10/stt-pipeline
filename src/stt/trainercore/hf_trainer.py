@@ -230,6 +230,7 @@ def run_training(job: TrainingJob) -> TrainingOutcome:
             save_strategy="steps",
             save_steps=job.save_every_steps,
             save_total_limit=None,
+            save_only_model=not job.save_optimizer_state,  # weights only: no optimizer, scheduler or random state in the checkpoint (such a run cannot be resumed)
             predict_with_generate=False,
             remove_unused_columns=False,
             label_names=["labels"],

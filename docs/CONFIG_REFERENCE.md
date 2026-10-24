@@ -16,7 +16,7 @@ Status column: the tag at the start of the key's description in the code (`DEFAU
 - [`filter`](#section-filter): 3 keys
 - [`model`](#section-model): 5 keys
 - [`features`](#section-features): 7 keys
-- [`train`](#section-train): 19 keys
+- [`train`](#section-train): 22 keys
 - [`eval`](#section-eval): 15 keys
 - [`run`](#section-run): 9 keys
 - [`search`](#section-search): 13 keys
@@ -196,6 +196,9 @@ The `train` section.
 | `train.max_runtime_minutes` | float \| None | null | DEFAULT | DEFAULT none = no cap. Per call: the run saves and stops gracefully. |
 | `train.cpu_threads` | int \| None | null | DEFAULT | DEFAULT none = half of the cores (at least 1). |
 | `train.resume` | bool | false | DEFAULT | DEFAULT false. true continues from the latest checkpoint of the output folder. |
+| `train.save_optimizer_state` | bool | true | DEFAULT | DEFAULT true (the behaviour before this key existed). true: a checkpoint holds the model weights AND the optimizer, scheduler and random state, so the run can be resumed. false: a checkpoint holds only the model weights (about one third of the disk space, the Hugging Face option `save_only_model`), and the run CANNOT be resumed: `train.resume` true is refused with a clear message, in this mode and for any checkpoint made in it. |
+| `train.rename_retries` | int | 5 | DEFAULT | DEFAULT 5. When the finished model folder cannot be renamed into place (on Windows another program, for example the antivirus, the search indexer or a sync tool, can hold the new folder for a moment: `PermissionError`, O122), the rename is tried again this many times after the first failure (0 = no retry). If every attempt fails, the `.tmp` folder with the finished model and the finished checkpoint are kept and the run fails with a message that says how to continue. |
+| `train.rename_retry_seconds` | float | 2.0 | DEFAULT | DEFAULT 2.0. Seconds to wait before each new rename attempt (see `train.rename_retries`). |
 | `train.output_dir` | Path \| None | null | DEFAULT | Per experiment, set by the RunManager. The caller copies it into TrainRequest.output_dir. |
 | `train.sinks` | list[str] | ["csv", "console"] | DEFAULT | DEFAULT csv, console. Registered: csv, console. |
 
@@ -379,4 +382,4 @@ The `benchmark` section (key and DEFAULT of the C13 brief).
 |---|---|---|---|---|
 | `benchmark.steps` | int | 3 | DEFAULT | DEFAULT 3. Training steps to measure. The first steps are slower than the later ones: raise it for a steadier number. The Val probe is steps x eval.batch_size clips. |
 
-Total: 21 sections, 181 keys.
+Total: 21 sections, 184 keys.

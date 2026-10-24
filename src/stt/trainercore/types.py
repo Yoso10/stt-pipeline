@@ -175,6 +175,7 @@ class TrainingJob:
     min_delta: float
     max_runtime_seconds: float | None
     clock: Callable[[], float]
+    save_optimizer_state: bool = True  # false: checkpoints hold only the model weights (the Hugging Face option `save_only_model`); such a run cannot be resumed
 
 
 @dataclass(frozen=True)

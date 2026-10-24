@@ -25,6 +25,7 @@ CHECKPOINTS = "checkpoints"
 MODEL = "model"
 RUN_INFO = "run_info.json"
 STATE_FILE = "trainercore_state.json"
+OPTIMIZER_FILE = "optimizer.pt"  # written by the Trainer into a checkpoint only when `train.save_optimizer_state` is true; a checkpoint without it cannot be resumed
 PREFIX = "checkpoint-"
 
 

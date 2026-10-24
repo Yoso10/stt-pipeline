@@ -55,6 +55,7 @@ from stt.trainercore import (  # noqa: E402
     resolve_seed,
     resolve_threads,
 )
+from stt.trainercore.final_model import build_model_dir  # noqa: E402
 from stt.trainercore.types import RunState  # noqa: E402
 
 TINY = ROOT / "tests" / "assets" / "tiny_whisper"
@@ -497,6 +498,183 @@ class MonitorAndConfigTests(unittest.TestCase):
         self.assertEqual(len(logs.output), 1)
         self.assertIn("step 10", logs.output[0])
         self.assertIn("train_loss 2.5000", logs.output[0])
+
+
+def flaky_rename(failures: int, error: type[OSError] = PermissionError) -> tuple[Any, list[str]]:
+    """A replacement for `Path.rename` that fails the first `failures` times for a `*.tmp` folder (the model folder being put in place) with an
+    `Access is denied` style error, and works normally otherwise. Returns (the replacement, the names of the `.tmp` folders it was asked to rename)."""
+    real_rename = Path.rename
+    calls: list[str] = []
+
+    def fake(self: Path, target: Any) -> Path:
+        if self.name.endswith(".tmp"):
+            calls.append(self.name)
+            if len(calls) <= failures:
+                raise error(13, "Access is denied")
+        return real_rename(self, target)
+
+    return fake, calls
+
+
+class RenameRetryTests(TrainerTestCase):
+    """O122: the final rename of the model folder is tried again; when it never works nothing is deleted and the error says how to continue."""
+
+    def folders(self) -> tuple[Path, Path, Path, Path]:
+        checkpoint, base, target = self.tmp / "ckpt" / "checkpoint-2", self.tmp / "base", self.tmp / "out" / "model_step_00002"
+        checkpoint.mkdir(parents=True)
+        base.mkdir()
+        target.parent.mkdir()
+        (checkpoint / "config.json").write_text("{}", encoding="utf-8")
+        (checkpoint / "generation_config.json").write_text("{}", encoding="utf-8")
+        (checkpoint / "model.safetensors").write_bytes(b"weights")
+        (base / "preprocessor_config.json").write_text("{}", encoding="utf-8")
+        (base / "tokenizer.json").write_text("{}", encoding="utf-8")
+        return checkpoint, base, target, target.with_name(target.name + ".tmp")
+
+    def test_a_permission_error_that_goes_away_is_retried_and_the_folder_is_put_in_place(self) -> None:
+        checkpoint, base, target, temporary = self.folders()
+        fake, calls = flaky_rename(2)
+        waits: list[float] = []
+        with mock.patch.object(Path, "rename", fake), self.assertLogs("stt.trainercore", level="WARNING") as logs:
+            result = build_model_dir(checkpoint, base, target, {"a": 1}, rename_retries=5, rename_retry_seconds=0.5, sleep=waits.append)
+        self.assertEqual(result, target)
+        self.assertEqual(len(calls), 3)  # two failures, then the success
+        self.assertEqual(waits, [0.5, 0.5])  # a wait before each new attempt, none after the success
+        self.assertTrue((target / "model.safetensors").is_file())
+        self.assertTrue((target / "pipeline_model_info.json").is_file())
+        self.assertFalse(temporary.exists())
+        self.assertTrue(any("Attempt 1 of 6" in line for line in logs.output))
+        self.assertTrue(any("attempt 3 of 6" in line for line in logs.output))
+
+    def test_any_oserror_is_retried_not_only_permission_error(self) -> None:
+        checkpoint, base, target, temporary = self.folders()
+        fake, calls = flaky_rename(1, OSError)
+        with mock.patch.object(Path, "rename", fake):
+            build_model_dir(checkpoint, base, target, {}, rename_retries=2, rename_retry_seconds=0.0, sleep=lambda s: None)
+        self.assertEqual(len(calls), 2)
+        self.assertTrue((target / "model.safetensors").is_file())
+        self.assertFalse(temporary.exists())
+
+    def test_a_rename_that_never_works_keeps_everything_and_the_error_says_where_and_how_to_continue(self) -> None:
+        checkpoint, base, target, temporary = self.folders()
+        fake, calls = flaky_rename(10_000)
+        waits: list[float] = []
+        with mock.patch.object(Path, "rename", fake):
+            with self.assertRaises(TrainerCoreError) as ctx:
+                build_model_dir(checkpoint, base, target, {"a": 1}, rename_retries=3, rename_retry_seconds=0.25, sleep=waits.append)
+        message = str(ctx.exception)
+        self.assertEqual(len(calls), 4)  # the first try and three retries
+        self.assertEqual(waits, [0.25, 0.25, 0.25])
+        for part in ("4 time(s)", str(temporary), str(checkpoint), "NOTHING WAS DELETED", "Access is denied", "Rename-Item", "train.resume", "train.rename_retries"):
+            self.assertIn(part, message)
+        self.assertTrue((temporary / "model.safetensors").is_file())  # the complete model is still there
+        self.assertTrue((temporary / "pipeline_model_info.json").is_file())
+        self.assertEqual((checkpoint / "model.safetensors").read_bytes(), b"weights")  # the finished checkpoint is untouched
+        self.assertFalse(target.exists())
+
+    def test_zero_retries_is_one_attempt_without_a_wait(self) -> None:
+        checkpoint, base, target, temporary = self.folders()
+        fake, calls = flaky_rename(10_000)
+        waits: list[float] = []
+        with mock.patch.object(Path, "rename", fake):
+            with self.assertRaises(TrainerCoreError) as ctx:
+                build_model_dir(checkpoint, base, target, {}, rename_retries=0, rename_retry_seconds=2.0, sleep=waits.append)
+        self.assertEqual((len(calls), waits), (1, []))
+        self.assertIn("1 time(s)", str(ctx.exception))
+        self.assertTrue(temporary.is_dir())
+
+    def test_a_training_run_survives_a_permission_error_on_the_final_rename(self) -> None:
+        fake, calls = flaky_rename(2)
+        with mock.patch.object(Path, "rename", fake):
+            result = self.run_training(conf(rename_retries=3, rename_retry_seconds=0.0))
+        self.assertEqual(len(calls), 3)
+        self.assertEqual(result.stopped_reason, "max_steps")
+        self.assertFalse((self.out / "model.tmp").exists())
+        self.assertEqual(create_loader(ModelConfig(path=result.model_dir)).load().info.name, "model")  # the folder loads through the ModelLoader
+
+    def test_a_training_run_whose_rename_never_works_fails_keeps_the_files_and_a_resume_finishes_it(self) -> None:
+        fake, calls = flaky_rename(10_000)
+        with mock.patch.object(Path, "rename", fake):
+            with self.assertRaises(TrainerCoreError) as ctx:
+                self.run_training(conf(rename_retries=1, rename_retry_seconds=0.0))
+        self.assertEqual(len(calls), 2)
+        self.assertIn(str(self.out / "model.tmp"), str(ctx.exception))
+        self.assertTrue((self.out / "model.tmp" / "model.safetensors").is_file())
+        self.assertFalse((self.out / "model").exists())
+        self.assertIn("checkpoint-4", sorted(p.name for p in (self.out / "checkpoints").iterdir()))  # the finished checkpoint is kept
+        result = self.run_training(conf(resume=True))  # the cause is gone: the advice of the error message works
+        self.assertEqual(result.model_dir, self.out / "model")
+        self.assertTrue((result.model_dir / "model.safetensors").is_file())
+        self.assertFalse((self.out / "model.tmp").exists())
+
+    def test_the_new_keys_have_the_approved_defaults_and_are_validated(self) -> None:
+        train = TrainConfig()
+        self.assertEqual((train.rename_retries, train.rename_retry_seconds, train.save_optimizer_state), (5, 2.0, True))
+        self.assertEqual(TrainConfig.model_validate({"rename_retries": 0}).rename_retries, 0)
+        for bad in ({"rename_retries": -1}, {"rename_retry_seconds": -0.1}, {"save_optimizer_state": "maybe"}):
+            with self.assertRaises(ValueError):
+                TrainConfig.model_validate(bad)
+
+
+class OptimizerStateTests(TrainerTestCase):
+    """`train.save_optimizer_state`: false saves only the model weights in a checkpoint and the run cannot be resumed."""
+
+    def checkpoint_files(self, step: int = 4) -> set[str]:
+        return {p.name for p in (self.out / "checkpoints" / f"checkpoint-{step}").iterdir()}
+
+    def folder_size(self) -> int:
+        return sum(p.stat().st_size for p in (self.out / "checkpoints").rglob("*") if p.is_file())
+
+    def test_the_default_checkpoint_holds_the_optimizer_scheduler_and_random_state(self) -> None:
+        self.run_training()
+        self.assertTrue({"model.safetensors", "optimizer.pt", "scheduler.pt", "rng_state.pth", "trainercore_state.json"} <= self.checkpoint_files())
+
+    def test_false_keeps_only_the_weights_saves_disk_and_does_not_change_the_training(self) -> None:
+        self.out = self.tmp / "full"
+        full = self.run_training()
+        full_size = self.folder_size()
+        self.out = self.tmp / "lean"
+        lean = self.run_training(conf(save_optimizer_state=False))
+        files = self.checkpoint_files()
+        self.assertTrue({"model.safetensors", "trainercore_state.json", "trainer_state.json"} <= files)
+        self.assertTrue(files.isdisjoint({"optimizer.pt", "scheduler.pt", "rng_state.pth"}))
+        self.assertLess(self.folder_size(), 0.6 * full_size)  # about one third of the disk space for this model
+        self.assertTrue((lean.model_dir / "model.safetensors").is_file())
+        self.assertEqual(create_loader(ModelConfig(path=lean.model_dir)).load().info.num_parameters, create_loader(ModelConfig(path=full.model_dir)).load().info.num_parameters)
+        losses = lambda result: [(r.step, r.train_loss, r.val_loss) for r in result.history]  # noqa: E731
+        self.assertEqual(losses(lean), losses(full))  # the setting changes what is saved, not the training
+        self.assertEqual((lean.stopped_reason, lean.best_step), (full.stopped_reason, full.best_step))
+
+    def test_resume_is_refused_in_the_weights_only_mode_and_nothing_is_changed(self) -> None:
+        self.run_training(conf(hyperparams={"max_steps": 6}, save_optimizer_state=False), on_eval=lambda r: r.step >= 2)
+        before = sorted(str(p.relative_to(self.out)) for p in self.out.rglob("*"))
+        with self.assertRaises(TrainerConfigError) as ctx:
+            self.run_training(conf(hyperparams={"max_steps": 6}, save_optimizer_state=False, resume=True))
+        message = str(ctx.exception)
+        self.assertIn("train.resume", message)
+        self.assertIn("train.save_optimizer_state", message)
+        self.assertEqual(sorted(str(p.relative_to(self.out)) for p in self.out.rglob("*")), before)
+
+    def test_the_refusal_comes_before_any_folder_is_made(self) -> None:
+        with self.assertRaises(TrainerConfigError):
+            self.run_training(conf(save_optimizer_state=False, resume=True))
+        self.assertFalse(self.out.exists())
+
+    def test_a_weights_only_checkpoint_cannot_be_resumed_even_when_the_setting_is_true_again(self) -> None:
+        self.run_training(conf(hyperparams={"max_steps": 6}, save_optimizer_state=False), on_eval=lambda r: r.step >= 2)
+        self.assertNotIn("optimizer.pt", self.checkpoint_files(2))
+        before = sorted(str(p.relative_to(self.out)) for p in self.out.rglob("*"))
+        with self.assertRaises(TrainerConfigError) as ctx:
+            self.run_training(conf(hyperparams={"max_steps": 6}, resume=True))
+        message = str(ctx.exception)
+        self.assertIn("optimizer.pt", message)
+        self.assertIn("train.save_optimizer_state", message)
+        self.assertEqual(sorted(str(p.relative_to(self.out)) for p in self.out.rglob("*")), before)
+
+    def test_the_default_run_still_resumes_exactly_as_before(self) -> None:
+        self.run_training(conf(hyperparams={"max_steps": 6}), on_eval=lambda r: r.step >= 4)
+        resumed = self.run_training(conf(hyperparams={"max_steps": 6}, resume=True))
+        self.assertEqual((resumed.stopped_reason, resumed.history[-1].step), ("max_steps", 6))
 
 
 class ImportRuleTests(unittest.TestCase):

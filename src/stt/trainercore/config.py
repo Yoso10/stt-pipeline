@@ -53,6 +53,24 @@ class TrainConfig(SectionModel):
     max_runtime_minutes: float | None = Field(default=None, gt=0, description="DEFAULT none = no cap. Per call: the run saves and stops gracefully.")
     cpu_threads: int | None = Field(default=None, ge=1, description="DEFAULT none = half of the cores (at least 1).")
     resume: bool = Field(default=False, description="DEFAULT false. true continues from the latest checkpoint of the output folder.")
+    save_optimizer_state: bool = Field(
+        default=True,
+        description=(
+            "DEFAULT true (the behaviour before this key existed). true: a checkpoint holds the model weights AND the optimizer, scheduler and random state, so the run can be resumed. "
+            "false: a checkpoint holds only the model weights (about one third of the disk space, the Hugging Face option `save_only_model`), and the run CANNOT be resumed: "
+            "`train.resume` true is refused with a clear message, in this mode and for any checkpoint made in it."
+        ),
+    )
+    rename_retries: int = Field(
+        default=5,
+        ge=0,
+        description=(
+            "DEFAULT 5. When the finished model folder cannot be renamed into place (on Windows another program, for example the antivirus, the search indexer or a sync tool, can hold the new folder "
+            "for a moment: `PermissionError`, O122), the rename is tried again this many times after the first failure (0 = no retry). If every attempt fails, the `.tmp` folder with the finished "
+            "model and the finished checkpoint are kept and the run fails with a message that says how to continue."
+        ),
+    )
+    rename_retry_seconds: float = Field(default=2.0, ge=0, description="DEFAULT 2.0. Seconds to wait before each new rename attempt (see `train.rename_retries`).")
     output_dir: Path | None = Field(default=None, description="Per experiment, set by the RunManager. The caller copies it into TrainRequest.output_dir.")
     sinks: list[str] = Field(default_factory=lambda: ["csv", "console"], min_length=1, description="DEFAULT csv, console. Registered: csv, console.")
 

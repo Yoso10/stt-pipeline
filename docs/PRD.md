@@ -833,6 +833,8 @@ Run ONE training run on a given model and datasets with given hyperparameters, a
 - `train.max_runtime_minutes` [DEFAULT: null = no cap]
 - `train.cpu_threads` [DEFAULT: half of the cores]
 - `train.resume` [DEFAULT: false]
+- `train.save_optimizer_state` [DEFAULT: true; ADDED by the owner, Task 1, DECISIONS 85]: false saves only the model weights in a checkpoint (the Hugging Face option `save_only_model`); the run then cannot be resumed and `train.resume` true is refused.
+- `train.rename_retries` [DEFAULT: 5] and `train.rename_retry_seconds` [DEFAULT: 2.0] [ADDED by the owner, Task 1, O122]: the final rename of the model folder is tried again after a failure (Windows: another program holds the folder for a moment); if every attempt fails the `.tmp` folder and the finished checkpoint are kept and the run fails with an explanation.
 - `train.output_dir` (per experiment; set by the RunManager later)
 - `train.sinks` [DEFAULT: `csv`, `console`]
 - The search space of the hyperparameters belongs to the HyperparamSearcher, not here.
