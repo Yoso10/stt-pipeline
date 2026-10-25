@@ -1,0 +1,76 @@
+# How to run: the settings for the WORK machine, CPU only: the turbo model with a frozen encoder, one training of a few epochs on your own data. COPY it first, fill in the <<< ... >>> places, then use the copy:
+#     Copy-Item configs\work_cpu.yaml configs\my_work_cpu.yaml        # edit the COPY; this file stays as shipped
+#     .\.venv\Scripts\python.exe tools\probe_env.py                    # what the machine has (RAM, cores, disk)
+#     python -m stt check     --config configs\my_work_cpu.yaml        # lists every problem at once, the unfilled markers too
+#     python -m stt prepare   --config configs\my_work_cpu.yaml        # read the five reports, then see docs\WORK_RUNBOOK.md (go / no-go)
+# Everything below is an EXISTING key (docs\CONFIG_REFERENCE.md); change a value for one run with --set, for example --set train.hyperparams.max_steps=150.
+# UNTESTED on the work machine. Measured on the home laptop (CPU, turbo, frozen encoder): about 22 s per clip for a training pass WITHOUT the encoder cache, about 2.6 s WITH it.
+extends: base.yaml
+
+runtime:
+  device: cpu                       # the CPU. (cuda or auto would use a GPU: not for this file.)
+
+data:
+  source:
+    type: csv                       # csv = a folder with manifest.csv and the audio files; hf_parquet = a folder of Hugging Face parquet files
+    path: "<<< FILL IN: the folder with manifest.csv and the audio files >>>"
+  columns:
+    audio: "<<< FILL IN: the manifest column with the audio file name >>>"
+    text: "<<< FILL IN: the manifest column with the transcript >>>"
+    group: "<<< FILL IN: the manifest column with the recording / lesson id that must never be split between Train and Test >>>"
+  group_fallback: fail              # leave it: a missing group column stops the run on purpose (a wrong group would leak the Test into the training)
+
+model:
+  path: models/whisper-large-v3-turbo-ivrit   # the turbo model folder on THIS machine (copied from home; probe_env.py checks it)
+  dtype: float32                    # the CPU number format
+
+run:
+  experiments_dir: data/work_cpu/experiments  # its own folder: the results of this machine stay apart from the home experiments
+registry:
+  dir: data/work_cpu/registry       # outside the experiments folder (a rule of the registry)
+
+filter:
+  mode: apply                       # REMOVE the clips the rules reject. Needed for clips longer than 30 s: report mode removes nothing and the run would stop with exit code 3. Read filter_report.txt
+                                    # after `prepare`: if many clips are removed, your audio is longer than 30 s (see docs\WORK_RUNBOOK.md, "long recordings").
+
+split:
+  ratios: [0.8, 0.1, 0.1]           # Train, Val, Test by duration; every lesson goes to ONE part. With little data check split_report.txt: at least 5 lessons in Val and in Test.
+
+train:
+  freeze_policy: freeze_encoder     # train only the decoder: far less memory and time, and the only mode in which the encoder cache is valid
+  cpu_threads: 4                    # PLACEHOLDER: set it to the number of PHYSICAL cores of the work machine (tools\probe_env.py prints it). run_work.ps1 asks for it.
+  hyperparams:
+    learning_rate: 1.0e-5           # the default; a small rate keeps a large model stable
+    batch_size: 4                   # clips per forward pass; if the machine runs out of memory use 2 (and grad_accum_steps 8)
+    grad_accum_steps: 4             # 4 x 4 = 16 clips per step
+    max_steps: 100                  # PLACEHOLDER: steps = epochs x ceil(Train clips / 16). 100 steps = 2 epochs of 800 clips. Recompute from the real Train size (docs\WORK_RUNBOOK.md, time calculator).
+    warmup_steps: 5                 # about 5% of max_steps; `benchmark` trains only 3 steps, so run_work.ps1 lowers it to 3 for the benchmark only
+  eval_every_steps: 100             # = max_steps: ONE Val-loss evaluation, at the end (a Val-loss pass costs as much as a decoding pass without the cache). Keep it equal to max_steps.
+  log_every_steps: 5                # a line in metrics.csv every 5 steps
+  save_every_steps: 25              # a checkpoint every 25 steps so that a stopped run can be resumed (each checkpoint of the turbo model is about 4.6 GB; only the latest and the best are kept)
+  save_optimizer_state: true        # true: a stopped run can be resumed. false saves a little disk but the run can NEVER be resumed.
+
+features:
+  encoder_cache:
+    enabled: true                   # ON: the frozen encoder is run ONCE per clip and its output is reused (identical results; measured on the home laptop with turbo). To switch it OFF: false.
+    dir: data/work_cpu/encoder_cache  # about 3.8 MB per clip (float16): 900 clips = 3.5 GB. Needs free disk (the build checks it).
+    dtype: float16                  # half the disk; float32 is exact but twice as big
+
+eval:
+  batch_size: 2                     # clips decoded together; lower it to 1 if memory is short
+select:
+  test_confirmation: false          # the Test split is NEVER opened by this file's runs (the one-time Test look is a separate, deliberate decision)
+
+search:                             # used only by `python -m stt run` (the minimal path); the plain `train` + `evaluate` path ignores it
+  n_trials: 2
+  parameters:
+    learning_rate: {kind: log_float, low: 5.0e-6, high: 5.0e-5, points: 2}
+  pruning:
+    enabled: false
+  finalists:
+    k: 1
+
+progress:
+  interval_seconds: 30              # a progress line at most every 30 seconds
+report:
+  target_relative_wer_reduction: 0.10   # the aim: a Val WER at least 10% below the baseline of the same Val set

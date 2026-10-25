@@ -79,9 +79,17 @@ class HfTranscriber:
                 for start in range(0, len(dataset), settings.batch_size):
                     examples = [dataset[i] for i in range(start, min(start + settings.batch_size, len(dataset)))]
                     caps = [min(room, (settings.token_caps or {}).get(e.sample_id, settings.max_new_tokens)) for e in examples]
-                    features = torch.from_numpy(np.stack([e.input_features for e in examples]).astype(np.float32, copy=False))
+                    cached = [getattr(e, "encoder_output", None) is not None for e in examples]
+                    if any(cached) and not all(cached):
+                        raise EvaluatorError("A batch mixes examples with and without a cached encoder output; build the whole dataset with the same features.encoder_cache setting.")
+                    if all(cached):  # the encoder cache (DECISIONS 89): the frozen encoder is skipped and its stored output is decoded
+                        from transformers.modeling_outputs import BaseModelOutput  # imported only when the encoder cache is used
+                        encoder_output = torch.from_numpy(np.stack([e.encoder_output for e in examples]).astype(np.float32, copy=False)).to(native.device)
+                        inputs: dict[str, Any] = {"encoder_outputs": BaseModelOutput(last_hidden_state=encoder_output)}
+                    else:
+                        inputs = {"input_features": torch.from_numpy(np.stack([e.input_features for e in examples]).astype(np.float32, copy=False)).to(native.device)}  # the model's own device (cpu unless runtime.device moved it, DECISIONS 87)
                     try:
-                        out = native.generate(input_features=features, num_beams=settings.num_beams, max_new_tokens=max(caps), do_sample=False)
+                        out = native.generate(**inputs, num_beams=settings.num_beams, max_new_tokens=max(caps), do_sample=False)
                     except (MemoryError, RuntimeError) as exc:
                         if not (isinstance(exc, MemoryError) or any(s in str(exc).lower() for s in _OOM_SIGNS)):
                             raise

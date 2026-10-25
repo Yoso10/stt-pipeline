@@ -13,6 +13,7 @@ batch is the order of the examples. This is the ONLY module of the component tha
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import Any
 
 import numpy as np
 import torch
@@ -28,17 +29,23 @@ class FeatureCollator:
     def __init__(self, decoder_start_token_id: int | None) -> None:
         self._start = decoder_start_token_id
 
-    def __call__(self, examples: Sequence[FeatureExample]) -> dict[str, torch.Tensor]:
+    def __call__(self, examples: Sequence[FeatureExample]) -> dict[str, Any]:
         """Return the padded batch. Errors: ValueError for an empty list or features of different shapes."""
         if not examples:
             raise ValueError("cannot make a batch from zero examples")
-        shapes = {e.input_features.shape for e in examples}
+        cached = [e.encoder_output is not None for e in examples]
+        if any(cached) and not all(cached):
+            raise ValueError("a batch must be either all encoder-cache examples or all mel-feature examples")
+        arrays = [e.encoder_output if all(cached) else e.input_features for e in examples]
+        shapes = {a.shape for a in arrays}  # type: ignore[union-attr]
         if len(shapes) != 1:
             raise ValueError(f"the features of one batch must have the same shape, got {sorted(shapes)}")
-        features = torch.from_numpy(np.stack([e.input_features for e in examples]).astype(np.float32, copy=False))
+        features = torch.from_numpy(np.stack(arrays).astype(np.float32, copy=False))  # type: ignore[arg-type]
         sequences = [e.labels[1:] if self._start is not None and e.labels and e.labels[0] == self._start else list(e.labels) for e in examples]
         width = max(len(s) for s in sequences)
         labels = torch.full((len(sequences), width), IGNORE_INDEX, dtype=torch.long)
         for row, ids in enumerate(sequences):
             labels[row, : len(ids)] = torch.tensor(ids, dtype=torch.long)
+        if all(cached):  # the frozen encoder is skipped: the model receives its output (DECISIONS 89)
+            return {"encoder_outputs": (features,), "labels": labels}
         return {"input_features": features, "labels": labels}

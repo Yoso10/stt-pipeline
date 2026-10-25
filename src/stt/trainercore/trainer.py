@@ -63,6 +63,7 @@ class TrainerCore:
     """Runs one training run. Hugging Face and torch are used only by `hf_trainer` (imported when a run starts).
 
     The registries select the freeze policy (`train.freeze_policy`) and the sinks (`train.sinks`) by name. `clock` is injectable for tests.
+    `device` is "cpu" (default) or "cuda": the composition root resolves `runtime.device` (including "auto" and the loud failure when no GPU exists) and passes the result.
     """
 
     def __init__(
@@ -71,11 +72,15 @@ class TrainerCore:
         freeze_registry: FreezeRegistry | None = None,
         sink_registry: SinkRegistry | None = None,
         clock: Callable[[], float] = time.monotonic,
+        device: str = "cpu",
     ) -> None:
+        if device not in ("cpu", "cuda"):
+            raise TrainerConfigError(f"TrainerCore device '{device}' is not valid: use 'cpu' or 'cuda' (the composition root resolves runtime.device, 'auto' included).")
         self._config = config
         self._freeze = freeze_registry or default_freeze_registry()
         self._sinks = sink_registry or default_sink_registry()
         self._clock = clock
+        self._device = device
 
     def train(self, request: TrainRequest) -> TrainResult:
         """Run the training and return the result.
@@ -93,6 +98,11 @@ class TrainerCore:
                 "Check the split and the SampleFilter report."
             )
         check_hyperparams(request.hyperparams)
+        if config.freeze_policy != "freeze_encoder" and any(getattr(d, "uses_encoder_cache", False) for d in (request.train, request.val)):
+            raise TrainerConfigError(
+                f"The datasets use the encoder cache (features.encoder_cache.enabled) but train.freeze_policy is '{config.freeze_policy}'. The cached encoder output is only valid when the encoder is not trained. "
+                "Fix: set train.freeze_policy to freeze_encoder, or set features.encoder_cache.enabled to false."
+            )
         if config.resume and not config.save_optimizer_state:
             raise TrainerConfigError(
                 "train.resume is true but train.save_optimizer_state is false. In that mode a checkpoint holds only the model weights (no optimizer, scheduler or random state), "
@@ -136,6 +146,7 @@ class TrainerCore:
             max_runtime_seconds=None if config.max_runtime_minutes is None else config.max_runtime_minutes * 60.0,
             clock=self._clock,
             save_optimizer_state=config.save_optimizer_state,
+            device=self._device,
         )
         from stt.trainercore.hf_trainer import run_training  # imported only when a run starts
 

@@ -10,6 +10,7 @@ Importing this module does not import torch or transformers (the adapter is impo
 
 from __future__ import annotations
 
+import inspect
 from collections.abc import Callable, Mapping
 from types import MappingProxyType
 
@@ -17,13 +18,13 @@ from stt.modelloader.config import ModelConfig
 from stt.modelloader.errors import ModelLoaderError
 from stt.modelloader.types import ModelLoader
 
-LoaderFactory = Callable[[ModelConfig], ModelLoader]
+LoaderFactory = Callable[..., ModelLoader]  # (config) or, for a loader that supports a device, (config, device=...)
 
 
-def _hf_whisper(config: ModelConfig) -> ModelLoader:
+def _hf_whisper(config: ModelConfig, device: str = "cpu") -> ModelLoader:
     from stt.modelloader.hf_whisper import HfWhisperLoader  # imported only when this loader is chosen
 
-    return HfWhisperLoader(config)
+    return HfWhisperLoader(config, device)
 
 
 class LoaderRegistry:
@@ -36,12 +37,21 @@ class LoaderRegistry:
         """The registered loader names, sorted."""
         return sorted(self._factories)
 
-    def create(self, config: ModelConfig) -> ModelLoader:
-        """Create the loader named by `config.loader`. Errors: ModelLoaderError listing the registered names."""
+    def create(self, config: ModelConfig, device: str = "cpu") -> ModelLoader:
+        """Create the loader named by `config.loader`; `device` ("cpu" or "cuda", already resolved from `runtime.device`) is handed to a factory that accepts it.
+
+        Errors: ModelLoaderError listing the registered names, for a device other than cpu/cuda, and for a loader that does not support `cuda`.
+        """
         factory = self._factories.get(config.loader)
         if factory is None:
             raise ModelLoaderError(f"Unknown model.loader '{config.loader}'. Registered loaders: {', '.join(self.names())}.")
-        return factory(config)
+        if device not in ("cpu", "cuda"):
+            raise ModelLoaderError(f"The device '{device}' is not valid for a model loader: use 'cpu' or 'cuda' (runtime.device is resolved before the loader is made).")
+        if device == "cpu":
+            return factory(config)  # the call of every loader before runtime.device existed
+        if "device" not in inspect.signature(factory).parameters:
+            raise ModelLoaderError(f"The loader '{config.loader}' does not support runtime.device '{device}'. Use runtime.device cpu or a loader that supports the GPU.")
+        return factory(config, device=device)
 
 
 def default_registry() -> LoaderRegistry:
@@ -49,6 +59,6 @@ def default_registry() -> LoaderRegistry:
     return LoaderRegistry({"hf_whisper": _hf_whisper})
 
 
-def create_loader(config: ModelConfig, registry: LoaderRegistry | None = None) -> ModelLoader:
-    """Create the ModelLoader selected by `model.loader` (default registry unless one is given)."""
-    return (registry or default_registry()).create(config)
+def create_loader(config: ModelConfig, registry: LoaderRegistry | None = None, device: str = "cpu") -> ModelLoader:
+    """Create the ModelLoader selected by `model.loader` (default registry unless one is given); `device` is the resolved `runtime.device` ("cpu" by default)."""
+    return (registry or default_registry()).create(config, device)

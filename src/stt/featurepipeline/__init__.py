@@ -9,7 +9,7 @@ Importing this package does not import torch, soundfile or scipy (the adapters a
 """
 
 from stt.featurepipeline.cache import FeatureCache, extractor_signature
-from stt.featurepipeline.config import CacheConfig, FeaturesConfig, resolve_seed
+from stt.featurepipeline.config import CacheConfig, EncoderCacheConfig, FeaturesConfig, resolve_seed
 from stt.featurepipeline.dataset import Item, LazyFeatureDataset
 from stt.featurepipeline.errors import AudioReadError, FeaturePipelineError
 from stt.featurepipeline.pipeline import FeaturePipeline
@@ -29,6 +29,7 @@ __all__ = [
     "AudioReadError",
     "AudioReader",
     "CacheConfig",
+    "EncoderCacheConfig",
     "FeatureCache",
     "FeatureDataset",
     "FeatureExample",

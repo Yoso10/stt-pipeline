@@ -176,6 +176,7 @@ class TrainingJob:
     max_runtime_seconds: float | None
     clock: Callable[[], float]
     save_optimizer_state: bool = True  # false: checkpoints hold only the model weights (the Hugging Face option `save_only_model`); such a run cannot be resumed
+    device: str = "cpu"  # "cpu" or "cuda" (already resolved by the composition root from runtime.device, DECISIONS 87)
 
 
 @dataclass(frozen=True)

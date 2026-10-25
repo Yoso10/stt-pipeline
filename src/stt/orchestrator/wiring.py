@@ -19,7 +19,7 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from stt.config import AppConfig, ConfigError, RuntimeConfig, SectionRegistry, load_config
+from stt.config import AppConfig, ConfigError, RuntimeConfig, SectionRegistry, load_config, resolve_device
 from stt.datasource import DataConfig, DataSourceError, create_data_source
 from stt.evaluator import Comparator, ComparisonResult, DecodeSettings, EvalConfig, EvalItem, EvalRequest, Evaluator, EvaluatorConfigError, EvaluatorError, EvalResult, make_decode_settings
 from stt.featurepipeline import FeaturePipeline, FeaturePipelineError, FeaturesConfig
@@ -157,26 +157,28 @@ class DataPipeline:
 
 
 class ModelWiring:
-    """ModelLoader and FeaturePipeline bound to the config."""
+    """ModelLoader and FeaturePipeline bound to the config. `device` is the resolved `runtime.device` ("cpu" or "cuda")."""
 
-    def __init__(self, config: AppConfig) -> None:
+    def __init__(self, config: AppConfig, device: str = "cpu") -> None:
         self._config = config
+        self._device = device
 
     def load(self, path: Path | None = None) -> LoadedModel:
         """Load `model.path` (or the folder `path`)."""
         model = self._config.section("model", ModelConfig)
-        return create_loader(model if path is None else model.model_copy(update={"path": path})).load()
+        return create_loader(model if path is None else model.model_copy(update={"path": path}), device=self._device).load()
 
     def features(self, model: LoadedModel) -> FeatureBuilder:
         """The FeaturePipeline for `model`."""
-        return FeaturePipeline(self._config.section("features", FeaturesConfig), model, seed=self._config.runtime.seed)  # type: ignore[return-value]
+        return FeaturePipeline(self._config.section("features", FeaturesConfig), model, seed=self._config.runtime.seed, freeze_policy=self._config.section("train", TrainConfig).freeze_policy)  # type: ignore[return-value]
 
 
 class TrainingWiring:
-    """TrainerCore bound to the config; the CSV sink writes into the experiment's `metrics/` folder."""
+    """TrainerCore bound to the config; the CSV sink writes into the experiment's `metrics/` folder. `device` is the resolved `runtime.device` ("cpu" or "cuda")."""
 
-    def __init__(self, config: AppConfig) -> None:
+    def __init__(self, config: AppConfig, device: str = "cpu") -> None:
         self._config = config
+        self._device = device
 
     def hyperparams(self) -> TrainHyperparams:
         """The hyperparameters of the config."""
@@ -200,7 +202,7 @@ class TrainingWiring:
                 "html": lambda ctx: self._progress_sink(metrics_dir, ctx.resume_step),
             }
         )
-        return TrainerCore(config, sink_registry=sinks).train(request)
+        return TrainerCore(config, sink_registry=sinks, device=self._device).train(request)
 
 
     def _progress_sink(self, metrics_dir: Path, resume_step: int | None) -> HtmlProgressSink:
@@ -383,10 +385,11 @@ def _now() -> str:
 
 
 def build_services(config: AppConfig) -> Services:
-    """All the services of a run, built from the config."""
+    """All the services of a run, built from the config. `runtime.device` is resolved here, once (DECISIONS 87): `cuda` without a usable GPU raises ConfigError (exit code 2)."""
     registry = RegistryWiring(config)
+    device = resolve_device(config.runtime.device)
     return Services(
-        DataPipeline(config), ModelWiring(config), TrainingWiring(config), EvaluationWiring(config), exit_code_for, SearchWiring(config), SelectionWiring(config), registry, _now,
+        DataPipeline(config), ModelWiring(config, device), TrainingWiring(config, device), EvaluationWiring(config), exit_code_for, SearchWiring(config), SelectionWiring(config), registry, _now,
         ExportWiring(config.section("export", ExportConfig), registry),
     )
 

@@ -26,11 +26,25 @@ class CacheConfig(SectionModel):
     dir: Path | None = Field(default=None, description="Folder of the cache (required when enabled; outside src/ and tests/).")
 
 
+class EncoderCacheConfig(SectionModel):
+    """The optional encoder-output cache (DECISIONS 89): needs a FROZEN encoder (`train.freeze_policy: freeze_encoder`)."""
+
+    enabled: bool = Field(
+        default=False,
+        description="DEFAULT false (nothing changes). When true, the output of the frozen audio encoder is computed once per clip and reused for training, the Val loss and the decoding (identical results, about 8 times faster training, 3 times faster decoding on the CPU).",
+    )
+    dir: Path | None = Field(default=None, description="Folder of the encoder cache (required when enabled; about 7.7 MB per clip for the turbo model in float32, half in float16).")
+    dtype: Literal["float16", "float32"] = Field(
+        default="float16", description="DEFAULT float16 (half the disk; the self-check and the 8-clip test showed identical decoded text). float32 is exact."
+    )
+
+
 class FeaturesConfig(SectionModel):
     """The `features` section."""
 
     num_workers: int = Field(default=0, ge=0, description="DEFAULT 0 (O2). Threads used to fill the cache; 0 = one at a time.")
     cache: CacheConfig = CacheConfig()
+    encoder_cache: EncoderCacheConfig = EncoderCacheConfig()
     max_dropped_ratio: float = Field(
         default=0.05, ge=0.0, le=1.0, description="DEFAULT 0.05. The run fails when more than this fraction of labels is removed for length."
     )
@@ -42,6 +56,12 @@ class FeaturesConfig(SectionModel):
     def _cache_needs_a_folder(self) -> FeaturesConfig:
         if self.cache.enabled and self.cache.dir is None:
             raise ValueError("features.cache.dir is required when features.cache.enabled is true: set a folder for the cache.")
+        return self
+
+    @model_validator(mode="after")
+    def _encoder_cache_needs_a_folder(self) -> FeaturesConfig:
+        if self.encoder_cache.enabled and self.encoder_cache.dir is None:
+            raise ValueError("features.encoder_cache.dir is required when features.encoder_cache.enabled is true: set a folder for the encoder cache.")
         return self
 
 

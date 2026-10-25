@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator, Mapping
 from types import MappingProxyType
-from typing import TypeVar
+from typing import Literal, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -35,12 +35,19 @@ class SectionModel(BaseModel):
 class RuntimeConfig(SectionModel):
     """The `runtime` section, defined by the Config component.
 
-    Keys: `online` (explicit switch for running at home; the pipeline is offline by default)
-    and `seed` (applied everywhere for determinism).
+    Keys: `online` (explicit switch for running at home; the pipeline is offline by default),
+    `seed` (applied everywhere for determinism) and `device` (where the model computes).
     """
 
     online: bool = Field(default=False, description="True only at home: allows online mode. Offline by default.")
     seed: int = Field(default=42, description="DEFAULT 42. Seed applied everywhere for deterministic runs.")
+    device: Literal["cpu", "cuda", "auto"] = Field(
+        default="cpu",
+        description=(
+            "DEFAULT cpu (the behaviour before this key existed). cuda: train and score on the GPU; the run FAILS with exit code 2 if no usable GPU is found (never a silent fall back "
+            "to the CPU). auto: cuda when torch reports a usable GPU, otherwise cpu (the choice is logged at INFO). Environment: STT__RUNTIME__DEVICE."
+        ),
+    )
 
 
 class SectionRegistry:

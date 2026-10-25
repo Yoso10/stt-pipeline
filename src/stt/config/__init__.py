@@ -10,6 +10,7 @@ Example output:
 Command line: `add_config_arguments(parser)` adds --config and --set; see docs/COMPONENTS.md (C0).
 """
 
+from stt.config.device import resolve_device
 from stt.config.errors import ConfigError
 from stt.config.loader import (
     OFFLINE_VARIABLES,
@@ -33,4 +34,5 @@ __all__ = [
     "dump_config",
     "load_config",
     "load_config_from_args",
+    "resolve_device",
 ]

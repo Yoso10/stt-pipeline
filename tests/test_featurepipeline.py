@@ -427,7 +427,7 @@ class ConfigAndRulesTests(unittest.TestCase):
         self.assertEqual(config.section("features", FeaturesConfig), FeaturesConfig())
 
     def test_9_libraries_are_imported_only_inside_adapter_modules_and_there_is_no_network(self) -> None:
-        allowed = {"torch": {"collator.py"}, "soundfile": {"audio_adapter.py"}, "scipy": {"audio_adapter.py"}}
+        allowed = {"torch": {"collator.py", "encoder_adapter.py"}, "soundfile": {"audio_adapter.py"}, "scipy": {"audio_adapter.py"}}
         forbidden = {"requests", "urllib3", "httpx", "huggingface_hub", "socket", "tools", "datasets", "transformers"}
         for path in (ROOT / "src" / "stt" / "featurepipeline").glob("*.py"):
             tree = ast.parse(path.read_text(encoding="utf-8"))

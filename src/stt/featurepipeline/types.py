@@ -22,11 +22,16 @@ import numpy as np
 
 @dataclass(frozen=True)
 class FeatureExample:
-    """One model-ready example: `input_features` float32 (mel bins, frames) and `labels` (the full label ids)."""
+    """One model-ready example: `input_features` float32 (mel bins, frames) and `labels` (the full label ids).
+
+    With the encoder cache (DECISIONS 89) `encoder_output` holds the float32 (frames, width) output of the frozen encoder and `input_features` is an empty placeholder;
+    otherwise `encoder_output` is None.
+    """
 
     sample_id: str
     input_features: np.ndarray
     labels: list[int]
+    encoder_output: np.ndarray | None = None
 
 
 class FeatureDataset(Protocol):

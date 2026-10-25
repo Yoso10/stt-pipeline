@@ -19,6 +19,7 @@ from pathlib import Path
 import numpy as np
 
 from stt.featurepipeline.cache import FeatureCache
+from stt.featurepipeline.encoder_cache import EncoderCache
 from stt.featurepipeline.errors import AudioReadError, FeaturePipelineError
 from stt.featurepipeline.types import AudioReader, FeatureExample
 from stt.modelloader import FeatureExtractor
@@ -36,11 +37,33 @@ class Item:
 class LazyFeatureDataset:
     """A plain dataset (`__len__`, `__getitem__`) over the items, in the given order."""
 
-    def __init__(self, items: Sequence[Item], extractor: FeatureExtractor, reader: AudioReader, cache: FeatureCache | None = None) -> None:
+    def __init__(
+        self,
+        items: Sequence[Item],
+        extractor: FeatureExtractor,
+        reader: AudioReader,
+        cache: FeatureCache | None = None,
+        encoder_cache: EncoderCache | None = None,
+    ) -> None:
         self._items = list(items)
         self._extractor = extractor
         self._reader = reader
         self._cache = cache
+        self._encoder_cache = encoder_cache
+
+    @property
+    def uses_encoder_cache(self) -> bool:
+        """True when the examples carry the cached encoder output instead of the mel features (the TrainerCore refuses this unless the encoder is frozen)."""
+        return self._encoder_cache is not None
+
+    @property
+    def items(self) -> list[Item]:
+        """The items in dataset order."""
+        return list(self._items)
+
+    def compute_features(self, item: Item) -> np.ndarray:
+        """The mel features of one item, computed from the audio (ignoring every cache). Errors: FeaturePipelineError."""
+        return self._compute(item)
 
     def __len__(self) -> int:
         """Number of examples."""
@@ -51,6 +74,11 @@ class LazyFeatureDataset:
         if not -len(self._items) <= index < len(self._items):
             raise IndexError(index)
         item = self._items[index]
+        if self._encoder_cache is not None:
+            output = self._encoder_cache.get(self._encoder_cache.key(item.sample_id, item.audio_path))
+            if output is None:
+                raise FeaturePipelineError(f"The encoder cache has no usable file for sample {item.sample_id} in {self._encoder_cache.folder}. Build the dataset again (the build fills the cache).")
+            return FeatureExample(item.sample_id, np.zeros((0, 0), dtype=np.float32), list(item.labels), output)
         return FeatureExample(item.sample_id, self._features(item), list(item.labels))
 
     @property

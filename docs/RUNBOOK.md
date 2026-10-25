@@ -110,13 +110,13 @@ Shared options: `--config <file>`, `--set a.b=value` (repeatable; the last one w
 
 ## 10. When something fails
 1. Read the last lines of the message: they name the stage, the key or the path, and the fix.
-2. Exit code: 2 config, 3 data, 4 training or evaluation, 5 export or verification, 130 interrupted.
+2. Exit code: 2 config, 3 data, 4 training or evaluation, 5 export or verification, 130 interrupted, 1 an unexpected bug (keep `logs/run.log` and the message).
 3. Open `docs/TROUBLESHOOTING.md` at the component named in the message.
 4. If you ask the internal agent for help, give it `CLAUDE.md`, `docs/COMPONENTS.md`, the error and `logs/run.log`. The rule: diagnose first, smallest fix, no interface changes.
 5. Same seed gives the same result on the same machine only; do not compare exact numbers between machines.
 
 ## 11. Do and do not
 - Do keep every experiment folder; never edit `config_full.yaml`; use `--parent` to derive a new experiment.
-- Do not delete registry entries; do not turn on online mode on the closed machine; do not look at the Test results to choose between experiments.
+- Do not delete registry entries; do not turn on online mode on the closed machine; a GPU run needs `--set runtime.device=cuda` and a CUDA build of torch (UNTESTED; with no GPU the command stops with exit code 2, see docs/USER_GUIDE.md section 4); do not look at the Test results to choose between experiments.
 - Do not raise a safety gate just to make a run pass: read the report that explains why it failed.
 - Do keep `train.hyperparams.warmup_steps` at 3 or less in a config you run `benchmark` on (the benchmark trains only 3 steps and refuses a longer warmup).

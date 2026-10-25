@@ -8,14 +8,14 @@ Status column: the tag at the start of the key's description in the code (`DEFAU
 
 ## Sections
 
-- [`runtime`](#section-runtime): 2 keys
+- [`runtime`](#section-runtime): 3 keys
 - [`data`](#section-data): 13 keys
 - [`split`](#section-split): 20 keys
 - [`subsample`](#section-subsample): 14 keys
 - [`text`](#section-text): 14 keys
 - [`filter`](#section-filter): 3 keys
 - [`model`](#section-model): 5 keys
-- [`features`](#section-features): 7 keys
+- [`features`](#section-features): 10 keys
 - [`train`](#section-train): 22 keys
 - [`eval`](#section-eval): 15 keys
 - [`run`](#section-run): 9 keys
@@ -33,12 +33,13 @@ Status column: the tag at the start of the key's description in the code (`DEFAU
 <a id="section-runtime"></a>
 ## `runtime`
 
-The `runtime` section, defined by the Config component. Keys: `online` (explicit switch for running at home; the pipeline is offline by default) and `seed` (applied everywhere for determinism).
+The `runtime` section, defined by the Config component. Keys: `online` (explicit switch for running at home; the pipeline is offline by default), `seed` (applied everywhere for determinism) and `device` (where the model computes).
 
 | Key | Type | Default | Status | Description |
 |---|---|---|---|---|
 | `runtime.online` | bool | false | DEFAULT | True only at home: allows online mode. Offline by default. |
 | `runtime.seed` | int | 42 | DEFAULT | DEFAULT 42. Seed applied everywhere for deterministic runs. |
+| `runtime.device` | 'cpu' \| 'cuda' \| 'auto' | "cpu" | DEFAULT | DEFAULT cpu (the behaviour before this key existed). cuda: train and score on the GPU; the run FAILS with exit code 2 if no usable GPU is found (never a silent fall back to the CPU). auto: cuda when torch reports a usable GPU, otherwise cpu (the choice is logged at INFO). Environment: STT__RUNTIME__DEVICE. |
 
 <a id="section-data"></a>
 ## `data`
@@ -167,6 +168,9 @@ The `features` section.
 | `features.num_workers` | int | 0 | DEFAULT | DEFAULT 0 (O2). Threads used to fill the cache; 0 = one at a time. |
 | `features.cache.enabled` | bool | false | DEFAULT | DEFAULT false. When true, features are computed once and stored as files. |
 | `features.cache.dir` | Path \| None | null | DEFAULT | Folder of the cache (required when enabled; outside src/ and tests/). |
+| `features.encoder_cache.enabled` | bool | false | DEFAULT | DEFAULT false (nothing changes). When true, the output of the frozen audio encoder is computed once per clip and reused for training, the Val loss and the decoding (identical results, about 8 times faster training, 3 times faster decoding on the CPU). |
+| `features.encoder_cache.dir` | Path \| None | null | DEFAULT | Folder of the encoder cache (required when enabled; about 7.7 MB per clip for the turbo model in float32, half in float16). |
+| `features.encoder_cache.dtype` | 'float16' \| 'float32' | "float16" | DEFAULT | DEFAULT float16 (half the disk; the self-check and the 8-clip test showed identical decoded text). float32 is exact. |
 | `features.max_dropped_ratio` | float | 0.05 | DEFAULT | DEFAULT 0.05. The run fails when more than this fraction of labels is removed for length. |
 | `features.downmix` | 'mean' | "mean" | DEFAULT | DEFAULT mean. Stereo is averaged to mono. |
 | `features.shuffle` | bool | false | DEFAULT | DEFAULT false. When true the examples are put in a seeded random order. |
@@ -382,4 +386,4 @@ The `benchmark` section (key and DEFAULT of the C13 brief).
 |---|---|---|---|---|
 | `benchmark.steps` | int | 3 | DEFAULT | DEFAULT 3. Training steps to measure. The first steps are slower than the later ones: raise it for a steadier number. The Val probe is steps x eval.batch_size clips. |
 
-Total: 21 sections, 184 keys.
+Total: 21 sections, 188 keys.

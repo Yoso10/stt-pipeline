@@ -234,9 +234,9 @@ def _error(message: str, code: int) -> int:
 def _run_pipeline(args: argparse.Namespace, config_overrides: Sequence[str], smoke: bool = False, full: bool = False) -> int:
     try:
         config = load_config(args.config, overrides=config_overrides, registry=section_registry())
+        runtime = build_runtime(config, _now)  # also resolves runtime.device: `cuda` without a GPU is a ConfigError (exit code 2), before any experiment is made
     except ConfigError as exc:
         return _error(str(exc), 2)
-    runtime = build_runtime(config, _now)
     run = config.section("run", RunConfig)
     pipeline = config.section("pipeline", PipelineConfig)
     stages = list(pipeline.stages) if args.command == "run" or full else PLANS[args.command]  # `smoke --full` runs the stages of `run`

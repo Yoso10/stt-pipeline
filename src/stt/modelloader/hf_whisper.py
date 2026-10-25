@@ -74,8 +74,9 @@ class HfWhisperLoader:
     English-only model or unsupported language, unknown dtype is rejected by the Config schema, out of memory).
     """
 
-    def __init__(self, config: ModelConfig) -> None:
+    def __init__(self, config: ModelConfig, device: str = "cpu") -> None:
         self._config = config
+        self._device = device  # "cpu" (the model stays where it is loaded) or "cuda" (the model is moved to the GPU after loading; resolved from runtime.device)
 
     def load(self) -> LoadedModel:
         """Validate the folder, then load. Every call returns new, independent objects."""
@@ -108,6 +109,11 @@ class HfWhisperLoader:
         generation.task = config.task
         generation.forced_decoder_ids = None  # the language and task are given by the two settings above
         model.eval()
+        if self._device != "cpu":
+            try:
+                model.to(self._device)
+            except Exception as exc:  # noqa: BLE001  a CUDA out-of-memory error and a missing device are different exception types
+                raise ModelLoaderError(f"Cannot move the model in {folder} to the device '{self._device}': {type(exc).__name__}: {exc}. A GPU with less memory than the model, or no usable GPU, is the usual cause; see runtime.device.") from exc
         wrapped_extractor = HfFeatureExtractor(extractor)
         info = ModelInfo(
             name=folder.name,

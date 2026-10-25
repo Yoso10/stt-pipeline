@@ -11,6 +11,7 @@
 | Code | Meaning |
 |---|---|
 | 0 | success (including "the baseline stays") |
+| 1 | an unexpected bug (keep `logs/run.log` and the message) |
 | 2 | config error |
 | 3 | data error |
 | 4 | failure in a training or evaluation stage |

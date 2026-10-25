@@ -211,7 +211,7 @@ def run_training(job: TrainingJob) -> TrainingOutcome:
         set_seed(h.seed)
         args = Seq2SeqTrainingArguments(
             output_dir=str(job.checkpoints_dir),
-            use_cpu=True,
+            use_cpu=job.device == "cpu",  # runtime.device (DECISIONS 87): "cuda" is resolved and checked by the composition root; the default is the CPU
             per_device_train_batch_size=h.batch_size,
             per_device_eval_batch_size=h.batch_size,
             gradient_accumulation_steps=h.grad_accum_steps,
