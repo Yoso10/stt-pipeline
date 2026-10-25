@@ -140,6 +140,62 @@ class HistoryPoint:
 
 
 @dataclass(frozen=True)
+class ModelNumbers:
+    """The numbers of one scored model (from `evaluation_baseline.json` / `evaluation_trained.json` / `test_result.json`)."""
+
+    wer: float
+    cer: float | None
+    n_files: int
+    n_words: int
+    empty_output: int = 0
+    hit_length_cap: int = 0
+
+
+@dataclass(frozen=True)
+class ClipRow:
+    """One Val clip for the table of best and worst clips: the reference and what the two models wrote (from the two `predictions_*.csv` files)."""
+
+    sample_id: str
+    group_id: str
+    reference: str
+    baseline_text: str
+    trained_text: str
+    baseline_wer: float
+    trained_wer: float
+
+
+@dataclass(frozen=True)
+class FinalTestView:
+    """`test_result.json`: the Test split scored ONCE for the trained model and the baseline (the `final-test` command, DECISIONS 90)."""
+
+    split: str
+    baseline: ModelNumbers
+    trained: ModelNumbers
+    relative_reduction: float | None
+    delta_wer: float | None
+    ci_low: float | None
+    ci_high: float | None
+    confidence: float
+    n_groups: int
+    verdict: str
+    status: str  # "confirmed" | "not_confirmed"
+    explanation: str
+
+
+@dataclass(frozen=True)
+class TrainedRunView:
+    """An experiment made by `train` + `evaluate` (no search): the loss history of the training, the baseline and trained numbers, the stored comparison and the per-clip texts (DECISIONS 90)."""
+
+    history: Sequence[StepMetrics]
+    baseline: ModelNumbers
+    trained: ModelNumbers
+    comparison: ComparisonResult | None = None
+    clips: Sequence[ClipRow] = ()
+    max_steps: int | None = None
+    final_test: FinalTestView | None = None
+
+
+@dataclass(frozen=True)
 class ReportData:
     """Everything one report needs. `finalist_val` maps a trial id to the lossless Val result of its retrained model; `test_results` maps `baseline` or `trial_<id>` to the stored Test result
     of the one-time look; `final_histories` and `search_histories` map a trial id to its training records (the metrics file of the trial)."""
@@ -157,6 +213,7 @@ class ReportData:
     benchmark: BenchmarkView | None = None
     history: tuple[HistoryPoint, ...] = ()  # one point per registered experiment, in registry order (Wave 3 task 7); empty = no history
     history_problem: str | None = None  # why there is no history, in plain words (named in the report instead of an empty chart)
+    trained_run: TrainedRunView | None = None  # a `train` + `evaluate` experiment (DECISIONS 90): the convergence view, the clips and, when it exists, the final Test
 
     def winner_val(self) -> EvalResult | None:
         """The Val result of the winner, or of the baseline when the baseline stays (the model the per-file sections describe)."""

@@ -7,7 +7,7 @@ Example output:
     <svg xmlns="http://www.w3.org/2000/svg" vie
 Every function returns one `<svg>` text with a `<title>` (the accessible name), axes, ticks, labels and a colour-blind-safe palette (Okabe and Ito). The same input always gives the same text. Text that
 comes from the data is escaped. The callers decide what to draw (and never call a function with nothing to draw): the builder says "not available in this run" instead of an empty chart.
-Charts: `line_chart` (curves), `bar_chart` (bars), `forest_plot` (a value with an interval per row), `scatter` (points, an optional diagonal, an optional log x axis), `histogram`.
+Charts: `line_chart` (curves), `loss_chart` (Val and train loss with the best checkpoint marked), `bar_chart` (bars), `wer_band_chart` (bars on a reference band), `forest_plot` (a value with an interval per row), `scatter` (points, an optional diagonal, an optional log x axis), `histogram`.
 """
 
 from __future__ import annotations
@@ -193,5 +193,63 @@ def histogram(title: str, values: Sequence[float], bins: int, x_label: str, colo
     for i, count in enumerate(counts):
         top = _scale(count, yr[0], yr[1], H - BOTTOM, TOP)
         parts.append(f'<rect x="{LEFT + i * width:.1f}" y="{top:.1f}" width="{width - 1:.1f}" height="{H - BOTTOM - top:.1f}" fill="{colour}"/>')
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+def loss_chart(
+    title: str,
+    val: Sequence[tuple[float, float]],
+    train: Sequence[tuple[float, float]],
+    best: tuple[float, float] | None,
+    x_label: str,
+    y_label: str,
+    best_label: str,
+) -> str:
+    """Val loss (solid, with a point at every evaluation) and training loss (dashed) in ONE chart; `best` = (step, Val loss) is marked with a vertical line, a ring and `best_label`."""
+    drawn = [pts for pts in (val, train) if pts]
+    xs = [x for pts in drawn for x, _ in pts]
+    ys = [y for pts in drawn for _, y in pts]
+    xr, yr = _range(xs, 0.04), _range(ys)
+    parts = _open(title)
+    _axes(parts, nice_ticks(*xr), nice_ticks(*yr), xr, yr, x_label, y_label)
+    px = lambda v: _scale(v, xr[0], xr[1], LEFT, W - RIGHT)  # noqa: E731
+    py = lambda v: _scale(v, yr[0], yr[1], H - BOTTOM, TOP)  # noqa: E731
+    if best is not None:
+        parts.append(f'<line x1="{px(best[0]):.1f}" x2="{px(best[0]):.1f}" y1="{TOP}" y2="{H - BOTTOM}" stroke="#009E73" stroke-width="1.5" stroke-dasharray="3,3"/>')
+    legend = []
+    for points, colour, dashed, label in ((train, PALETTE[1], True, "train loss"), (val, PALETTE[0], False, "Val loss")):
+        if not points:
+            continue
+        coords = " ".join(f"{px(x):.1f},{py(y):.1f}" for x, y in points)
+        dash = ' stroke-dasharray="5,3"' if dashed else ""
+        parts.append(f'<polyline fill="none" stroke="{colour}" stroke-width="2"{dash} points="{coords}"/>')
+        radius = 2.0 if dashed else 4.0
+        parts += [f'<circle cx="{px(x):.1f}" cy="{py(y):.1f}" r="{radius}" fill="{colour}"/>' for x, y in points]
+        legend.append((label, colour))
+    if best is not None:
+        parts.append(f'<circle cx="{px(best[0]):.1f}" cy="{py(best[1]):.1f}" r="8" fill="none" stroke="#009E73" stroke-width="2.5"/>')
+        parts.append(f'<text x="{px(best[0]) + 10:.1f}" y="{TOP + 12}" font-size="11" fill="#006b4f">{escape(best_label)}</text>')
+    for i, (label, colour) in enumerate(legend):
+        parts.append(f'<rect x="{LEFT + 8 + 120 * i}" y="30" width="10" height="3" fill="{colour}"/><text x="{LEFT + 22 + 120 * i}" y="34" font-size="11">{escape(label)}</text>')
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+def wer_band_chart(title: str, bars: Sequence[tuple[str, float, str]], y_label: str, band: tuple[float, float], band_label: str) -> str:
+    """Vertical bars (label, value, colour) with a shaded reference band (low, high) behind them, named by `band_label`."""
+    yr = _range([v for _, v, _ in bars] + [band[1]], 0.1, zero=True)
+    parts = _open(title)
+    _axes(parts, [], nice_ticks(*yr), (0, 1), yr, "", y_label, x_fmt=False)
+    y_hi, y_lo = _scale(band[1], yr[0], yr[1], H - BOTTOM, TOP), _scale(band[0], yr[0], yr[1], H - BOTTOM, TOP)
+    parts.append(f'<rect x="{LEFT}" y="{y_hi:.1f}" width="{W - LEFT - RIGHT}" height="{y_lo - y_hi:.1f}" fill="#009E73" fill-opacity="0.18"/>')
+    parts.append(f'<text x="{W - RIGHT - 4}" y="{y_hi + 13:.1f}" text-anchor="end" font-size="11" fill="#006b4f">{escape(band_label)}</text>')
+    slot = (W - LEFT - RIGHT) / len(bars)
+    for i, (label, value, colour) in enumerate(bars):
+        x = LEFT + slot * i + slot * 0.15
+        top, base = _scale(value, yr[0], yr[1], H - BOTTOM, TOP), _scale(0, yr[0], yr[1], H - BOTTOM, TOP)
+        parts.append(f'<rect x="{x:.1f}" y="{min(top, base):.1f}" width="{slot * 0.7:.1f}" height="{abs(base - top):.1f}" fill="{colour}"/>')
+        parts.append(f'<text x="{x + slot * 0.35:.1f}" y="{min(top, base) - 4:.1f}" text-anchor="middle">{fmt(value)}</text>')
+        parts.append(f'<text x="{x + slot * 0.35:.1f}" y="{H - BOTTOM + 17}" text-anchor="middle" font-size="11">{escape(label[:14])}</text>')
     parts.append("</svg>")
     return "".join(parts)

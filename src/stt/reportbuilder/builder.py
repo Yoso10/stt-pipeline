@@ -21,7 +21,7 @@ from html import escape
 from pathlib import Path, PurePath
 from urllib.parse import quote
 
-from stt.reportbuilder import svg
+from stt.reportbuilder import convergence, svg
 from stt.reportbuilder.improvement import improvement_line, relative_reduction
 from stt.reportbuilder.correlation import correlation_row, spearman, thin
 from stt.reportbuilder.hints import RuleRegistry, default_rule_registry, group_errors
@@ -128,6 +128,14 @@ class ReportBuilder:
             ("listening", "Listening list", lambda: self._listening(data)),
             ("run_info", "Run information", lambda: self._run_info(data)),
         ]
+        if data.trained_run is not None:  # a `train` + `evaluate` experiment (DECISIONS 90): its sections come first
+            front: list[tuple[str, str, Callable[[], tuple[str, bool]]]] = [
+                ("trained", "Training: did it converge, and what changed? / האם האימון התכנס ומה השתנה?", lambda: (convergence.trained_html(data, warnings), True)),
+                ("clips", "Worst and best Val clips / הקליפים הגרועים והטובים ב-Val", lambda: (convergence.clips_html(data), bool(data.trained_run and data.trained_run.clips))),
+            ]
+            if data.trained_run.final_test is not None:
+                front.append(("final_test", "FINAL - Test, scored once / סופי - Test, נבדק פעם אחת", lambda: (convergence.final_test_html(data.trained_run.final_test), True)))  # type: ignore[union-attr,arg-type]
+            sections = front + sections
         body = []
         for key, title, make in sections:
             html, ok = make()
@@ -155,6 +163,8 @@ class ReportBuilder:
     # ---- summary --------------------------------------------------------------------------------------------------------------
     def _summary(self, data: ReportData) -> str:
         sel, base = data.selection, data.baseline_val
+        if sel is None and data.trained_run is not None:
+            return convergence.summary_html(data)
         if sel is None:
             return '<div class="panel"><p class="verdict">No verdict in this run</p><p class="na">Not available in this run: the selection. Needs: reports/selection.json (the select_and_register stage).</p></div>'
         level = f"{sel.confidence:.0%}" if sel.confidence is not None else "the configured level"

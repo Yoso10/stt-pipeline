@@ -60,6 +60,7 @@ from stt.orchestrator.sleepguard import default_sleep_guard
 from stt.orchestrator.smoke import FULL_MIN_SAMPLES, full_overrides, write_smoke_data
 from stt.orchestrator.stopflag import InterruptFlag
 from stt.orchestrator.improvement import improvement_line
+from stt.orchestrator.finaltest import check_allowed as check_final_test_allowed
 from stt.orchestrator.cleanupcmd import megabytes, propose_cleanup, render_proposal, total_size, write_proposal
 from stt.orchestrator.configdocs import count_keys, render_config_reference, write_reference
 from stt.orchestrator.types import RunOutcome, RunPlan, StageContext
@@ -71,7 +72,7 @@ from stt.runmanager import ExperimentHandle, ExperimentSpec, RunConfig
 
 logger = logging.getLogger("stt.orchestrator")
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-PLANS = {"prepare": ["prepare"], "train": ["prepare", "train"], "evaluate": ["prepare", "evaluate"], "search": ["prepare", "search"], "learning-curve": ["prepare", "learning_curve"], "benchmark": ["prepare", "benchmark"], "smoke": ["prepare", "train", "evaluate"]}  # `run` uses pipeline.stages
+PLANS = {"prepare": ["prepare"], "train": ["prepare", "train"], "evaluate": ["prepare", "evaluate"], "search": ["prepare", "search"], "learning-curve": ["prepare", "learning_curve"], "benchmark": ["prepare", "benchmark"], "final-test": ["prepare", "final_test"], "smoke": ["prepare", "train", "evaluate"]}  # `run` uses pipeline.stages
 DEFAULT_SMOKE_CONFIG = Path("configs/smoke.yaml")
 DEFAULT_CONFIG_REFERENCE = Path("docs/CONFIG_REFERENCE.md")
 
@@ -93,6 +94,7 @@ def build_parser() -> argparse.ArgumentParser:
         "learning-curve": "python -m stt learning-curve --config my.yaml --params-from exp_0003",
         "report": "python -m stt report --experiment exp_0004 --curve-from exp_0005",
         "benchmark": "python -m stt benchmark --config my.yaml --set benchmark.steps=5",
+        "final-test": "python -m stt final-test --config my.yaml --experiment exp_0003",
         "smoke": "python -m stt smoke --full",
         "check": "python -m stt check --config configs/smoke.yaml",
     }
@@ -104,6 +106,7 @@ def build_parser() -> argparse.ArgumentParser:
         "run": "the whole pipeline: prepare, baseline on Val, search, finalists on the full data, selection (the Test is looked at once) and registration; a rerun with --experiment continues it",
         "learning-curve": "train the same settings on increasing Train sizes (learning_curve.presets), score the same Val set, print the table and a plain reading",
         "benchmark": "measure seconds per training step and per Val evaluation on this machine and print the planned time of a run",
+        "final-test": "score the Test split ONCE for the trained model of --experiment and for the baseline and write reports/test_result.json (refused a second time)",
         "smoke": "run the whole chain on synthetic data and the tiny test model, to prove that the mechanics work",
         "check": "say what is fine and what is not on this machine",
     }
@@ -176,7 +179,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def _final_summary(handle: ExperimentHandle, outcome: RunOutcome, extra: dict[str, Any] | None = None) -> dict[str, Any]:
     where = handle.locations()
-    evaluate = outcome.stage_results.get("learning_curve") or outcome.stage_results.get("benchmark") or outcome.stage_results.get("select_and_register") or outcome.stage_results.get("evaluate") or outcome.stage_results.get("search")  # the numbers a human looks at first
+    evaluate = outcome.stage_results.get("final_test") or outcome.stage_results.get("learning_curve") or outcome.stage_results.get("benchmark") or outcome.stage_results.get("select_and_register") or outcome.stage_results.get("evaluate") or outcome.stage_results.get("search")  # the numbers a human looks at first
     return {
         "experiment_id": outcome.experiment_id,
         "experiment_dir": str(handle.paths.root),
@@ -246,12 +249,16 @@ def _run_pipeline(args: argparse.Namespace, config_overrides: Sequence[str], smo
         except OrchestratorError as exc:
             return _error(str(exc), exc.exit_code)
     handle = None
+    if args.command == "final-test" and not args.experiment:
+        return _error("final-test needs --experiment exp_NNNN: the experiment where `train` and `evaluate` ran (it scores that experiment's trained model).", 2)
     try:
         if args.experiment:
             handle = runtime.store.open(args.experiment, config)
         else:
             handle = runtime.store.create(ExperimentSpec(config, args.parent or run.parent, code_version(PROJECT_ROOT), library_versions(), runtime.now()))
         runtime.log_setup.configure(handle)
+        if args.command == "final-test":
+            check_final_test_allowed(handle)  # refuses (exit code 2 or 3) BEFORE the orchestrator skips a finished stage: the Test is looked at once
         flag = InterruptFlag()
         orchestrator = Orchestrator(config, runtime.services, runtime.stages, flag, default_sleep_guard(run.prevent_sleep), pipeline.skip_completed)
         options = {"split": args.split} if getattr(args, "split", None) else {}

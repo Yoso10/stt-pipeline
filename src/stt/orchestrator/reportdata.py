@@ -27,14 +27,18 @@ from stt.evaluator import ComparisonResult, EvalResult, EvaluatorError, eval_res
 from stt.registry import ModelCard, RegistryEntry, test_set_fingerprint
 from stt.reportbuilder import (
     BenchmarkView,
+    ClipRow,
     CurvePointView,
+    FinalTestView,
     HistoryPoint,
     LearningCurveView,
+    ModelNumbers,
     ReportConfig,
     ReportData,
     RunInfoView,
     SearchView,
     SelectionView,
+    TrainedRunView,
     TrialView,
 )
 from stt.selector import ComparisonRow
@@ -143,6 +147,52 @@ def _benchmark(path: Path) -> BenchmarkView:
     return BenchmarkView(m["model"], m["threads"], m["seconds_per_step"], m["seconds_per_val_loss_example"], m["seconds_per_decode_clip"], tuple((p["part"], p["seconds"]) for p in raw["parts"]), raw["total_seconds"], tuple(raw["notes"]))
 
 
+def _numbers(raw: dict[str, Any]) -> ModelNumbers:
+    flags = raw.get("flags") or {}
+    return ModelNumbers(float(raw["wer"]), None if raw.get("cer") is None else float(raw["cer"]), int(raw["n_files"]), int(raw["n_words"]), int(flags.get("empty_output", 0)), int(flags.get("hit_length_cap", 0)))
+
+
+def _clips(baseline_csv: Path, trained_csv: Path) -> list[ClipRow]:
+    """The Val clips of the two `predictions_*.csv` files, joined by clip id (the reference, what each model wrote, the WER of each)."""
+    def rows(path: Path) -> dict[str, dict[str, str]]:
+        with path.open(newline="", encoding="utf-8-sig") as handle:
+            return {row["id"]: row for row in csv.DictReader(handle)}
+
+    base, new = rows(baseline_csv), rows(trained_csv)
+    return [ClipRow(i, new[i]["group"], new[i]["reference"], base[i]["hypothesis"], new[i]["hypothesis"], float(base[i]["wer"]), float(new[i]["wer"])) for i in new if i in base]
+
+
+def _final_test(path: Path) -> FinalTestView:
+    raw = _json(path)
+    return FinalTestView(
+        raw["split"], _numbers(raw["baseline"]), _numbers(raw["trained"]), raw.get("relative_reduction"), raw.get("delta_wer"), raw.get("ci_low"), raw.get("ci_high"),
+        float(raw["confidence"]), int(raw["n_groups"]), raw["verdict"], raw["status"], raw["explanation"],
+    )
+
+
+def _trained_run(reader: _Reader, root: Path, config: Any) -> TrainedRunView | None:
+    """The `train` + `evaluate` experiment (DECISIONS 90): present when `reports/evaluation_trained.json` and `metrics/trial_000/metrics.csv` exist; None otherwise (a `run` experiment)."""
+    reports = root / "reports"
+    if not (reports / "evaluation_trained.json").is_file():
+        return None
+    train_stage = reader.attempt("train_stage", reports / "stage_results" / "train.json", _json, {}) or {}
+    trial = (train_stage.get("summary") or {}).get("trial")
+    folders = sorted((root / "metrics").glob("trial_[0-9][0-9][0-9]")) if (root / "metrics").is_dir() else []
+    folder = (root / "metrics" / f"trial_{int(trial):03d}") if trial is not None else (folders[-1] if folders else root / "metrics" / "trial_001")  # the trial of the `train` stage (it starts at 001)
+    history = reader.attempt("trained_history", folder / "metrics.csv", read_metrics_csv)
+    baseline = reader.attempt("trained_baseline", reports / "evaluation_baseline.json", lambda p: _numbers(_json(p)))
+    trained = reader.attempt("trained_numbers", reports / "evaluation_trained.json", lambda p: _numbers(_json(p)))
+    if history is None or baseline is None or trained is None:
+        return None
+    comparison = reader.attempt("trained_comparison", reports / "comparison.json", lambda p: ComparisonResult(**_json(p)))
+    clips = []
+    if (reports / "predictions_baseline.csv").is_file() and (reports / "predictions_trained.csv").is_file():
+        clips = reader.attempt("trained_clips", reports / "predictions_trained.csv", lambda p: _clips(reports / "predictions_baseline.csv", p), []) or []
+    final = reader.attempt("final_test", reports / "test_result.json", _final_test)
+    hyper = ((config or {}).get("train") or {}).get("hyperparams") or {}
+    return TrainedRunView(history, baseline, trained, comparison, clips, hyper.get("max_steps"), final)
+
+
 def _histories(reader: _Reader, name: str, folder: Path, prefix: str) -> dict[int, list[StepMetrics]]:
     out: dict[int, list[StepMetrics]] = {}
     if folder.is_dir():
@@ -248,7 +298,10 @@ def load_report_data(
     )
     if selection is not None and selection.confidence is None and card is not None and card.val is not None and card.val.confidence is not None:
         selection = replace(selection, confidence=card.val.confidence)  # the level of the table's intervals, from the card
-    data = ReportData(info, settings, selection, baseline, finalists, tests, final_histories, search_histories, search, curve, benchmark, history, history_problem)
+    trained_run = _trained_run(reader, root, config)
+    if trained_run is not None and search is None:
+        search_histories = {}  # the single trial folder of a train experiment is the training itself, not a search trial
+    data = ReportData(info, settings, selection, baseline, finalists, tests, final_histories, search_histories, search, curve, benchmark, history, history_problem, trained_run)
     return LoadedReport(data, dict(sorted(reader.found.items())), tuple(reader.problems))
 
 

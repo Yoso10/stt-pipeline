@@ -9,6 +9,7 @@ Importing this package imports no torch, no transformers, no plotting library an
 """
 
 from stt.reportbuilder.builder import ReportBuilder
+from stt.reportbuilder.convergence import ABSOLUTE_WER_TARGET_BAND, ConvergenceVerdict, verdict_from_points, verdict_of
 from stt.reportbuilder.config import HintsConfig, ProgressConfig, ReportConfig
 from stt.reportbuilder.correlation import correlation_row, ranks, spearman, thin
 from stt.reportbuilder.errors import ReportConfigError, ReportError
@@ -16,21 +17,33 @@ from stt.reportbuilder.hints import RuleRegistry, default_rule_registry, group_e
 from stt.reportbuilder.progress import HtmlProgressSink, render_progress
 from stt.reportbuilder.types import (
     BenchmarkView,
+    ClipRow,
     CorrelationRow,
     CurvePointView,
     DiagnosisHint,
     DiagnosisRule,
+    FinalTestView,
     HistoryPoint,
     LearningCurveView,
+    ModelNumbers,
     ReportData,
     ReportOutput,
     RunInfoView,
     SearchView,
     SelectionView,
+    TrainedRunView,
     TrialView,
 )
 
 __all__ = [
+    "ABSOLUTE_WER_TARGET_BAND",
+    "ClipRow",
+    "ConvergenceVerdict",
+    "FinalTestView",
+    "ModelNumbers",
+    "TrainedRunView",
+    "verdict_from_points",
+    "verdict_of",
     "BenchmarkView",
     "CorrelationRow",
     "CurvePointView",

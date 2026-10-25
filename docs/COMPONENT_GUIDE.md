@@ -38,7 +38,7 @@ Legend: **Full** = the main source files of the component were read and the chap
 | 14 | ModelExporter | Docs only | no source read; the example is the real `exports.json` |
 | 15 | RunManager | Partly | `config.py` (keys), the lock outline in `lock.py`; the folder content is from real experiment folders |
 | 16 | Orchestrator and command line | Partly | `cli.py` (parser, plans), `wiring.py` (`exit_code_for`, `DataPipeline.prepare`, `SearchWiring.screening`), `planning.py` (formula), `finalists.py` and `stages.py` headers |
-| 17 | ReportBuilder | Partly | `builder.py` (`build`, summary, verdict), names in `hints.py`, `config.py` (keys) |
+| 17 | ReportBuilder | Partly (the convergence view of Task 9: its own new code, written and tested in Task 9) | `builder.py` (`build`, summary, verdict), names in `hints.py`, `config.py` (keys) |
 | 18 | Tools | Partly | the `argparse` options of every tool, the real `fetch_info.json`; the rest from the documents |
 | 19 | A run from start to end | Partly | the real logs of the rehearsal and turbo runs and `wiring.py`/`cli.py`; the stage order and file names from the documents |
 | 20 | Labels shorter than the audio | Full | `textnormalizer/timestamps.py` and `types.py` read; the analysis ran the project's own `prepare` code on the real data |
@@ -782,6 +782,7 @@ The commands:
 | `learning-curve` | the same settings on growing Train sizes; Val WER per size; a plain reading. |
 | `benchmark` | measures seconds per training step, per Val-loss example and per decoded clip; prints the PLANNED time of `run`. |
 | `report` | rebuilds `reports\report.html` of an existing experiment from its stored files. Recomputes nothing. |
+| `final-test` | scores the Test split ONCE for the trained model of `--experiment` and for the baseline (stage `final_test`, `orchestrator/finaltest.py`); writes `reports\test_result.json`; refused a second time with exit code 3 (DECISIONS 90). |
 | `registry list / verify / rebuild-index` | read the registry (`rebuild-index` is the only one that writes). |
 | `export [ENTRY]` | export a registered model (default: the latest entry). |
 | `cleanup` | writes a PROPOSAL file of what could be deleted; deletes nothing. |
@@ -854,6 +855,9 @@ Also: Windows sleep is prevented during commands (`run.prevent_sleep`); the prog
 **6. What can go wrong.** `ReportConfigError` exit 2 (an unknown hint rule name, a locked experiment, an unknown experiment); `ReportError` exit 4 (a report that cannot be built). A file that exists but cannot be read is left out and listed as an input problem; a registry that cannot be read gives the Test-set count `unknown`, never a false 0.
 
 **7. A real example.** The rehearsal report `data\rehearsal_run\experiments\exp_0002\reports\report.html` (116 KB) shows the verdict (winner trial 2; Val WER 1.1318 to 1.0279; Test confirmed) and the target line "9.2% against the 10% target: not reached".
+
+
+**The convergence view and the final Test (added in Task 9, DECISIONS 90).** For an experiment made by `train` + `evaluate` the report starts with 'Training: did it converge, and what changed?': one chart of the Val loss (every evaluation) and the training loss with the best checkpoint marked, a verdict computed from the data (still improving, plateau, overfitting; margins of 1%), the baseline against the trained model with the owner's WER band 0.10 to 0.30, the 15 worst and 15 best Val clips, and a box 'what to change next', all in English and Hebrew. `python -m stt final-test --experiment exp_NNNN` scores the Test split once (refused with exit code 3 the second time) and the report then shows 'FINAL - Test, scored once'. The Test is shown nowhere else.
 
 **8. Status.**
 - Tested: `tests/test_reportbuilder.py` (55 tests), `tests/test_orchestrator_report.py` (21 tests), `tests/test_improvement_and_history.py` (19 tests).
@@ -1086,7 +1090,7 @@ Every command that makes an experiment writes into one numbered folder `<run.exp
 | `prepare` | `reports\load_report.txt`, `rejected.csv`, `split_report.txt`, `text_report.txt`, `filter_report.txt`, `subsample_report.txt` (only when the Subsampler is on) | what was read and how long the clips are; which rows were not used and why; clips and lessons per split and the no-overlap check; the unusual characters and the markers found; what the filter WOULD remove; the size of the cut for a rehearsal | `load_report.txt`, then `rejected.csv` (it should hold only its header line), then `split_report.txt` |
 | `benchmark` | `reports\benchmark.txt` and `benchmark.json`, `metrics\benchmark\metrics.csv`, `candidates\exp_NNNN_benchmark\` (a real model folder, 7.4 GiB with the turbo model, kept) | seconds per training step, per Val-loss example and per decoded clip; the planned time and disk of a whole `run`; the peak memory | `benchmark.txt` |
 | `evaluate` | `reports\eval_result_baseline.json` (lossless result), `evaluation_baseline.json` (the numbers), `predictions_baseline.csv` (one row per clip: reference, model text, WER), `review_baseline.txt` (worst and random clips with word-level differences and audio paths); with a trained model in the same experiment also the `_trained` files and `comparison.json` | the WER and CER of the untrained model; which clips fail; what to listen to | `evaluation_baseline.json`, then `review_baseline.txt` |
-| `train` | `candidates\exp_NNNN_trial_000\` (checkpoints and the model folder `exp_NNNN_trial_000_step_SSSSS`), `metrics\trial_000\metrics.csv` | the training and Val loss curve of one training; the trained model | `metrics\trial_000\metrics.csv` (open in Excel) |
+| `train` | `candidates\exp_NNNN_trial_001\` (checkpoints and the model folder `exp_NNNN_trial_001_step_SSSSS`), `metrics\trial_001\metrics.csv` | the training and Val loss curve of one training; the trained model | `metrics\trial_001\metrics.csv` (open in Excel) |
 | `search` | `search\study.json`, `search\trial_TTT.params.json`, `reports\search_report.txt`, `search_trials.json`, `search_screening.txt`, `candidates\..._trial_TTT\`, `metrics\trial_TTT\metrics.csv` | one row per trial: settings, Val loss, status (complete / pruned / failed); which settings became finalists; the size of the screening data | `search_report.txt` |
 | `run` | everything of `prepare`, `evaluate` and `search`, plus `reports\finalists_report.txt`, `finalists\final_trial_TTT.json` and `.val.json`, predictions and review files per finalist, `selection.json`, `selection_table.csv`, `selection_reason.txt`, `test_once.json`, `test_result_baseline.json`, `test_result_trial_T.json`; and outside the experiment `registry\model_NNNN\` (model, `MODEL_CARD.md`, `model_card.json`, `review_list.txt`, `SHA256SUMS`, `exports.json`) | the Val WER of each finalist; the verdict in words; the one-time Test numbers; the registered model with all its facts | the `VERDICT:` lines on the screen, then `selection_reason.txt`, then the report (next row) |
 | `report` | `reports\report.html` | the verdict line, the target line, all charts and the listening list | `report.html` (open in a browser) |

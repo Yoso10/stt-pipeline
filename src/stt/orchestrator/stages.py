@@ -266,10 +266,11 @@ class StageRegistry:
 
 
 def default_stage_registry() -> StageRegistry:
-    """The registry with prepare, train, evaluate, search, finalists, select_and_register, learning_curve and benchmark."""
+    """The registry with prepare, train, evaluate, search, finalists, select_and_register, learning_curve, benchmark and final_test."""
     from stt.orchestrator.benchmark import BenchmarkStage  # imported here: those modules use the helpers of this package, not this module
     from stt.orchestrator.curve import LearningCurveStage
     from stt.orchestrator.finalists import FinalistsStage
+    from stt.orchestrator.finaltest import FinalTestStage
     from stt.orchestrator.selection import SelectAndRegisterStage
 
-    return StageRegistry({"prepare": PrepareStage, "train": TrainStage, "evaluate": EvaluateStage, "search": SearchStage, "finalists": FinalistsStage, "select_and_register": SelectAndRegisterStage, "learning_curve": LearningCurveStage, "benchmark": BenchmarkStage})
+    return StageRegistry({"prepare": PrepareStage, "train": TrainStage, "evaluate": EvaluateStage, "search": SearchStage, "finalists": FinalistsStage, "select_and_register": SelectAndRegisterStage, "learning_curve": LearningCurveStage, "benchmark": BenchmarkStage, "final_test": FinalTestStage})

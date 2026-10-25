@@ -1,10 +1,17 @@
-# How to run: the settings for the WORK machine, CPU only: the turbo model with a frozen encoder, one training of a few epochs on your own data. COPY it first, fill in the <<< ... >>> places, then use the copy:
-#     Copy-Item configs\work_cpu.yaml configs\my_work_cpu.yaml        # edit the COPY; this file stays as shipped
-#     .\.venv\Scripts\python.exe tools\probe_env.py                    # what the machine has (RAM, cores, disk)
-#     python -m stt check     --config configs\my_work_cpu.yaml        # lists every problem at once, the unfilled markers too
-#     python -m stt prepare   --config configs\my_work_cpu.yaml        # read the five reports, then see docs\WORK_RUNBOOK.md (go / no-go)
-# Everything below is an EXISTING key (docs\CONFIG_REFERENCE.md); change a value for one run with --set, for example --set train.hyperparams.max_steps=150.
-# UNTESTED on the work machine. Measured on the home laptop (CPU, turbo, frozen encoder): about 22 s per clip for a training pass WITHOUT the encoder cache, about 2.6 s WITH it.
+# How to run: the settings for the WORK machine, CPU only: the turbo model with a frozen encoder, one training of a few epochs on your own data.
+#
+# ===== YOU EDIT ONLY 4 LINES (search this file for  <<< FILL IN  ; they are lines 23, 25, 26 and 27) =====
+#   1. data.source.path     the folder that holds manifest.csv and the audio files
+#   2. data.columns.audio   the manifest column with the audio file name
+#   3. data.columns.text    the manifest column with the transcript
+#   4. data.columns.group   the manifest column with the recording / lesson id (never split between Train and Test)
+# Everything else is ready. The script sets the number of CPU threads (the physical cores) and the number of steps from your data by itself.
+# Do it on a COPY: Copy-Item configs\work_cpu.yaml configs\my_work_cpu.yaml   (this file stays as shipped; the copy is what you give to the scripts)
+#
+# THEN: .\.venv\Scripts\python.exe tools\verify_clone.py --config configs\my_work_cpu.yaml    (checks the clone, the model, the data and the columns)
+#       .\tools\run_work.ps1 -Step full -Config configs\my_work_cpu.yaml                       (the whole run) ; open the report it prints at the end.
+# Every key below is an EXISTING key (docs\CONFIG_REFERENCE.md); change a value for one run with --set, for example --set train.hyperparams.max_steps=150.
+# UNTESTED on the work machine. Measured on the home laptop (CPU, turbo, frozen encoder): about 14 s per clip for a training pass WITHOUT the encoder cache, about 1.6 s WITH it (8-clip speed test).
 extends: base.yaml
 
 runtime:
