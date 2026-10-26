@@ -42,6 +42,8 @@ QUICK_TESTS = ["tests.test_config", "tests.test_textnormalizer", "tests.test_spl
 MIN_FREE_RAM_GB = 8.0  # the requirement written in docs/WORK_RUNBOOK.md (a warning, not a failure)
 GB = 1e9
 problems: list[str] = []
+missing: list[str] = []  # what is absent, in plain words (printed at the end with where to get it)
+DEFAULT_MODEL = Path("models") / "whisper-large-v3-turbo-ivrit"  # the model folder checked when the config cannot be read
 
 
 def report(kind: str, text: str) -> None:
@@ -95,36 +97,43 @@ def check_config_and_data(config_path: Path, model_override: Path | None) -> Non
     except Exception as exc:  # noqa: BLE001
         report("FAIL", f"the project code cannot be imported ({type(exc).__name__}: {exc}). Run this script with the project's Python: .\\.venv\\Scripts\\python.exe")
         return
+    config = None
     if not config_path.is_file():
         report("FAIL", f"the config {config_path} does not exist. Copy configs\\work_cpu.yaml to configs\\my_work_cpu.yaml and fill in the 4 values (data folder, three column names).")
-        return
-    try:
-        config = load_config(config_path, registry=section_registry(), env_file=None, environ={}, apply_environment=False)
-    except Exception as exc:  # noqa: BLE001
-        first = str(exc).strip().splitlines()
-        report("FAIL", f"the config {config_path} is not ready: {' | '.join(first[:4])}. Fill in the <<< FILL IN >>> places (data folder, three column names).")
-        return
-    report("OK", f"config {config_path} loads (the data folder exists)")
-    model = model_override if model_override is not None else config.section("model", ModelConfig).path
+        missing.append("a filled-in config (copy configs\\work_cpu.yaml to configs\\my_work_cpu.yaml and fill in the 4 values)")
+    else:
+        try:
+            config = load_config(config_path, registry=section_registry(), env_file=None, environ={}, apply_environment=False)
+            report("OK", f"config {config_path} loads (the data folder exists)")
+        except Exception as exc:  # noqa: BLE001
+            first = str(exc).strip().splitlines()
+            report("FAIL", f"the config {config_path} is not ready: {' | '.join(first[:4])}. Fill in the <<< FILL IN >>> places (data folder, three column names).")
+            missing.append("the 4 values in your config (the data folder and the three column names), or the data folder itself")
+    # the model folder is checked even when the config is not ready: the path is the one of the config, or the shipped default
+    model = model_override if model_override is not None else (config.section("model", ModelConfig).path if config is not None else DEFAULT_MODEL)
     model = model if Path(model).is_absolute() else ROOT / model
     try:
         check_model_folder(Path(model), "he")
         report("OK", f"model folder {model} passes the pipeline's own check")
     except Exception as exc:  # noqa: BLE001
         report("FAIL", f"model folder: {exc}")
+        missing.append(f"the model folder {model} (not in git: copy it from home, or fetch it with tools\\fetch_model.py on a machine with internet)")
+    if config is None:
+        return
     data = config.section("data", DataConfig)
     folder = Path(data.source.path)
     if data.source.type == "csv":
         manifest = folder / "manifest.csv"
         if not manifest.is_file():
             report("FAIL", f"data: {manifest} does not exist (a csv source needs a file named manifest.csv in {folder}).")
+            missing.append(f"the data: {manifest} (not in git: bring your data folder, docs/WORK_RUNBOOK.md, TOMORROW step 3)")
             return
         with manifest.open(encoding="utf-8-sig", newline="") as handle:
             header = next(csv.reader(handle), [])
         wanted = {"audio": data.columns.audio, "text": data.columns.text, "group": data.columns.group}
-        missing = [f"{role} '{name}'" for role, name in wanted.items() if name not in header]
-        if missing:
-            report("FAIL", f"data: manifest.csv has the columns {', '.join(header)}; missing: {', '.join(missing)}. Fix data.columns in your config.")
+        missing_columns = [f"{role} '{name}'" for role, name in wanted.items() if name not in header]
+        if missing_columns:
+            report("FAIL", f"data: manifest.csv has the columns {', '.join(header)}; missing: {', '.join(missing_columns)}. Fix data.columns in your config.")
         else:
             report("OK", f"data: manifest.csv has the columns {', '.join(wanted.values())}")
     else:
@@ -169,6 +178,10 @@ def main() -> int:
     print()
     if problems:
         print(f"{len(problems)} problem(s) found. Fix them, then run this script again.")
+        if missing:
+            print("WHAT IS MISSING (and where to get it: docs/WORK_RUNBOOK.md, the page TOMORROW):")
+            for item in missing:
+                print(f"  - {item}")
         return 1
     print("Everything checked is fine.")
     return 0

@@ -1,5 +1,110 @@
 # Work runbook: one training on the work machine, CPU only, alone
 
+## TOMORROW: one page, from arriving at the work machine to reading the report
+
+Everything here is UNTESTED on the work machine; the commands were run on the home laptop (some on a fresh clone of the repo) and the times are measured or estimated as marked. Run every command from the project folder. If any step fails, do not go on: the "If not" column says what to do. A longer explanation of each step is further down this file.
+
+| # | What | Command | Time | OK looks like | If not |
+|---|---|---|---|---|---|
+| 1 | **Clone** | `git clone <address> stt` ; `cd stt`. No access to the address from the work machine? At home: `git bundle create stt.bundle --all` (2.9 MB, tested), carry the file, then `git clone stt.bundle stt` (tested). Or copy the whole project folder WITHOUT `.venv`, `data`, `models`. | seconds (the clone is 21 MB, measured) | a folder `stt` with `README.md`, `configs\`, `tools\`, `src\` | no git on the machine: copy the folder from home |
+| 2 | **Install the environment** | `python -m venv .venv` ; `.\.venv\Scripts\Activate.ps1` ; `pip install --no-index --find-links wheels -r requirements.lock` ; `pip check` | 3 to 10 min (estimated, not measured) | `pip check` prints `No broken requirements found.` | `no matching distribution`: the `wheels\` folder is missing or was made for another Python version (see "No internet for pip" below) |
+| 3 | **Bring the model and the data** | the commands in "Bring these (not in git)" below | model: copying 3.24 GB takes minutes (depends on the USB); data: depends on your data | `verify_clone.py` (step 5) says the model folder passes and the manifest has the 3 columns | `verify_clone.py` prints `WHAT IS MISSING` and says what |
+| 4 | **Fill the 4 values** | `Copy-Item configs\work_cpu.yaml configs\my_work_cpu.yaml` ; edit lines 23, 25, 26, 27 of `configs\my_work_cpu.yaml` (data folder, audio column, text column, group column) | 2 min | no `<<< FILL IN` is left in the copy | `verify_clone.py` names the key that is still wrong |
+| 5 | **Verify the clone** | `.\.venv\Scripts\python.exe tools\verify_clone.py --config configs\my_work_cpu.yaml` | about 20 s (measured, with the quick tests) | the last line `Everything checked is fine.` | read the `FAIL` lines and `WHAT IS MISSING`; fix; run again. A `WARN` about free RAM: close programs (need about 8 GB free; the run peaks at 6.3 GB, measured) |
+| 6 | **Run everything** | `.\tools\run_work.ps1 -Step full -Config configs\my_work_cpu.yaml` | FIRST run, 800 Train + 100 Val clips, 2 epochs: about 4.9 h with the encoder cache (estimated from the home measurements); the one-time encoder pass is 3.7 h of that | `CHOSEN: ...` and `ESTIMATED TIME` lines, then progress lines, then `DONE. OPEN THE REPORT: ...` | it stopped (power, Ctrl+C, an error): run the SAME command again, it resumes. Errors: the Hebrew companion at the end of this file |
+| 7 | **Open the report** | open the path printed after `OPEN THE REPORT`: `data\work_cpu\experiments\exp_NNNN\reports\report.html` | seconds | the page starts with the verdict line and the chart of Val and train loss | no `report.html`: `.\tools\run_work.ps1 -Step report -Config configs\my_work_cpu.yaml` |
+| 8 | **Decide the next run** | read "What to change next" in the report; the table "I see X -> I do Y" at the end of this file | 10 min | you know whether to add steps, lower the rate, or stop | |
+| 9 | **The final run with the Test** | after at most 3 runs: pick the best experiment and run `.\tools\run_work.ps1 -Step final-test -Config configs\my_work_cpu.yaml -Experiment exp_NNNN` (`-WithTest` on `-Step full` does the same at the end of a fresh run) | about 0.6 h (encoder pass of the Test clips 0.4 h + decoding; estimated) | the script prints the Test result (status `confirmed` or `not_confirmed` in `reports\test_result.json`) and the report has a `FINAL - Test, scored once` section (rebuild: `-Step report -Experiment exp_NNNN`) | exit code 3 `REFUSED`: the Test was already scored; this is by design and is final |
+
+**Time table with the encoder cache** (800 Train + 100 Val + 97 Test clips; estimated from the measured home numbers: 14.8 s per clip for the one-time encoder pass, 26.7 s per training step of 16 clips, 2.9 s per decoded clip):
+
+| Hours you have | What fits | Plan |
+|---|---|---|
+| 4 h | the FIRST run does NOT fit (the encoder pass alone is 3.7 h) | use fewer clips: about 500 Train clips give a first run of about 3.4 h; or wait for a longer slot |
+| 8 h | first run 4.9 h (2 epochs) + one rerun 1.2 h (cache ready: 2 epochs; 0.8 h for 1 epoch, 1.5 h for 3) + final Test 0.6 h = about 6.7 h | first run `-Epochs 2`, one corrected rerun, then the Test |
+| 12 h | first run 5.2 h (3 epochs) + two reruns 3.0 h + final Test 0.6 h = about 8.8 h | the 3 allowed runs, then the Test; 3 h spare |
+
+**The rule: at most 3 runs before the final Test.** Every run is judged on the same Val clips; the more runs you choose between, the more likely the "best" one is only lucky on those clips (a small Val is noisy: 7 lessons in the rehearsal). So: up to 3 runs (the first one counts), choose the best on Val, then score the Test ONCE for that experiment. The Test is refused a second time in the same experiments folder (exit code 3), so you cannot spend it by accident.
+
+### No internet for pip (wheelhouse)
+
+The work machine installs from the folder `wheels\` (52 files, 232 MB on the home laptop; NOT in git). To make it on a machine WITH internet and the SAME Python version and system as the work machine: `python tools\fetch_wheels.py --requirements requirements.txt --out wheels --lock requirements.lock --python-version 3.12 --platform win_amd64` (use the Python version of the work machine; this tool is in the repo and adds no dependency). Without the tool: `pip download -r requirements.lock -d wheels --only-binary=:all: --python-version 3.12 --platform win_amd64`. Then copy `wheels\` to the work machine (a plain copy; each file is small). UNTESTED for another Python version than 3.12.
+
+### Bring these (NOT in git, by design): what, where, how big, how to move it
+
+| Item | Needed tomorrow? | Path and size on the home laptop | Notes |
+|---|---|---|---|
+| (a) the turbo model folder | **YES** | `models\whisper-large-v3-turbo-ivrit`, 12 files, 3,240,199,074 bytes + `fetch_info.json` (3,090 MiB) | below |
+| (b) YOUR data | **YES** | (yours) | below |
+| (c) previous experiments and baselines | **NO** | `data\work_like\experiments`, `data\rehearsal_run`: not needed | the baseline is evaluated again on the work machine in step 6 (`full` runs `evaluate` first), on YOUR data |
+| (d) the encoder cache | **NO, and it cannot be reused** | none for your data | rebuilt in step 6; the key holds each clip's id, audio path, size and modification time, so a cache made on other files or paths is never used; the home cache is of Daf Yomi clips |
+| (e) `.env` and local configs | **NO** (optional) | `.env` is git-ignored; `configs\my_work_cpu.yaml` is made in step 4 | `.env.example` shows what a `.env` could hold (machine settings only) |
+| (f) tokenizer and other files of the model folder | **YES, they are part of (a)** | the same folder: `added_tokens.json`, `config.json`, `generation_config.json`, `merges.txt`, `model.safetensors`, `normalizer.json`, `preprocessor_config.json`, `special_tokens_map.json`, `tokenizer.json`, `tokenizer_config.json`, `vocab.json` | `verify_clone.py` runs the pipeline's own `check_model_folder` on it and lists what is missing |
+
+**(a) The model: move it.** On the home laptop (PowerShell, project folder). Do NOT use `Compress-Archive` for this: the weights file is 3.2 GB and Windows PowerShell 5.1 cannot compress a file above 2 GB (known limit, not tested here); `tar` is in Windows 10 and 11 (`C:\windows\system32\tar.exe`, tested on a small folder):
+
+```
+Get-ChildItem models\whisper-large-v3-turbo-ivrit -Recurse -File | Get-FileHash -Algorithm SHA256 | ForEach-Object { "$($_.Hash)  $(Resolve-Path -Relative $_.Path)" } | Set-Content model_sha256.txt -Encoding ascii
+tar -cf whisper-large-v3-turbo-ivrit.tar -C models whisper-large-v3-turbo-ivrit
+Get-FileHash whisper-large-v3-turbo-ivrit.tar -Algorithm SHA256
+Copy-Item whisper-large-v3-turbo-ivrit.tar, model_sha256.txt E:\          # E:\ = the USB drive or a network folder
+```
+
+On the work machine (in the project folder `stt`):
+
+```
+New-Item -ItemType Directory -Force models | Out-Null
+tar -xf E:\whisper-large-v3-turbo-ivrit.tar -C models
+Copy-Item E:\model_sha256.txt .
+Get-Content model_sha256.txt | ForEach-Object { $h,$p = $_ -split '  ',2; if ((Get-FileHash $p -Algorithm SHA256).Hash -ne $h) { "MISMATCH $p" } }
+```
+
+No `MISMATCH` line = every file is identical (the check was tested on the small test model with 0 mismatches). The SHA-256 of the files on the home laptop (so you can compare by eye): `model.safetensors` `600f71638a2c8e674a9bead39ddc16553efc969541e0b74e74e25572b58e1a58`; `config.json` `22df89eb892c95148f6beaf3eb6ed2a70cf496953923e8e1667730d06efb3a69`; `tokenizer.json` `297b13372ac43916285644fb9687add3cc62ee2a1adb60da3dc25cc94c1871fd`; `vocab.json` `e2aa043ef015641d363d8288e7c241c85e36a5c761fb303598e0710233344387`. Linux: `tar -cf ...`, `tar -xf ...`, `sha256sum -c` (UNTESTED).
+
+The layout expected afterwards: `stt\models\whisper-large-v3-turbo-ivrit\model.safetensors` and the 10 small files next to it (`fetch_info.json` is optional). `verify_clone.py` then prints `OK model folder ... passes the pipeline's own check`.
+
+**(a') The model from the internet, if the work machine (or a prep machine) is connected.** Only the tool already in the repo and `huggingface_hub` (installed with transformers): `python tools\fetch_model.py --repo ivrit-ai/whisper-large-v3-turbo --out models\whisper-large-v3-turbo-ivrit` (about 3.24 GB, 11 files plus `fetch_info.json`; it ran on the home laptop on 2026-10-24). The work machine needs the internet ONLY for this, for `git clone` from a remote address and for building `wheels\`; everything else (training, scoring, the report) is offline.
+
+**(b) Your data: what `prepare` expects.** One folder, for example `D:\mydata`, with `manifest.csv` (UTF-8, header row) and the audio files; audio paths in the manifest are relative to the manifest or absolute. Three columns are used (any names; you give them in step 4): the audio file name, the transcript text, and the group (a recording or lesson id; all clips of one group go to the same part). Audio: wav, mp3 or flac (read with soundfile); other sample rates are converted to 16 kHz and stereo is averaged; every clip at most 30 seconds (longer clips are REMOVED by the filter, see "Long recordings"). Text: Hebrew; time-stamp markers like `<|12.34|>` are stripped automatically. More: `docs\DATA_ONBOARDING.md`. Moving it: the same `tar` + `Get-FileHash` commands, or a plain `robocopy D:\mydata E:\mydata /E` and then `Get-FileHash` on the manifest. `verify_clone.py` confirms the folder, `manifest.csv` and the three columns.
+
+### Requirements check (verified on the home laptop on 2026-10-26)
+
+| Item | Needed | How verified | Status |
+|---|---|---|---|
+| Python | 3.12 (tested); any version for which `wheels\` was built | `python --version` = 3.12.14; `verify_clone.py` | OK here. Work machine: UNKNOWN (ask; build `wheels\` for its version) |
+| The 11 packages of `requirements.txt` and the 51 pins of `requirements.lock` | exact versions | all 51 pins compared with the installed versions: 0 mismatches; `pip check`: no broken requirements | OK here |
+| torch | 2.14.1, CPU build | `torch 2.14.1+cpu`, CUDA build none | OK here (the Windows wheel from PyPI is CPU-only) |
+| Install on the work machine | internet OR `wheels\` | `pip install --no-index --find-links wheels -r requirements.lock` the offline install into a clean venv was NOT repeated in this task | UNTESTED on the work machine |
+| git | to clone | `git clone` and `git clone` from a bundle tested | OK here; the work machine: UNKNOWN |
+| Disk | repo 21 MB; `.venv` 1.2 GB (measured with `du`); `wheels\` 232 MB; model 3.1 GiB; encoder cache about 3.5 GB per 900 clips in fp16 (3.84 MB per clip, computed and measured); each TRAINING experiment 7.4 GiB measured with one checkpoint, up to about 12.3 GiB if the latest and the best checkpoints differ (estimated); the benchmark keeps another 7.4 GiB | sizes measured with `Get-ChildItem` / `du` on the home laptop | plan for at least 30 GB free |
+| RAM | about 8 GB free | the process peaked at 6.3 GiB with the cache and at 6.4 to 6.7 GB without (measured, 8-clip test and benchmarks) | OK here with programs closed |
+| CPU | any; time scales with the physical cores | 4 physical / 8 logical cores here | the work machine's speed is UNKNOWN |
+| OS | Windows PowerShell 5.1 or later | all scripts run here in Windows PowerShell 5.1 (`powershell -ExecutionPolicy Bypass -File ...`) | Linux: `tools/run_work.sh` passes `bash -n` only (UNTESTED); `probe_env.py` shows `unknown` physical cores on Linux and the script then uses half the logical threads |
+
+**What could still block tomorrow** (UNTESTED unless marked): (1) the work machine's Python version differs from the wheels; (2) `git clone` is impossible from the closed network (use the bundle or copy the folder); (3) the model copy is incomplete (caught by `verify_clone.py` and the hash list); (4) the data columns or clips longer than 30 s (caught by `verify_clone.py` / `prepare`); (5) the PowerShell policy forbids scripts (use `powershell -ExecutionPolicy Bypass -File tools\run_work.ps1 ...` or type each command by hand; the script was run that way here); (6) less than 8 GB of free RAM; (7) antivirus or a sync tool holding the new model folder (the program retries 5 times, O122); (8) the computer sleeps or is locked by a company policy (the program asks Windows to stay awake, which a policy may override); (9) a work machine slower than the home laptop (the benchmark tells; the estimate is the home one).
+
+### Map of the documents: if I see X, or want to understand Y, open this
+
+| I see / I want | Open |
+|---|---|
+| to start on a fresh clone | `README.md` (English and Hebrew), then this page (TOMORROW) |
+| `verify_clone.py` output, `WHAT IS MISSING` | this page, "Bring these (not in git)"; `tools\verify_clone.py` (its header) |
+| the script `run_work.ps1 -Step full`: what it does step by step | the Hebrew companion at the end of this file, sections 1 to 12; `docs\DECISIONS.md` item 90 (A) |
+| what to type, and what the screen shows | this file: the Hebrew companion ("What I type, what I get, what it means") |
+| the report: the convergence chart, the verdict words, the WER band | this file: "Reading the report"; `docs\COMPONENT_GUIDE.md` chapters 17 and 21; `DECISIONS.md` item 90 (B) |
+| `final-test`, `test_result.json`, `REFUSED` (exit code 3) | this file, Hebrew section 10; `DECISIONS.md` item 90 (E) |
+| an exit code (1, 2, 3, 4, 5, 130) | this file: the exit-code table of the companion and "Failure guide"; `docs\USER_GUIDE.md` section 11 |
+| a term I do not know | this file: the glossary of 20 terms; `docs\COMPONENT_GUIDE.md` (glossary at the top) |
+| what a component does, its keys, its errors | `docs\COMPONENT_GUIDE.md` (one chapter per component; the table "How each chapter was verified" says how far each chapter is checked) |
+| a config key | `docs\CONFIG_REFERENCE.md` (21 sections, 188 keys); `configs\work_cpu.yaml` |
+| the encoder cache, what it does, how to switch it off | this file: "The encoder cache" and Hebrew section 12; `DECISIONS.md` item 89 |
+| the GPU key `runtime.device` | `docs\USER_GUIDE.md` section 4; `DECISIONS.md` items 87 and 88 (UNTESTED on a real GPU) |
+| my data does not load or is rejected | `docs\DATA_ONBOARDING.md`; this file, step 3 and "Long recordings" |
+| a symptom (loss, loops, empty outputs) | this file: the table "I see X -> I do Y"; `docs\USER_GUIDE.md` section 9; `docs\TROUBLESHOOTING.md` (per component) |
+| why something was decided, what is still open | `docs\DECISIONS.md`, `docs\OPEN_ISSUES.md` |
+| the slides cards | `docs\DECK_CARDS.md` |
+| the older operator guide | `docs\RUNBOOK.md` (still valid for the commands of the full pipeline: `run`, `registry`, `export`) |
+
 ## How to run (the short version): what I type
 
 Four things, in this order (UNTESTED on the work machine; the same steps ran on the home laptop with the tiny model and, in parts, with the turbo model):
