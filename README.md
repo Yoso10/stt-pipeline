@@ -1,4 +1,4 @@
-# stt-pipeline: fine-tune a Hebrew Whisper model on your own labeled audio, offline, on the CPU
+# stt-pipeline: an offline Whisper fine-tuning pipeline for Hebrew, on the CPU
 
 ## How to run (the short version)
 
@@ -7,106 +7,101 @@ git clone <the address of this repository> stt
 cd stt
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-pip install --no-index --find-links wheels -r requirements.lock     # offline; see "Install" below
-Copy-Item configs\work_cpu.yaml configs\my_work_cpu.yaml            # then edit 4 lines in the copy
-.\.venv\Scripts\python.exe tools\verify_clone.py --config configs\my_work_cpu.yaml
-.\tools\run_work.ps1 -Step full -Config configs\my_work_cpu.yaml    # the whole run, no questions
+pip install --no-index --find-links wheels -r requirements.lock     # offline; see "Set up the environment"
+Copy-Item configs\turbo_full.yaml configs\my_turbo_full.yaml        # then fill the 5 marked lines (<<< FILL IN) in the copy
+.\.venv\Scripts\python.exe tools\verify_clone.py --config configs\my_turbo_full.yaml
+.\tools\run_work.ps1 -Step full -Config configs\my_turbo_full.yaml -Epochs 2 -Threads 4     # the whole run, no questions
 # when it ends it prints the path of the report: open that report.html in a browser
 ```
 
-Everything else is explained below. Run every command from the project folder (the folder that holds `src\`, `tools\`, `configs\`).
+Run every command from the project folder (the one that holds `src\`, `tools\`, `configs\`). The same `full` command again resumes a stopped run. Windows is the tested system; `tools/run_work.sh` (Linux) is written but UNTESTED.
 
-## What it does
+## What the project is
 
-It takes labeled audio (clips of at most 30 seconds with their text), splits it by lesson into Train / Val / Test, trains the decoder of the `ivrit-ai/whisper-large-v3-turbo` model (the encoder is frozen, and its output is cached so that training is about 8 times faster on the CPU), scores the model before and after training, and writes ONE report page that shows whether the training converged, was long enough, or overfit. The Test split is never opened unless you ask for it with `-WithTest`. It needs no internet and no administrator rights.
+A "factory" that takes labeled audio (clips of at most 30 s with their text), splits it by lesson/recording into Train / Val / Test, fine-tunes a Hebrew Whisper model (default `ivrit-ai/whisper-large-v3-turbo`), scores it before and after with WER, and writes one self-contained HTML report. It is built to run on a closed machine: CPU only, no internet at run time, no questions asked, no administrator rights. Python, typed, one component per responsibility (list: `docs/COMPONENTS.md`).
 
-## What you need
+## Current state
 
-| Item | Value |
-|---|---|
-| Python | 3.12 (tested at home; any version works if the wheel bundle was made for it) |
-| System | Windows 11 (tested). Linux: `tools/run_work.sh` is written but UNTESTED |
-| RAM | 16 GB installed; the training peaks at 6.4 to 6.7 GB, so close other programs |
-| Disk | at least 30 GB free |
-| GPU | not needed (CPU only) |
-| Model | folder `models\whisper-large-v3-turbo-ivrit` (11 files, 3.24 GB) |
-| Data | a folder with `manifest.csv` and the audio files (see `docs\DATA_ONBOARDING.md`) |
+- **Components built:** C0 Config, C1 DataSource, C1b SampleFilter, C2 TextNormalizer, C3 Splitter, C3b Subsampler, C4 FeaturePipeline (with the encoder cache), C5 ModelLoader, C6 TrainerCore, C7 Evaluator, C8 HyperparamSearcher, C9 Selector, C10 ModelRegistry, C11 ModelExporter, C12 RunManager, C13 Orchestrator and CLI, C14 ReportBuilder (`docs/COMPONENTS.md`). Open items and their status: `docs/OPEN_ISSUES.md`; every decision: `docs/DECISIONS.md`.
+- **Tests:** 885 unit tests, offline (`python -m unittest discover -s tests`, about 8 minutes). Latest full run, 2026-10-27, home laptop: 885 run, all passed (the guard test `test_zz_project_folder_guard` also checks that no test writes into the project folder).
+- **Measured with the turbo model on the home laptop (4 physical cores, 16 GB, CPU):**
+  - on 8 clips (speed tests): a training step 60 s -> 7.5 s, a Val-loss pass 120 s -> 5 s, decoding 130 s -> 24 s with the encoder cache, identical results (`docs/COMPONENTS.md`, C4);
+  - baseline scoring of the turbo model on the 101 Val clips of the 900-clip subset, no cache: 1681 s, WER 0.8335 (`data/work_like/experiments/exp_0002`, not in git);
+  - peak RAM of a training step about 6.3 GiB (4-clip step).
+- **UNTESTED:** a complete turbo run (baseline, training, evaluation, report) on a whole dataset; the resume of a turbo training after Ctrl+C or a crash (the tiny test model resumes correctly); the 4.6 GB checkpoint writes on a nearly full disk; everything on the work machine (its speed, memory, antivirus); the Linux script; the GPU path of `runtime.device` (the home laptop has no GPU). The time figures for a whole run are ESTIMATES scaled from the 8-clip tests (`docs/WORK_RUNBOOK.md`).
 
-## Install
+## Set up the environment
 
-1. Python 3.12 for your user. Put the project at a SHORT path (for example `C:\stt`).
+1. Python 3.12 for your user; the project at a SHORT path (for example `C:\stt`).
 2. `python -m venv .venv`, then `.\.venv\Scripts\Activate.ps1`.
-3. Install the pinned packages (`requirements.lock` lists exact versions):
-   - with internet: `pip install -r requirements.lock`
-   - closed machine (no internet): the packages come from a folder `wheels\` (it is NOT in git, it is about 230 MB). Make it once on a machine WITH internet and the same Python version: `python tools\fetch_wheels.py --requirements requirements.txt --out wheels --lock requirements.lock --python-version 3.12 --platform win_amd64`; copy the `wheels\` folder to the closed machine; then `pip install --no-index --find-links wheels -r requirements.lock`.
-4. Check: `.\.venv\Scripts\python.exe tools\verify_clone.py` (it lists what is missing).
+3. Packages (`requirements.lock` has the exact versions):
+   - with internet: `pip install -r requirements.lock`;
+   - closed machine: make the folder `wheels\` once on a machine WITH internet and the same Python version: `python tools\fetch_wheels.py --requirements requirements.txt --out wheels --lock requirements.lock --python-version 3.12 --platform win_amd64`; copy it to the closed machine; `pip install --no-index --find-links wheels -r requirements.lock`.
+4. Check: `.\.venv\Scripts\python.exe tools\verify_clone.py` (read only; it lists what is missing). What the machine has: `.\.venv\Scripts\python.exe tools\probe_env.py`.
+5. Needs: RAM about 8 GB free for a turbo training; disk about 4 MB per clip for the encoder cache plus about 8 GB for the trial folder (a second 4.6 GB checkpoint can add to it); 4 or more physical cores; no GPU.
 
-## The model and the data
+## What is NOT in git, and where to place it
 
-- Model: on a machine with internet, `python tools\fetch_model.py --repo ivrit-ai/whisper-large-v3-turbo --out models\whisper-large-v3-turbo-ivrit`; copy the folder `models\whisper-large-v3-turbo-ivrit` to the same place in the clone.
-- Data: any folder, for example `D:\mydata`, with `manifest.csv` (UTF-8) and the audio. The manifest needs a column for the audio file name, a column for the text, and a column for the group (the lesson or recording id; clips of one group never go to two parts). Clips must be at most 30 s.
-- Edit `configs\my_work_cpu.yaml`: only 4 lines (the data folder and the three column names; the top of the file says which lines).
+| Item | Where | How to get it |
+|---|---|---|
+| Data (`manifest.csv` + audio, or parquet files) | any folder; its path goes in `data.source.path` of your config | your own; format: `docs/DATA_ONBOARDING.md` |
+| Model | `models\whisper-large-v3-turbo-ivrit` (11 files, 3.24 GB) | on a machine with internet: `python tools\fetch_model.py --repo ivrit-ai/whisper-large-v3-turbo --out models\whisper-large-v3-turbo-ivrit`, then copy the folder |
+| Wheels | `wheels\` (about 230 MB) | see "Set up the environment" |
+| Experiments, registry, encoder cache | folders named by `run.experiments_dir`, `registry.dir`, `features.encoder_cache.dir` (created by the run) | produced by the run |
+| `.venv` | project folder | `python -m venv .venv` |
+
+`tools\verify_clone.py` prints a WHAT IS MISSING list of exactly these.
 
 ## The commands
 
+`$env:PYTHONPATH = "src"` once per PowerShell window, then `python -m stt <command> --config FILE`. Every command makes an experiment folder `exp_NNNN` and prints one JSON summary. Exit codes: 0 ok, 2 settings, 3 data (also a refused second Test), 4 training or evaluation, 5 registry/export, 130 Ctrl+C.
+
 | Command | What it does |
 |---|---|
-| `.\tools\run_work.ps1 -Step probe` | what the machine has (RAM, cores, disk, model folder) |
-| `.\tools\run_work.ps1 -Step full -Config configs\my_work_cpu.yaml` | the whole run: probe, check, prepare, baseline, train, evaluate, compare, report |
-| same with `-Epochs 3` | 3 epochs instead of 2 |
-| same with `-WithTest` | also the ONE-TIME Test scoring (only on the final chosen run) |
-| the same `full` command again | resumes after a stop or a crash |
-| `python -m stt report --experiment exp_NNNN --config configs\my_work_cpu.yaml` | rebuild the report |
+| `check` | what is fine and what is not on this machine and in the config (no config: the base settings) |
+| `prepare` | load, split, normalize, filter; writes the reports; no training |
+| `benchmark` | seconds per step on this machine and the planned time of a run |
+| `evaluate` | prepare, then the baseline (and the trained model of the experiment) on Val |
+| `train` | prepare, then one training run |
+| `search` | hyperparameter search on a screening subset |
+| `run` | the whole pipeline: prepare, baseline, search, finalists, selection (Test ONCE), registry, export |
+| `learning-curve` | the same settings on growing Train sizes; Val WER per size |
+| `report` | rebuild `reports/report.html` of an experiment from its stored files |
+| `final-test` | the one-time Test scoring of a finished experiment |
+| `export`, `registry list / verify / rebuild-index` | export a registered model; read the registry |
+| `cleanup` | WRITES a proposal of what could be deleted; deletes nothing |
+| `config-docs` | writes `docs/CONFIG_REFERENCE.md` (every config key) from the code |
 
-The report is `data\work_cpu\experiments\exp_NNNN\reports\report.html` (the script prints the exact path). Open it in a browser; it needs no network. How to read it, what each number means and what to do when something fails: `docs\WORK_RUNBOOK.md` and `docs\USER_GUIDE.md`. The parts of the system: `docs\COMPONENT_GUIDE.md`.
+`python -m stt --help` lists all of them with their options (`--set a.b=value`, `--experiment exp_NNNN` to continue, `--parent`).
 
-## Folders
+## The one-command path
 
-`src\stt\` the code. `tools\` the scripts. `configs\` the settings. `docs\` the documents. `tests\` the tests (`python -m unittest discover -s tests`, about 10 minutes). `models\`, `data\`, `wheels\`, `experiments\`, `registry\` are NOT in git.
+`.\tools\run_work.ps1 -Step full -Config <your yaml> -Epochs 2 -Threads <physical cores>` runs probe, check, prepare, baseline, train, evaluate, compare and report, and resumes when run again. It sets `max_steps`, the evaluation points and the warmup from the real Train size (`max_steps = epochs x ceil(Train / 16)`), prints `CHOSEN: ...` and `ESTIMATED TIME`, and never opens Test. Options: `-Dry` (print only), `-ExperimentsDir` (must equal `run.experiments_dir` of the config), `-Set 'key=value'`, `-WithTest` (the one-time Test, final run only). Single steps: `-Step probe | check | prepare | benchmark | baseline | train | evaluate | compare | report | final-test`. State of the run: `<experiments_dir>\full_run_state.json`.
 
----
+## The encoder cache and its safety conditions
 
-# stt-pipeline: כיוון עדין של מודל Whisper בעברית על האודיו המתויג שלכם, בלי אינטרנט, על המעבד
+With a frozen encoder (`train.freeze_policy: freeze_encoder`) the encoder output is computed once per clip (about 3.84 MB in float16, one atomic file per clip) and reused for training, Val loss and decoding: same results, far faster on the CPU. Key per clip: id, audio path, file size, modification time, data type and the encoder fingerprint; only missing clips are computed, so do not move or `touch` the audio. Safety (from the code, `docs/COMPONENTS.md` C4): a one-time self-check compares the loss with and without the cache on 3 clips and stops the run if it differs; the run is REFUSED (exit 2) when the freeze policy is not `freeze_encoder`, when dropout/layerdrop is above 0, with `apply_spec_augment`, or when the disk is too small. Switch off: `features.encoder_cache.enabled: false`.
 
-## הפעלה מהירה
+## The device key
 
-```
-git clone <כתובת המאגר> stt
-cd stt
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install --no-index --find-links wheels -r requirements.lock     # בלי אינטרנט, ראו "התקנה"
-Copy-Item configs\work_cpu.yaml configs\my_work_cpu.yaml            # ואז לערוך 4 שורות בעותק
-.\.venv\Scripts\python.exe tools\verify_clone.py --config configs\my_work_cpu.yaml
-.\tools\run_work.ps1 -Step full -Config configs\my_work_cpu.yaml    # כל הריצה, בלי שאלות
-# בסוף נדפס נתיב הדוח: פותחים את report.html בדפדפן
-```
+`runtime.device`: `cpu` (default and the only tested value), `cuda` (fails with exit code 2 when no usable GPU is found, never a silent fall back) or `auto` (cuda when torch reports one, else cpu). GPU use is UNTESTED here.
 
-מריצים כל פקודה מתיקיית הפרויקט (התיקייה שמכילה את `src\`, `tools\`, `configs\`).
+## The Test split is opened once
 
-## מה זה עושה
+Train/Val/Test are split by group (lesson) so no group is in two parts. All choices (settings, checkpoints, early stopping) use Val only. The Test is scored ONCE, for the final chosen model and its baseline, by `final-test` (or `-WithTest`). A marker `test_split_scored.json` in the experiments folder makes a second scoring refuse with exit code 3. After you looked at Test, a new data set needs a new experiments folder.
 
-המערכת לוקחת אודיו מתויג (קטעים של עד 30 שניות עם הטקסט שלהם), מפצלת לפי שיעור ל-Train / Val / Test, מאמנת את המפענח של המודל `ivrit-ai/whisper-large-v3-turbo` (המקודד קפוא והפלט שלו נשמר במטמון, כך שהאימון מהיר בערך פי 8 על המעבד), בודקת את המודל לפני האימון ואחריו, וכותבת דוח אחד שמראה אם האימון התכנס, אם היה ארוך מספיק, או אם הייתה התאמת יתר. קבוצת ה-Test אינה נפתחת אלא אם ביקשתם `-WithTest`. אין צורך באינטרנט או בהרשאות מנהל.
+## Documents
 
-## מה צריך
+| Need | File |
+|---|---|
+| Start here, the first task | `docs/START_HERE.md` |
+| Running it alone, step by step; what each number means; failures | `docs/WORK_RUNBOOK.md`, `docs/USER_GUIDE.md`, `docs/RUNBOOK.md` |
+| A short guide for an operator who does not know the code | `docs/OPERATOR_GUIDE.md` |
+| What a finished run gives you; how to read and present the report | `docs/WHAT_YOU_GET.md` |
+| What each component does | `docs/COMPONENTS.md`, `docs/COMPONENT_GUIDE.md` |
+| Every config key | `docs/CONFIG_REFERENCE.md` |
+| Preparing a new dataset | `docs/DATA_ONBOARDING.md` |
+| Something failed | `docs/TROUBLESHOOTING.md` |
+| Decisions, open issues, requirements, build order | `docs/DECISIONS.md`, `docs/OPEN_ISSUES.md`, `docs/PRD.md`, `docs/BUILD_ORDER.md` |
 
-- Python 3.12; Windows 11 (נבדק). לינוקס: `tools/run_work.sh` כתוב אך לא נבדק.
-- זיכרון RAM: 16 ג'יגה מותקן; האימון מגיע לשיא של 6.4 עד 6.7 ג'יגה, לכן סוגרים תוכניות אחרות. דיסק: לפחות 30 ג'יגה פנויים. אין צורך ב-GPU.
-- תיקיית המודל `models\whisper-large-v3-turbo-ivrit` (11 קבצים, 3.24 ג'יגה).
-- תיקיית נתונים עם `manifest.csv` וקבצי האודיו (`docs\DATA_ONBOARDING.md`): עמודה לשם קובץ האודיו, עמודה לטקסט, ועמודת קבוצה (מזהה שיעור או הקלטה). הקטעים באורך של עד 30 שניות.
-
-## התקנה
-
-1. Python 3.12, והפרויקט בנתיב קצר (למשל `C:\stt`).
-2. `python -m venv .venv` ואז `.\.venv\Scripts\Activate.ps1`.
-3. עם אינטרנט: `pip install -r requirements.lock`. בלי אינטרנט: החבילות מגיעות מהתיקייה `wheels\` (היא לא ב-git, כ-230 מגה). מכינים אותה פעם אחת במחשב עם אינטרנט ואותה גרסת Python: `python tools\fetch_wheels.py --requirements requirements.txt --out wheels --lock requirements.lock --python-version 3.12 --platform win_amd64`, מעתיקים למחשב הסגור, ואז `pip install --no-index --find-links wheels -r requirements.lock`.
-4. בדיקה: `.\.venv\Scripts\python.exe tools\verify_clone.py`.
-
-## המודל והנתונים
-
-- המודל: במחשב עם אינטרנט `python tools\fetch_model.py --repo ivrit-ai/whisper-large-v3-turbo --out models\whisper-large-v3-turbo-ivrit`, ומעתיקים את התיקייה לאותו מקום ב-clone.
-- הנתונים: תיקייה כלשהי עם `manifest.csv` (UTF-8) והאודיו. עורכים ב-`configs\my_work_cpu.yaml` רק 4 שורות (תיקיית הנתונים ושלושת שמות העמודות; ראש הקובץ אומר אילו שורות).
-
-## הפקודות והדוח
-
-הפקודה `.\tools\run_work.ps1 -Step full -Config configs\my_work_cpu.yaml` מריצה הכול. אותה פקודה שוב ממשיכה אחרי עצירה או קריסה. `-Epochs 3` לשלושה סבבים. `-WithTest` מוסיף את בדיקת ה-Test החד-פעמית (רק בריצה הסופית). הדוח: `data\work_cpu\experiments\exp_NNNN\reports\report.html`. הסבר לכל מספר ולכל תקלה: `docs\WORK_RUNBOOK.md`.
+Folders: `src\stt\` code, `tools\` scripts, `configs\` settings, `docs\` documents, `tests\` tests (`python -m unittest discover -s tests`, about 10 minutes, offline).

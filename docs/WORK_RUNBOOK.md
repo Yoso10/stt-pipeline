@@ -105,6 +105,365 @@ The layout expected afterwards: `stt\models\whisper-large-v3-turbo-ivrit\model.s
 | the slides cards | `docs\DECK_CARDS.md` |
 | the older operator guide | `docs\RUNBOOK.md` (still valid for the commands of the full pipeline: `run`, `registry`, `export`) |
 
+## A full turbo training: the config, when it finishes, what to do when it stops (Task 11)
+
+Written from the code and from the home-laptop measurements. UNTESTED on the work machine and UNTESTED with the full turbo model end to end (the tiny model ran the whole chain; the turbo model ran in the 8-clip speed tests). The config for this run is `configs\turbo_full.yaml`; the script `tools\run_work.ps1` has no key for it, you point it at your copy with `-Config`.
+
+### 4a. The exact commands to start (copy and paste, PowerShell, in the project folder)
+
+```
+Copy-Item configs\turbo_full.yaml configs\my_turbo_full.yaml
+notepad configs\my_turbo_full.yaml        # fill in the 5 places marked  <<< FILL IN  (data folder, 3 column names, cpu_threads)
+.\.venv\Scripts\python.exe tools\probe_env.py --model models\whisper-large-v3-turbo-ivrit     # prints the PHYSICAL cores: use that number below
+.\.venv\Scripts\python.exe tools\verify_clone.py --config configs\my_turbo_full.yaml          # must end with: Everything checked is fine.
+.\tools\run_work.ps1 -Step full -Config configs\my_turbo_full.yaml -Epochs 2 -Threads 4       # THE RUN. Put your physical core count in -Threads. Add -WithTest ONLY on the final run.
+```
+
+- `-Config` is the parameter that points the script at the turbo config (its default is `configs\work_cpu.yaml`, which has the same values). `-Epochs` is 2 by default (1, 2 or 3 are the useful values). `-Threads` is the number of PHYSICAL cores (0 or missing = found automatically). If the script is blocked by the PowerShell policy: `powershell -ExecutionPolicy Bypass -File tools\run_work.ps1 -Step full -Config configs\my_turbo_full.yaml -Epochs 2 -Threads 4`.
+- Before you leave the computer: keep it plugged in, switch off sleep (`powercfg /change standby-timeout-ac 0`), close other programs (the run peaks at 6.3 GiB of RAM), and have about 30 GB of free disk.
+- Linux: `bash tools/run_work.sh full` (UNTESTED; it reads `configs/work_cpu.yaml`, so copy your filled `my_turbo_full.yaml` over it or read the script's header for its variables).
+- The start time is printed by nothing, so write it down, or start with: `$start = Get-Date; $start; .\tools\run_work.ps1 -Step full -Config configs\my_turbo_full.yaml -Epochs 2 -Threads 4`.
+
+### 4b. Watching it from a second PowerShell window
+
+```
+cd <the project folder>
+$dir  = 'data\work_cpu\experiments'
+$run  = Get-ChildItem $dir -Directory -Filter 'exp_*' | Sort-Object LastWriteTime | Select-Object -Last 1      # the experiment that is being written now
+Get-Content "$($run.FullName)\logs\run.log" -Tail 15 -Wait | Select-String 'Encoder cache|PROGRESS|step |Resuming|Run ended|ERROR|WARNING'   # live lines; Ctrl+C stops ONLY the watching
+Get-Content "$($run.FullName)\metrics\trial_001\metrics.csv" -Tail 3      # during training: step, train_loss, val_loss, seconds_per_step, elapsed_sec, eta_sec
+Get-Content "$dir\full_run_state.json"                                    # which steps are done (prepare, baseline, train ids; evaluated; tested)
+Get-Process python | Select-Object Id, @{n='RAM_GB';e={[math]::Round($_.WorkingSet64/1GB,1)}}, CPU      # the memory of the run
+```
+
+The main window prints the same lines (`PROGRESS ...`, `step 40 of 100 (40.0%) ... elapsed ... remaining ...`, `Encoder cache: N of M clips done, elapsed ... remaining about ... s.`), at most one every 30 seconds. The experiment of the baseline and the experiment of the training are different folders, so run the `$run = ...` line again when the step changes. `remaining` is a rough estimate that is wrong at the beginning.
+
+### 4c. What the screen looks like
+
+| When | What you see (normal) | Worry when |
+|---|---|---|
+| first 1 to 3 minutes | `=== FULL RUN ...`, probe, `Everything checked is fine.`, prepare: `load_report`, `split_report`, a JSON summary; then `CHOSEN: 800 Train clips, 100 Val clips -> 2 epochs = 100 steps ... ESTIMATED TIME: about 4.9 hours` | `CHOSEN` never appears: prepare failed (exit code 3: read `filter_report.txt`, `split_report.txt`); an exit code and `STOPPED` is printed |
+| minutes 3 to 10 | the baseline `evaluate` starts: the model loads (1 to 2 minutes, RAM goes to about 3.4 GiB), then `Encoder cache (val): 100 of 100 clips are missing, about 0.38 GB in ...; computing them once.` then `Encoder cache: 5 of 100 clips done, elapsed ... remaining about ... s.` every 5% | no new line for 15 minutes: one clip takes about 15 s, a 5% step of 100 clips is about 75 s, of 800 clips about 10 minutes (the line is every 5%: with 800 clips about 10 minutes between lines is NORMAL) |
+| during the encoder pass (about 3.7 h for 900 clips, one time) | only `Encoder cache: ...` lines every 5%; the CPU is at 100% of the physical cores; the folder `data\work_cpu\encoder_cache\enc_..._float16` grows by 3.84 MB per clip; RAM about 3.6 GiB | RAM above 7 GiB; free disk below 5 GB; no line for 30 minutes at 800+ clips with CPU at 0% (the process hung: Ctrl+C once, run the same command again) |
+| after the cache | `Encoder cache self-check passed on 3 clips (largest relative loss difference ...)`, then `PROGRESS WER scoring of the baseline model: clip 12 of 100 ...` (about 2.9 s per clip, 5 minutes in all) and the baseline WER; then `BASELINE: see ... Stop (Ctrl+C) now if the WER is above 1.5 or the outputs are empty.` | a baseline WER above 1.5 or empty outputs: stop and read `review_baseline.txt` (the text column or the audio is wrong) |
+| training | `Training trial 1: 800 train and 100 val examples.`, `Freeze policy freeze_encoder: 171909120 of 808878080 parameters are trained.`, then `step 5 of 100 (5.0%) ... train_loss ... 26 s/step ... remaining about 0:42:00` | the first step takes more than 5 minutes (the cache is not used: look for `Encoder cache` lines and `features.encoder_cache.enabled`); RAM above 7.5 GiB; `train_loss` is `nan` (the run stops by itself, exit code 4) |
+| every 25 steps | a line with `val_loss` (about 70 s) and a checkpoint save (a few minutes of disk: 4.6 GB) | `val_loss` rises at every point and the train loss falls: overfitting, see the report later |
+| at the end | `Run ended (max_steps). Model of step N saved in ...`, evaluation of the trained model (5 minutes), `compare`, the report, `DONE. OPEN THE REPORT: ...` | exit code 4 or `STOPPED`: the first red lines tell why; the table below |
+
+### 4d. The finish-time estimate (formula, blanks, totals)
+
+The constants below are from the 8-clip speed tests of the turbo model on THIS laptop (8 logical / 4 physical cores, 16 GB, CPU). **Replace them with your own** from `.\tools\run_work.ps1 -Step benchmark -Config configs\my_turbo_full.yaml` (it trains 3 steps and decodes a few clips, so it is much shorter than the run; it also writes `reports\benchmark.json`; `-Step full` uses the newest `benchmark.json` for its own estimate when there is one). The work machine may be faster or slower: do not trust the column "this laptop" for it.
+
+| Part | Formula | This laptop (constant) | Your benchmark (fill in) | Status |
+|---|---|---|---|---|
+| 1. one-time encoder pass (Train + Val clips, once ever for these files) | (Train clips + Val clips) x s/clip | 14.8 s/clip | ____ s/clip | measured on 8 clips (146 to 160 s for 8 clips including the self-check), scaled up |
+| 2. training | steps x s/step; steps = epochs x ceil(Train / 16) | 26.7 s/step (16 clips) | ____ s/step | measured per 4-clip micro-step (7.4 to 7.7 s) x 4 = about 30 s, 26.7 s used by the calculator; scaled, ESTIMATED |
+| 3. Val-loss evaluations | 4 x Val clips x s/clip | 0.67 s/clip (67 s for 100 clips, 4 times) | ____ s/clip | measured on 8 clips (4.6 to 5.4 s), scaled |
+| 4. baseline decode + trained decode | 2 x Val clips x s/clip | 2.9 s/clip | ____ s/clip | measured on 8 clips (23 to 24 s), scaled |
+| 5. the rest (model loads, prepare, self-check, compare, report) | fixed | 600 s | ____ s | ESTIMATED |
+| 6. final Test (only with `-WithTest`, once) | (Test clips x s/clip encoder) + 2 x Test clips x s/clip decode | about 0.55 h for 97 clips | | ESTIMATED |
+
+**Total = 1 + 2 + 3 + 4 + 5** (hours = seconds / 3600). Val clips are taken as Train / 8 (the split is 0.8 / 0.1 / 0.1 by duration; your real Val comes from `split_report.txt`). Totals on this laptop, FIRST run of a dataset (the encoder pass included), ESTIMATED:
+
+| Train clips | Val | 1 epoch (steps) | 2 epochs (steps) | 3 epochs (steps) |
+|---|---|---|---|---|
+| 700 | 88 | 3.9 h (44) | 4.3 h (88) | 4.6 h (132) |
+| 800 | 100 | 4.5 h (50) | 4.8 h (100) | 5.2 h (150) |
+| 900 | 112 | 5.0 h (57) | 5.4 h (114) | 5.9 h (171) |
+| 1000 | 125 | 5.6 h (63) | 6.0 h (126) | 6.5 h (189) |
+
+The script prints its own figure at the start (`ESTIMATED TIME: about 4.9 hours` for 800 clips, 2 epochs; the 0.1 h gap to this table is its rounding of the fixed part). Later runs on the SAME files (the cache is full: the encoder pass is skipped) take parts 2 to 5 only: 700 clips 0.7 / 1.0 / 1.4 h, 800 clips 0.8 / 1.1 / 1.5 h, 900 clips 0.85 / 1.3 / 1.7 h, 1000 clips 0.9 / 1.4 / 1.9 h for 1 / 2 / 3 epochs.
+
+**When it will finish:**
+- At the start: `$start.AddHours(<total>)`, for example `(Get-Date).AddHours(4.8).ToString('ddd HH:mm')`.
+- Later, from the log: finish = now + remaining. The training line says `remaining about H:MM:SS` (the training only). Add the parts still to come (decode of the trained model 2.9 s x Val, report 5 minutes): `(Get-Date).AddSeconds(<remaining seconds> + 2.9 * <Val clips> + 300)`.
+- During the encoder pass: `remaining about N s` in the `Encoder cache` line is for that pass only; the training (part 2) still follows.
+
+### 4e. If it stops, or you have only part of the data (from the code)
+
+**(a) What is saved, and when.**
+
+| What | When | Where |
+|---|---|---|
+| encoder-cache file of a clip (3.84 MB, float16) | right after that clip is encoded: written to a temporary file and renamed, so a file is complete or absent (`encoder_cache.py`) | `data\work_cpu\encoder_cache\enc_<hash>_float16\` |
+| checkpoint (model weights of the trained decoder, `optimizer.pt`, scheduler, random state, progress counters), about 4.6 GB | every `train.save_every_steps` (25) steps; also at a new best Val loss, at every stop (Ctrl+C or the time cap) and at the end; only the latest and the best are kept (`hf_trainer.py`) | `data\work_cpu\experiments\exp_NNNN\candidates\exp_NNNN_trial_001\checkpoints\checkpoint-<step>\` |
+| Val-loss and train-loss points | every `log_every_steps` / `eval_every_steps` into a CSV line at once; on a resume the earlier lines are read back | `exp_NNNN\metrics\trial_001\metrics.csv` |
+| finished stage | a marker with the fingerprint of its settings | `exp_NNNN\reports\stage_results\<stage>.json`, `status.json` |
+| where the full run was | after each finished step | `data\work_cpu\experiments\full_run_state.json` |
+
+**(b) The command to continue** (after Ctrl+C, power loss, a crash, out of memory, a full disk, a Windows update): free the cause first (RAM, disk), then run **exactly the same command again**, with the same `-Config`, `-Epochs`, `-Threads` and no changed settings:
+
+```
+.\tools\run_work.ps1 -Step full -Config configs\my_turbo_full.yaml -Epochs 2 -Threads 4
+```
+
+| Event | Kept | Lost | What the script does |
+|---|---|---|---|
+| Ctrl+C (once) | everything; a checkpoint is saved at once; exit code 130 | nothing but the unfinished step | the same command resumes from that checkpoint (`Resuming from ... (step N).`) |
+| power loss, crash, `Out of memory` (exit code 4) | the last periodic checkpoint (at most 25 steps, about 11 minutes, are lost), all cache files already written, all CSV lines | the steps since that checkpoint; a cache file that was being written is only a temporary file and is ignored | resumes the unfinished training from the last COMPLETE checkpoint; the cache is refilled for the missing clips only (the clips already done are NOT recomputed) |
+| power loss in the middle of the encoder pass | every finished clip | the clip in progress | the same command computes only the missing clips |
+| disk full | what was written | possibly a half-written checkpoint (ignored: only complete checkpoints count) | free disk (the cache build checks first and refuses with the numbers: exit code 2), run the same command |
+| you changed `-Epochs` or a setting | | | a state file keeps the numbers of the first start (`a run with other -Epochs keeps the numbers of the stored state`); a changed config is REFUSED with exit code 2 (`Cannot resume ...: the config differs from the stored config_full.yaml`): restore the setting, or start a new experiment by renaming `full_run_state.json` |
+| out of memory again | | | set `train.hyperparams.batch_size=2` and `grad_accum_steps=8` in a NEW run (a new config is a new run, the old checkpoint cannot be used) and `eval.batch_size=1` |
+
+I tested on the tiny model that a changed setting on an existing experiment is refused (exit code 2) and that the same settings skip finished stages. The Ctrl+C and power-loss resume of the turbo model is UNTESTED here (the code path is the same as in the tiny-model resume tests of TrainerCore).
+
+**(c) More data later, or only part of it now.**
+- A finished experiment never changes. A NEW `prepare` (a new run of `-Step full` with more files) is a NEW experiment: it loads all the files again, filters, splits and trains **from the base model again**. Training on the old model plus new data is NOT a feature of this project.
+- The encoder cache of the clips that are unchanged stays valid and is reused: the key is the clip id, the audio path, the file size and the modification time plus the encoder fingerprint, and only clips whose key is missing are computed (the log says `N of M clips are missing`). Do not move or `touch` the audio files, or they count as new. The cache of the Val clips stays valid too.
+- **The split can change.** With `split.mode: grouped_ratio` (the default and the value in `turbo_full.yaml`) the lessons are assigned one by one to the part that is furthest below its target share, in a seeded order; when you add lessons the targets move, and **an old lesson can end up in a different part, including Test**. Then (1) the old Val and Test numbers are not comparable with the new ones, and (2) a lesson that the old model was trained on can be in the new Test. With `split.mode: hash_group` each lesson's part depends only on the seed, the ratios and the lesson itself, so old lessons never move; with few lessons the shares can be uneven and the checks stop the run (the module says so). This is an owner decision (DEFAULT, not LOCKED): I kept `grouped_ratio` and wrote the alternative into `turbo_full.yaml`; if you know data will grow, set `split.mode: hash_group` BEFORE the first run (UNTESTED with your data).
+- **Test contamination, in short:** if you already scored the Test (the marker `data\work_cpu\experiments\test_split_scored.json` exists), `final-test` refuses to score again. Adding data and splitting again does not make the old Test result wrong, but it makes the Test clips different: use a NEW experiments folder (`--set run.experiments_dir=data/work_cpu/experiments2`) for the new dataset so that its Test is scored once on its own, and never compare the two Test numbers as if they were the same set. Never train on a lesson that is in the Test of the result you intend to report.
+- Only part of the data now: run it, it is a normal run on fewer clips (the table above shows the times). The WER of a small Val is noisy (see the report). Check `split_report.txt`: at least 5 lessons in Val and Test.
+
+**(d) Stop at a chosen point and still evaluate.**
+- What works from the code (tested on the tiny model): a **time cap set BEFORE the start**. Add `-Set 'train.max_runtime_minutes=240'` (the `-Set` parameter of `run_work.ps1` passes `--set` words to every step). The training saves a checkpoint and ends cleanly at that time with `stopped_reason: time_limit`; the stage counts as finished, `evaluate` then scores the model of the BEST checkpoint (the latest when no Val-loss point existed yet), and the report is built. I ran this on the tiny model: stage `ok`, `evaluate` gave the trained WER. The cap is per call.
+- What does NOT work: pressing Ctrl+C and then asking to evaluate. After Ctrl+C the stage is marked interrupted, `evaluate` finds no finished training and scores only the baseline. The model folder of the best checkpoint IS built (`candidates\exp_NNNN_trial_001\exp_NNNN_trial_001_step_NNNNN\`), but no command in the project scores a model folder by path (that needs a change to the code: ask). Also you cannot continue a time-capped experiment with the cap removed: the config would differ (exit code 2, tested); start a new experiment instead.
+- **Which checkpoint is the best:** the one with the lowest Val loss. Read `exp_NNNN\metrics\trial_001\metrics.csv` (rows with a `val_loss`), or the report's chart (the best point is marked), or `pipeline_model_info.json` in the model folder (`best_step`, `best_val_loss`, `stopped_reason`, `steps_completed`). With 4 points per run, `eval_every_steps` = max_steps // 4 means the earliest stop that has a Val-loss point is a quarter of the run.
+
+### 4f. If it fails (the five most likely, for this run)
+
+| Symptom | Likely cause | Minimal fix |
+|---|---|---|
+| exit code 2, `Not enough free disk for the encoder cache` | disk | free space, or `-Set 'features.encoder_cache.dir=D:/cache'` on a bigger drive; run the same command |
+| exit code 4, `Out of memory` | less than 8 GB free, or the other programs | close programs; if it persists, the batch-size change in the table above in a new run |
+| exit code 3 after prepare | clips over 30 s, a wrong column, fewer than 5 lessons in Val or Test | `filter_report.txt`, `split_report.txt`, `DATA_ONBOARDING.md` |
+| it is slow from the first step (60 s per micro-step) | the encoder cache is not used | look for the `Encoder cache` lines; the config must have `features.encoder_cache.enabled: true`; the `-Config` you gave is the right file |
+| exit code 2 `the config differs from the stored config_full.yaml` | a setting was changed between two starts | restore it, or rename `full_run_state.json` and start again |
+
+## A full turbo training on THIS laptop: the 900-clip subset, 2 epochs, no Test (Task 12)
+
+Everything here was prepared on 2026-10-27 on the home laptop. The training itself has NOT been started by the agent. Everything marked UNTESTED has not run with the turbo model on the whole subset.
+
+### 12a. Which file, what it holds
+
+- **`configs\home_turbo_full.yaml`** (new). `configs\turbo_full.yaml` (the work-machine template) was put back with its `<<< FILL IN` places, so that nobody runs it by accident on the whole data.
+- It extends `data_gmara.yaml`, the same data file that `work_like.yaml` reaches through `home_full.yaml`: the same parquet source (`data\daf_yomi_raw`, extracted to `data\extracted\daf_yomi`), the same columns (`audio`, `transcript`, `meta_entry_id`), the same filter and the same split. It sets the Subsampler preset `work_like` and `val_samples: null` exactly as `work_like.yaml` does.
+- **Split (owner decision, written in the yaml):** the data are fixed, no refresh -> `split.mode` `grouped_ratio`, ratios 0.8 / 0.1 / 0.1 by duration, seed 42 from `runtime.seed`.
+- Turbo part: frozen encoder, float32, learning rate 1e-5, batch 4 x accumulation 4, encoder cache ON (`data\turbo_full\encoder_cache`, float16), `runtime.device` cpu, `train.cpu_threads` 4 (the physical cores of this laptop), 2 epochs. New folders (nothing inside `data\work_like`): `data\turbo_full\experiments`, `data\turbo_full\registry`, `data\turbo_full\encoder_cache`.
+
+### 12b. The split: the same one, and what I found about the Test
+
+- **Same split.** The resolved `data`, `filter`, `split`, `subsample` and `text` sections of `home_turbo_full.yaml` and `work_like.yaml` are identical (compared in code), the seed is 42 in both, and a `prepare` of the new config (run into a scratch folder, not into the experiments folder) gave **702 Train / 101 Val / 97 Test clips (58 / 7 / 8 lessons)** and the **split fingerprint `5342b8562205736e`, the same as the work_like experiment `exp_0001`**. The existing split is not stored for reuse; it is recomputed from the data, deterministically, and it comes out the same. No new split is created. (Checking clip by clip against the rehearsal's list was not done; counts, lessons, fingerprint and settings match.)
+- **Test has never been scored by a marker in the new folder** (`data\turbo_full\experiments` does not exist yet, so there is no `test_split_scored.json` and `final-test` will not refuse).
+- **BUT the Test clips of this exact subset were looked at once before.** `data\rehearsal_run\experiments\exp_0002\reports\test_once.json` says `"looked": ["trial_2", "baseline"]`, with `test_result_trial_2.json` and `test_result_baseline.json`: the rehearsal (`whisper-tiny`, 20 steps, the same preset `work_like`) scored the 97-clip Test once, WER 1.0599 for its winner and 1.1728 for its baseline. No turbo model has seen these Test clips, and the rehearsal numbers did not choose any turbo setting (the learning rate and the steps are fixed here), so the risk is small, but the Test is not "never looked at" in the strict sense. Your call: accept it, or get a different split (a different `split.seed` or subsample seed; then it is NOT the same subset any more). Other folders with Test records: `part5_tmp`, `part8_tmp`, `part9_tmp`, `part11_tmp`, `phasec_tmp`, `phasee_tmp` (older tests; I did not check which data they used). `data\work_like\experiments` has none.
+
+### 12c. Ready to run? (numbers from 2026-10-27, this laptop)
+
+| Item | Need | Now | Verdict |
+|---|---|---|---|
+| Disk, drive C: (the only drive) | cache about 3.1 GB (803 clips x 3.84 MB) + trial folder about 7.9 GB (7.4 GiB measured: one 4.6 GB checkpoint + the 3.1 GB model) + reports = **about 11 GB**; the worst case (latest and best checkpoint differ: two checkpoints) about 16.3 GB | **17.8 GB free** (97% full) | FITS, with 6.8 GB spare in the normal case and only about 1.5 GB in the worst case. Free more before you start (proposals below). |
+| RAM | about 8 GB free (peak 6.3 GiB measured) | **2.0 GB available** (15.8 GB total) | DOES NOT FIT NOW. Close programs (below) or restart the laptop. |
+| Cores | 4 physical | 4 physical / 8 logical | OK |
+| Power | AC | on AC, battery 100%; AC sleep timeout "never", display "never" (read with `powercfg`) | OK |
+
+What uses the RAM now (working sets, 10.1 GB in all): VS Code 15 processes 1.7 GB, Chrome 14 processes 1.5 GB, Windows services (svchost) 1.1 GB, WebView2 (31 processes) 0.6 GB, Telegram 0.6 GB, Defender 0.3 GB, Notion 0.3 GB, Discord 0.2 GB, ProtonVPN 0.2 GB, and Docker Desktop (with its WSL part, whose memory Windows does not list by name). **Close before the start:** Chrome, Telegram, Notion, Discord, Docker Desktop (also `wsl --shutdown`), every other program; run the training from a normal PowerShell window, not from the VS Code terminal. The simplest way to get a clean 10+ GB: restart the laptop, log in, open only PowerShell, check with the command below, then start.
+
+```
+(Get-Counter '\Memory\Available MBytes').CounterSamples.CookedValue / 1024        # want 9 or more (GB)
+(Get-PSDrive C).Free / 1GB                                                         # want 15 or more (GB)
+```
+
+**To free disk (proposals only, nothing was deleted):** the project's own `data\part*_tmp`, `data\phase*_tmp`, `data\rehearsal_run` hold only about 0.8 GB together, so they do not help much. Better: Windows Settings -> System -> Storage -> Temporary files; empty the Downloads folder; Docker images (`docker system df` shows them; `docker system prune` removes unused ones: confirm first). Do NOT delete `models\`, `data\extracted`, `data\daf_yomi_raw`.
+
+### 12d. The exact commands
+
+(a) **Start** (one PowerShell window, from the project folder; the same command resumes after any stop). `-Config` is the config, `-ExperimentsDir` MUST be the same folder as `run.experiments_dir` of that config (the script keeps its state file and its comparison there), `-Epochs` 2, `-Threads` 4 = the physical cores. No `-WithTest`.
+
+```
+cd C:\Users\9090\Desktop\Work\stt-pipeline
+$start = Get-Date; "START: $start"
+.\tools\run_work.ps1 -Step full -Config configs\home_turbo_full.yaml -ExperimentsDir data\turbo_full\experiments -Epochs 2 -Threads 4
+```
+
+(b) **Watch, in a second PowerShell window:**
+
+```
+cd C:\Users\9090\Desktop\Work\stt-pipeline
+$dir = 'data\turbo_full\experiments'
+$run = Get-ChildItem $dir -Directory -Filter 'exp_*' | Sort-Object LastWriteTime | Select-Object -Last 1      # run this line again when the step changes (baseline -> training)
+Get-Content "$($run.FullName)\logs\run.log" -Tail 15 -Wait | Select-String 'Encoder cache|PROGRESS|step |Resuming|Run ended|ERROR|WARNING'      # live lines; Ctrl+C stops only the watching
+Get-Content "$($run.FullName)\logs\run.log" | Select-String 'remaining' | Select-Object -Last 1                # the time left, last estimate
+Get-Content "$($run.FullName)\metrics\trial_001\metrics.csv" -Tail 3                                           # during training: step, train_loss, val_loss, seconds_per_step, eta_sec
+Get-Content "$dir\full_run_state.json"                                                                          # which steps are done
+(Get-Counter '\Memory\Available MBytes').CounterSamples.CookedValue / 1024                                      # free RAM in GB
+```
+
+The log file is `data\turbo_full\experiments\exp_NNNN\logs\run.log` (the baseline and the training are different `exp_NNNN` folders). The main window prints the same lines.
+
+(c) **Resume after Ctrl+C, a crash, power loss, out of memory or a full disk:** fix the cause, then run exactly the command (a) again. Nothing in the config may change (a changed setting is refused, exit code 2).
+
+(d) **After it ends:**
+
+```
+Start-Process (Get-ChildItem data\turbo_full\experiments -Recurse -Filter report.html | Sort-Object LastWriteTime | Select-Object -Last 1).FullName      # opens the newest report in the browser
+```
+
+**Later, ONCE, the Test (do not run it now):** `.\tools\run_work.ps1 -Step final-test -Config configs\home_turbo_full.yaml -ExperimentsDir data\turbo_full\experiments -Experiment exp_NNNN` (exp_NNNN = the TRAINING experiment named in the last line of the run, `full_run_state.json` has it as `train`), then `.\tools\run_work.ps1 -Step report -Config configs\home_turbo_full.yaml -ExperimentsDir data\turbo_full\experiments -Experiment exp_NNNN`. A second call is refused (exit code 3).
+
+**About the dry run's exit code 255:** `run_work.ps1 -Step full -Dry` returns **0** (checked). The 255 appeared only when its output was cut off by a pipe that closed early (`| Select-Object -First 30`), which makes PowerShell stop the script. It does not matter for a real run. The dry run assumes 800 Train and 100 Val clips (it does not read your data), so it prints `100 steps, a Val-loss point every 25 steps, ESTIMATED TIME about 4.9 hours`; the real run reads the real sizes after `prepare`.
+
+### 12e. What the real run will choose, and the timeline
+
+Real numbers after `prepare`: 702 Train, 101 Val -> 2 epochs = 2 x ceil(702 / 16) = **88 steps**, a Val-loss point every **22 steps** (22, 44, 66, 88), warmup 4. The script prints `CHOSEN: ...` and `ESTIMATED TIME` itself.
+
+Fill in your start time in the first row (`$start` of the command above); each later clock time is the start plus the cumulative column. Constants: encoder 14.8 s per clip, training 26.7 s per step, Val-loss pass 0.67 s per clip, decoding 2.9 s per clip (all measured on 8 clips of the turbo model on this laptop and scaled up, so every duration below is an ESTIMATE; the model loads and checkpoint writes were not timed).
+
+| # | Phase | How long | Cumulative (start + ...) | Clock time |
+|---|---|---|---|---|
+| 1 | probe, check, prepare (reads 8,723 rows, takes the subset) | 2 to 5 min | 0:05 | start + 0:05 (`CHOSEN` line appears) |
+| 2 | baseline evaluate: load the model, **encoder pass for Val** (101 clips x 14.8 s) | 1 to 2 min + 25 min | 0:33 | start + 0:33 |
+| 3 | baseline decode of 101 Val clips (101 x 2.9 s) and its WER | 5 min | 0:38 | start + 0:38 (`BASELINE: see ...` line) |
+| 4 | train: load the model, **encoder pass for Train** (702 clips x 14.8 s), self-check | 1 to 2 min + 2 h 53 min | 3:34 | start + 3:34 |
+| 5 | training, 88 steps x 26.7 s (CPU, 4 cores) | 39 min | 4:13 | start + 4:13 |
+| 6 | 4 Val-loss points (4 x 67 s) and 4 checkpoint writes (4.6 GB each) | 5 min + 4 to 12 min | 4:25 | start + 4:25 |
+| 7 | evaluate the trained model (load, 101 clips x 2.9 s from the cache) | 7 min | 4:32 | start + 4:32 |
+| 8 | compare, report | 2 to 5 min | 4:36 | start + 4:36 (`DONE. OPEN THE REPORT`) |
+
+**Total about 4.4 to 4.8 hours.** The formula gives 4.36 h before the loads and the writes; the dry run's 4.9 h is for 800 clips. Phases 2 and 4 (the encoder passes, 3.3 h in all) are **one-time**: a second run on the same files finds the cache full and takes about 1.0 h (phases 5 to 8 plus the loads). No log line appears for about 5% of a pass (about 80 s for Val, about 9 minutes for Train): that is normal.
+
+### 12f. What can make it fail or waste hours, with the fix (proposals; the agent changed nothing on the system)
+
+| Risk | State now | Fix |
+|---|---|---|
+| Sleep or hibernate | AC sleep and display timeouts are "never" (read from `powercfg`); hibernate not read | `powercfg /change standby-timeout-ac 0` ; `powercfg /change hibernate-timeout-ac 0` ; `powercfg /change monitor-timeout-ac 0` |
+| Closing the lid | not read | `powercfg /setacvalueindex SCHEME_CURRENT SUB_BUTTONS LIDACTION 0` then `powercfg /setactive SCHEME_CURRENT` (lid does nothing on AC); or keep the lid open |
+| Screen lock | a lock does NOT stop the program; only sleep, shutdown or a restart does | nothing to do; do not sign out |
+| Battery | on AC, 100% | keep the charger in; plan for 5 hours |
+| Windows Update restart | Update service stopped now, no restart pending | Settings -> Windows Update -> Pause updates for 1 week, before you start; do not restart the laptop during the run |
+| Antivirus (Defender real-time protection is ON) | it scans each new cache file (about 800 files of 3.84 MB) and the 4.6 GB checkpoints: slower writes, and it can hold the final model folder briefly (the program retries the rename 5 times) | optional, from an ADMINISTRATOR PowerShell: `Add-MpPreference -ExclusionPath 'C:\Users\9090\Desktop\Work\stt-pipeline\data\turbo_full'` (remove later with `Remove-MpPreference -ExclusionPath ...`); the run is correct without it. I could not read the existing exclusions (needs administrator). |
+| RAM | 2.0 GB available | the list in 12c; restart the laptop; check the counter before the start |
+| Disk | 17.8 GB free | 12c; the cache build refuses with the numbers if it does not fit (exit code 2); the checkpoint write fails if the disk fills (exit code 4): free space and run the same command |
+| VS Code or the terminal closes | a process started from the VS Code terminal can end with it | start from a normal PowerShell window |
+| Other CPU load (tests, browsers, Docker) | it makes the estimate longer | close them; run nothing else |
+| Thermal slowing on a laptop | not measured | put the laptop on a hard surface, charger in; if `seconds_per_step` climbs above 40, check the temperature |
+| Wrong `-ExperimentsDir` | | it must equal `run.experiments_dir` of the config (`data\turbo_full\experiments`), as in command (a) |
+
+### 12g. UNTESTED
+
+The whole run on the 702-clip subset with the turbo model; the encoder pass over 803 clips (only 8 clips were timed); the cache build with the 702 Train clips and the 4.6 GB checkpoint writes on a disk with this little free space; the resume of the turbo training after Ctrl+C or a crash; the memory behaviour with the real batch (peak 6.3 GiB was measured on a 4-clip step); `final-test` on this model; the timeline above; Defender's effect on the cache; the Linux script.
+
+## Task 13: the home turbo run you can watch, the ready check after the disk cleanup, and what I need for the next work run
+
+Written 2026-10-27. Docs only: no file in `src`, no config the work machine uses, was changed. The training has NOT been started by the agent.
+
+### 13a. Ready check, measured again on 2026-10-27 (this laptop, after your disk cleanup)
+
+| Item | Need | Now | Verdict |
+|---|---|---|---|
+| Disk, drive C: | about 11 GB normal; about 16.3 GB worst case | **92.4 GiB free** (`Get-PSDrive C`; `check` prints the same amount as 99.2 GB, decimal units) | FITS with a large margin in both cases |
+| RAM | about 8 GB available (peak 6.3 GiB measured) | **1.8 GB available** of 15.8 GB | **NO-GO until programs are closed** |
+| Cores | 4 physical | 4 physical / 8 logical | OK |
+| Power | AC, no sleep | Balanced plan; sleep and display timeouts AC and battery = 0 (never); on AC, battery 100% | OK |
+
+Top RAM users now (working sets): Chrome 2.5 GB, Windows services (svchost) 1.2 GB, VS Code 1.0 GB, memory compression 0.7 GB, WebView2 0.6 GB, Notion 0.6 GB, Explorer 0.5 GB, Defender 0.3 GB, Claude 0.2 GB, Teams 0.1 GB. Close Chrome, Notion, Teams, Telegram, Discord, Docker Desktop and every WebView2 app; start from a normal PowerShell window (not the VS Code terminal). Then the counter must show 9 or more: `(Get-Counter '\Memory\Available MBytes').CounterSamples.CookedValue / 1024`. A restart is the surest way. **GO = disk fits (yes) and that counter says 9 or more. Today: NO-GO on RAM only.**
+
+### 13b. The config was re-checked
+
+`check --config configs\home_turbo_full.yaml`: "Everything checked is fine." A scratch `prepare` (output in the agent's scratch folder, not in `data`) gave: split fingerprint **`5342b8562205736e`** (same as work_like `exp_0001`), 8,723 samples in 710 groups; subset **702 Train (58 lessons) / 101 Val (7) / 97 Test (8)**. The dry run (`-Dry`, exit code 0) prints its fixed 800/100 numbers (100 steps, 4.9 h); the real run prints `CHOSEN: 702 Train clips, 101 Val clips -> 2 epochs = 88 steps (16 clips per step), a Val-loss point every 22 steps (4 points), warmup 4.` `configs\home_turbo_full.yaml` was not changed in Task 13.
+
+### 13c. Start, watch, resume, report, final test
+
+**(1) Start** (normal PowerShell window, nothing else open):
+
+```
+cd C:\Users\9090\Desktop\Work\stt-pipeline
+$start = Get-Date; "START: $start"
+.\tools\run_work.ps1 -Step full -Config configs\home_turbo_full.yaml -ExperimentsDir data\turbo_full\experiments -Epochs 2 -Threads 4
+```
+
+**(2) Watch** (a SECOND PowerShell window; all read-only, none of them disturbs the run). Run the first line again when the step changes (the baseline and the training are different `exp_NNNN` folders):
+
+```
+cd C:\Users\9090\Desktop\Work\stt-pipeline
+$dir = 'data\turbo_full\experiments'
+$run = Get-ChildItem $dir -Directory -Filter 'exp_*' | Sort-Object LastWriteTime | Select-Object -Last 1; $run.Name
+Get-Content "$($run.FullName)\logs\run.log" -Tail 20 -Wait                                  # everything, live (Ctrl+C stops only the watching)
+Get-Content "$($run.FullName)\logs\run.log" | Select-String 'Encoder cache|PROGRESS|step [0-9]+ of|Resuming|Run ended|ERROR|WARNING' | Select-Object -Last 3    # the last progress lines
+Get-Content "$($run.FullName)\logs\run.log" | Select-String 'remaining' | Select-Object -Last 1                      # time left (this phase only)
+Get-Content "$($run.FullName)\metrics\trial_001\metrics.csv" -Tail 4                         # training: step, train_loss, val_loss, seconds_per_step
+Import-Csv "$($run.FullName)\metrics\trial_001\metrics.csv" | Where-Object { $_.val_loss } | Format-Table step, train_loss, val_loss   # only the Val-loss points
+Get-Content "$dir\full_run_state.json"                                                       # which steps are done
+Get-Process python | Select-Object Id, @{n='RAM_GB';e={[math]::Round($_.WorkingSet64/1GB,1)}}, CPU       # memory of the run
+(Get-Counter '\Memory\Available MBytes').CounterSamples.CookedValue / 1024                   # free RAM in GB
+(Get-PSDrive C).Free / 1GB                                                                   # free disk in GB
+```
+
+**Sample lines.** Lines marked REAL were copied from a real log on this laptop; lines marked FORMAT come from the code's log format with example numbers (no turbo run has logged them yet, so every number there is only an example):
+
+| Phase | Line |
+|---|---|
+| prepare (REAL stage lines, `work_like` exp_0002) | `Stage prepare starts.` ... `Stage prepare finished.` (it took 73 s there) |
+| script (REAL text) | `CHOSEN: 702 Train clips, 101 Val clips -> 2 epochs = 88 steps (16 clips per step), a Val-loss point every 22 steps (4 points), warmup 4.` and `ESTIMATED TIME: about ... hours` |
+| baseline start (REAL) | `Evaluating the baseline model (whisper-large-v3-turbo-ivrit) on 101 files of 'val'.` |
+| encoder pass (FORMAT) | `Encoder cache (val): 101 of 101 clips are missing, about 0.39 GB in data\turbo_full\encoder_cache\enc_<hash>_float16; computing them once.` then every 5%: `Encoder cache: 5 of 101 clips done, elapsed 75 s, remaining about 1425 s.` |
+| self-check (FORMAT) | `Encoder cache self-check passed on 3 clips (largest relative loss difference 1.2e-04).` |
+| baseline scoring (REAL format) | `PROGRESS WER scoring of the baseline on 'val': clip 2 of 101 (2.0%), elapsed 0:00:54, remaining about 0:44:13` (that run had no cache: 16.6 s per clip; with the cache about 2.9 s per clip) |
+| baseline result (REAL) | `val (eval_version 1, model whisper-large-v3-turbo-ivrit): 101 files, 4697 words, WER 0.8335, mean per-file WER 0.9613, CER 0.3889; ... 1681.0 s` and `1 of 101 outputs hit the length cap (a looping model?)` (the warning is normal in small numbers) |
+| script (REAL text) | `BASELINE: see ...\reports\evaluation_baseline.json and listen to 3 clips of review_baseline.txt. Stop (Ctrl+C) now if the WER is above 1.5 or the outputs are empty.` |
+| train start (FORMAT) | `Training trial 1: 702 train and 101 val examples.` `Freeze policy freeze_encoder: 171909120 of 808878080 parameters are trained.` |
+| train step (REAL format, tiny-model numbers) | `[exp_0002_trial_000] step 20 of 40 (50.0%) (epoch 2.00) train_loss 10.8463 val_loss 10.8524 lr 5.25e-06 grad_norm 0.706 0.06 s/step elapsed 0:00:03 remaining 0:00:01` (turbo: about 26.7 s/step, `val_loss` filled at steps 22, 44, 66, 88; `-` in between) |
+| end (REAL format) | `Run ended (max_steps). Model of step 88 saved in ...` ; at the very end the script prints `DONE. OPEN THE REPORT: ...` |
+
+**What to watch in the first hour** (start = 0:00; all durations are ESTIMATES from the 8-clip tests, except the baseline, whose 28 minutes without cache were MEASURED on these 101 clips):
+
+| Time | Expected | Normal pause | Stop and look when |
+|---|---|---|---|
+| 0:00 to 0:05 | `=== FULL RUN`, probe, `Everything checked is fine.`, prepare, then `CHOSEN: 702 Train ... 88 steps` | up to 2 minutes with no line during prepare | no `CHOSEN` after 10 minutes, or `STOPPED` with an exit code: read the lines above it |
+| 0:05 to 0:07 | the model loads (RAM climbs to about 3.4 GiB) | 1 to 2 minutes silent | RAM available below 1 GB |
+| 0:07 to 0:33 | `Encoder cache (val): 101 of 101 clips are missing`, then a line every 5% (about 5 clips, about 75 s) | up to 2 minutes between lines | no line for 15 minutes with the CPU near 0%; a clip taking over 30 s (RAM full and swapping, or the laptop is hot) |
+| 0:33 to 0:38 | self-check passed, then `PROGRESS WER scoring ...` about every 30 s | none | `self-check failed` (the run stops by itself; from the code, exit code 3; its message says to delete the cache folder, use float32, or switch the cache off); a WER above 1.5, empty outputs (`review_baseline.txt`): Ctrl+C |
+| 0:38 to 0:47 | the second encoder pass, `Encoder cache (train): 702 of 702 clips are missing, about 2.70 GB` | the first progress line comes after about 9 minutes (5% of 702 = 35 clips) | free disk below 5 GB; RAM above 7.5 GiB |
+| 0:47 to 1:00 | `Encoder cache: 35 of 702 ...`, `70 of 702 ...` (one line per 9 minutes) | 9 minutes between lines is NORMAL | no line for 30 minutes; the python process gone: run the same start command again |
+
+The encoder pass for Train ends at about 3:34; the first training step lines follow. If the laptop sleeps, locks the disk or restarts, run the start command again: finished clips are not recomputed.
+
+**(3) Resume** after Ctrl+C, a crash, a power loss, or a full disk: fix the cause, then run exactly command (1) again (nothing in the config may change).
+
+**(4) Report, then the Test (only after YOU have looked at the report and decided):**
+
+```
+Start-Process (Get-ChildItem data\turbo_full\experiments -Recurse -Filter report.html | Sort-Object LastWriteTime | Select-Object -Last 1).FullName
+Test-Path data\turbo_full\experiments\test_split_scored.json        # False = the Test has not been scored in this folder
+Get-Content data\turbo_full\experiments\full_run_state.json         # "train" = the exp_NNNN to use below
+# ONLY after the decision (one time; a second call is refused with exit code 3):
+.\tools\run_work.ps1 -Step final-test -Config configs\home_turbo_full.yaml -ExperimentsDir data\turbo_full\experiments -Experiment exp_NNNN
+.\tools\run_work.ps1 -Step report -Config configs\home_turbo_full.yaml -ExperimentsDir data\turbo_full\experiments -Experiment exp_NNNN
+```
+
+Reminder from 12b: the 97 Test clips were scored once by the whisper-tiny rehearsal; no turbo model has seen them.
+
+### 13d. For the NEXT work run: what I still need to fill `configs\turbo_full.yaml` (5 places) and to judge the running experiment
+
+A work experiment is running from the `main` branch. **Do not `git pull` and do not change any file on the work machine until that run has ended.** Reading logs is safe; copying files out is safe. A changed file under `configs\`, `src\` or `tools\` while the run is going could make a later resume refuse (the stored config would differ) or run other code.
+
+| What I need from you | How to find it on the work machine (read-only, one command each) |
+|---|---|
+| Data folder layout (where `manifest.csv` and the audio are), number of files | `Get-ChildItem <data folder> \| Select-Object -First 15` and `(Get-ChildItem <data folder> -Recurse -File).Count` |
+| Audio format (wav / mp3 / flac) and sample rate; channels; clip length range | `.\.venv\Scripts\python.exe tools\inspect_audio.py --data <folder>` works only for parquet data (it prints sample rate, channels, min / median / max seconds); for a CSV folder: `prepare` writes `load_report.txt` (see below), and `soundfile` info of one file: `.\.venv\Scripts\python.exe -c "import soundfile as s; print(s.info(r'<one audio file>'))"` |
+| Text column, audio column, group column, and what the group IS (lesson, recording or speaker; clips of one group never go to two parts) | the header line: `Get-Content <data folder>\manifest.csv -TotalCount 3` (a few rows are enough; do not paste private text if it is sensitive) |
+| How many clips and how many hours | `load_report.txt` and `split_report.txt` of the running experiment's `prepare` (below) |
+| Whether the transcripts cover the whole audio | your knowledge of how the data were made; also `text_report.txt` and `review_baseline.txt` (compare 3 clips by ear) |
+| CPU cores, RAM, free disk | `.\.venv\Scripts\python.exe tools\probe_env.py --model models\whisper-large-v3-turbo-ivrit` (prints the physical cores: `train.cpu_threads` is that number) |
+| Which config file and which experiments folder the running experiment uses | `Get-ChildItem configs`, and the folder named in `run.experiments_dir` of that config; the experiment's own copy is `<experiments_dir>\exp_NNNN\config_full.yaml` |
+| The exact command used to start it | the PowerShell history of that window: `Get-History` (same window) or `(Get-PSReadLineOption).HistorySavePath` then `Select-String 'run_work' <that file>` |
+
+**The running experiment's progress, without disturbing it** (replace the folder by the one in the work config; reading a file never changes it):
+
+```
+$dir = 'data\work_cpu\experiments'
+Get-Content "$dir\full_run_state.json"
+$run = Get-ChildItem $dir -Directory -Filter 'exp_*' | Sort-Object LastWriteTime | Select-Object -Last 1; $run.Name
+Get-Content "$($run.FullName)\logs\run.log" -Tail 15
+Get-Content "$($run.FullName)\metrics\trial_001\metrics.csv" -Tail 4        # only once the training has started
+```
+
+**Small files to copy out and paste to me** (text only; none is large; do NOT copy `candidates\`, `checkpoints\` or the encoder cache): the output of `tools\probe_env.py`; `full_run_state.json`; from the experiment folder `exp_NNNN\config_full.yaml` (it shows the paths, replace anything private before pasting), `reports\load_report.txt`, `reports\filter_report.txt`, `reports\split_report.txt`, `reports\subsample_report.txt` (if there is one), `reports\text_report.txt`, `reports\rejected.csv` (the first 20 lines only); the last 40 lines of `logs\run.log`; once training runs, `metrics\trial_001\metrics.csv`; at the end `reports\evaluation_baseline.json` and `reports\review_baseline.txt` (first 10 lines). Reports contain Hebrew text of your data: if the data are confidential, paste the numbers only.
+
+### 13e. Task 13: what is safe for the work machine, UNTESTED
+
+- **Safe:** this task changed only `README.md` and `docs\WORK_RUNBOOK.md` (documents). The code, the configs and the tools that the work run uses are untouched; nothing needs to be pulled. Pull later, after the run ends, and only if you want the new text.
+- **UNTESTED:** the sample lines marked FORMAT; the timeline; the first-hour pauses of the second encoder pass; the self-check with the real turbo model on 3 Val clips; the work-machine commands in 13d (each is read-only but none was run on that machine); `inspect_audio.py` on CSV data (it reads parquet only); everything listed in 12g.
+
 ## How to run (the short version): what I type
 
 Four things, in this order (UNTESTED on the work machine; the same steps ran on the home laptop with the tiny model and, in parts, with the turbo model):

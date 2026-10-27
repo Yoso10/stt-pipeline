@@ -1,0 +1,103 @@
+# How to run: the settings for ONE FULL TURBO TRAINING on CPU: frozen encoder, encoder cache ON, your own data. Copy it, fill in the marked lines, give the copy to the scripts.
+#
+#   Copy-Item configs\turbo_full.yaml configs\my_turbo_full.yaml        (then edit the copy; this file stays as shipped)
+#   .\.venv\Scripts\python.exe tools\verify_clone.py --config configs\my_turbo_full.yaml
+#   .\tools\run_work.ps1 -Step full -Config configs\my_turbo_full.yaml -Epochs 2 -Threads 4        (the whole run; the same command again resumes it)
+#
+# ===== OWNER PLACEHOLDERS: search this file for  <<< FILL IN  (5 values) =====
+#   1. data.source.path     the folder that holds manifest.csv and the audio files
+#   2. data.columns.audio   the manifest column with the audio file name
+#   3. data.columns.text    the manifest column with the transcript
+#   4. data.columns.group   the manifest column with the recording / lesson id (never split between Train and Test)
+#   5. train.cpu_threads    the number of PHYSICAL cores (python tools\probe_env.py prints it). run_work.ps1 -Threads N overrides it for every step.
+# Everything else is filled in. This file has the same values as configs\work_cpu.yaml, written out more fully (Task 11); see docs\WORK_RUNBOOK.md, "A full turbo training".
+#
+# HOW max_steps IS COMPUTED:  max_steps = epochs x ceil(Train clips / 16)   (16 = batch_size 4 x grad_accum_steps 4 = clips per step)
+#   Train clips:   700   800   900   1000
+#   1 epoch        44    50    57     63
+#   2 epochs       88   100   114    126
+#   3 epochs      132   150   171    189
+#   eval_every_steps = max_steps // 4, so that you get about four Val-loss points on the chart:
+#   1 epoch        11    12    14     15
+#   2 epochs       22    25    28     31
+#   3 epochs       33    37    42     47
+# The "Train clips" number is only known after `prepare` (the filter removes some clips; the split takes about 80% by duration). run_work.ps1 -Step full reads it from the
+# prepare result and sets max_steps, eval_every_steps and warmup_steps ITSELF through --set (the same words on every step). The values written below (max_steps 100, eval 25,
+# warmup 5 = 800 clips, 2 epochs) are only the starting values when you run the single steps by hand: then set your own with --set train.hyperparams.max_steps=... and so on.
+#
+# UNTESTED on the work machine. This file was run through `check` and `config-docs` on the home laptop (see the report of Task 11).
+extends: base.yaml
+
+runtime:
+  device: cpu                       # the CPU. (cuda or auto would use a GPU: not for this file.)
+  seed: 42                          # the seed that is applied everywhere (split, shuffling, training): the same seed gives the same result on the same machine
+
+data:
+  source:
+    type: csv                       # csv = a folder with manifest.csv and the audio files; hf_parquet = a folder of Hugging Face parquet files
+    path: "<<< FILL IN: the folder with manifest.csv and the audio files >>>"
+  columns:
+    audio: "<<< FILL IN: the manifest column with the audio file name >>>"
+    text: "<<< FILL IN: the manifest column with the transcript >>>"
+    group: "<<< FILL IN: the manifest column with the recording / lesson id that must never be split between Train and Test >>>"
+  group_fallback: fail              # leave it: a missing group column stops the run on purpose (a wrong group would leak the Test into the training)
+
+model:
+  path: models/whisper-large-v3-turbo-ivrit   # the turbo model folder on THIS machine (not in git; copied from home; see docs\WORK_RUNBOOK.md)
+  dtype: float32                    # the number format on the CPU. float32 is the exact one; half formats are slower or unsafe on a CPU
+
+run:
+  experiments_dir: data/work_cpu/experiments  # every command makes its own folder exp_NNNN here; the same folder as work_cpu.yaml on purpose (one place for the machine's results)
+registry:
+  dir: data/work_cpu/registry       # outside the experiments folder (a rule of the registry); only `python -m stt run` uses it
+
+filter:
+  mode: apply                       # REMOVE the clips the rules reject (for example longer than 30 s). Read filter_report.txt after `prepare`. report mode removes nothing and a long clip would stop the run (exit code 3).
+
+split:
+  # UNSURE (owner decision, see docs\WORK_RUNBOOK.md "More data later"): the way the clips are divided into Train, Val and Test. grouped_ratio (the shipped default, used by work_cpu.yaml)
+  # gives shares close to the ratios, but if you add data later and run `prepare` again, some old lessons can MOVE between Train, Val and Test. hash_group keeps every old lesson where it was
+  # (new lessons never move old ones), but with few lessons the shares can be uneven and the checks stop the run. Keep grouped_ratio for ONE run on a fixed dataset.
+  mode: grouped_ratio
+  ratios: [0.8, 0.1, 0.1]           # Train, Val, Test by duration; every lesson goes to ONE part. At least 5 lessons are needed in Val and in Test (see split_report.txt).
+
+train:
+  freeze_policy: freeze_encoder     # train only the decoder (171.9 million of 808.9 million parameters): far less memory and time, and the only mode in which the encoder cache is valid
+  cpu_threads: 4                    # <<< FILL IN: the number of PHYSICAL cores of the work machine (not the logical ones); run_work.ps1 -Threads N overrides it
+  hyperparams:
+    learning_rate: 1.0e-5           # small, so that a large model stays stable
+    batch_size: 4                   # clips per forward pass; if the machine runs out of memory use 2 (and grad_accum_steps 8)
+    grad_accum_steps: 4             # 4 x 4 = 16 clips per step
+    max_steps: 100                  # = epochs x ceil(Train clips / 16); 100 = 2 epochs of 800 clips (the table above). run_work.ps1 -Step full sets it from your data.
+    warmup_steps: 5                 # about 5% of max_steps (min(5, max_steps // 20) in the script); the learning rate climbs from 0 for these steps
+  eval_every_steps: 25              # = max_steps // 4: a Val-loss point every quarter of the run (a Val-loss pass is about 70 s with the cache; no pass costs hours)
+  log_every_steps: 5                # a line in metrics.csv every 5 steps (train loss, learning rate, seconds per step)
+  save_every_steps: 25              # a checkpoint every 25 steps (about every 11 minutes) so that a stopped run loses at most that much. Each turbo checkpoint is about 4.6 GB; only the latest and the best are kept.
+  save_optimizer_state: true        # true: a stopped run can be resumed. false saves disk but the run can NEVER be resumed.
+  # early_stopping: left at the code default (stop after 5 Val-loss points without improvement). With four points per run it can never fire: nothing to set.
+
+features:
+  encoder_cache:
+    enabled: true                   # ON: the frozen encoder runs ONCE per clip and its output is reused at every step (identical results; training step 60 s -> 7.5 s on the home laptop). Switch off: false.
+    dir: data/work_cpu/encoder_cache  # about 3.84 MB per clip in float16: 900 clips = 3.5 GB. Needs free disk (the build checks it first).
+    dtype: float16                  # half the disk of float32; the one-time self-check compares the loss with and without the cache and stops the run if it differs
+
+eval:
+  batch_size: 2                     # clips decoded together; lower it to 1 if memory is short
+
+select:
+  test_confirmation: false          # the Test split is NEVER opened by `-Step full`. The one-time Test scoring is a separate, deliberate command (final-test, run_work.ps1 -WithTest).
+
+search:                             # used only by `python -m stt run` (the minimal path); the plain `train` + `evaluate` path of -Step full ignores it
+  n_trials: 2
+  parameters:
+    learning_rate: {kind: log_float, low: 5.0e-6, high: 5.0e-5, points: 2}
+  pruning:
+    enabled: false
+  finalists:
+    k: 1
+
+progress:
+  interval_seconds: 30              # a progress line at most every 30 seconds
+report:
+  target_relative_wer_reduction: 0.10   # the aim: a Val WER at least 10% below the baseline of the same Val set

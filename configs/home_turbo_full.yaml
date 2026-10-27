@@ -1,0 +1,60 @@
+# How to run: ONE FULL TURBO TRAINING ON THIS (HOME) LAPTOP, CPU only, on the SAME 900-clip subset (about 702 Train / 101 Val / 97 Test) that the work_like rehearsal used. Nothing to fill in.
+#
+#   .\.venv\Scripts\python.exe -m stt check --config configs\home_turbo_full.yaml        (run from the project folder with $env:PYTHONPATH = "src")
+#   .\tools\run_work.ps1 -Step full -Config configs\home_turbo_full.yaml -ExperimentsDir data\turbo_full\experiments -Epochs 2 -Threads 4
+#   (the same command again resumes it; first run WITHOUT -WithTest; see docs\WORK_RUNBOOK.md, "A full turbo training on THIS laptop")
+#
+# This file keeps configs\turbo_full.yaml (the work-machine template) untouched. The data, the filter and the split are NOT written here: they come from configs\data_gmara.yaml, the same
+# file that configs\work_like.yaml reaches through home_full.yaml, so the split is the same one (DECISIONS: the data are fixed, no refresh -> split.mode grouped_ratio, 80/10/10 by duration,
+# seed 42 from runtime.seed). The subset is the Subsampler preset work_like (one tenth of the audio by lesson, over Train, Val and Test), exactly as in work_like.yaml.
+# The turbo part (frozen encoder, encoder cache, learning rate, batch) is the one of configs\turbo_full.yaml. UNTESTED end to end with the turbo model on the whole subset.
+extends: data_gmara.yaml
+
+runtime:
+  device: cpu                       # the CPU
+  seed: 42                          # the seed that is applied everywhere (split, subsample, shuffling, training)
+
+model:
+  path: models/whisper-large-v3-turbo-ivrit   # the turbo model folder on this laptop
+  dtype: float32                    # the exact CPU number format
+
+run:
+  experiments_dir: data/turbo_full/experiments  # NEW folder, not inside data/work_like: no Test marker or old result is in it
+registry:
+  dir: data/turbo_full/registry     # outside the experiments folder (a rule of the registry)
+
+subsample:
+  enabled: true
+  preset: work_like                 # the same preset as configs/work_like.yaml: one tenth of the audio by lesson, over ALL splits -> about 702 Train, 101 Val, 97 Test clips
+  val_samples: null                 # a fixed Val slice cannot be combined with the work_like preset (same line as in work_like.yaml)
+
+train:
+  freeze_policy: freeze_encoder     # train only the decoder (171.9 million of 808.9 million parameters); the only mode in which the encoder cache is valid
+  cpu_threads: 4                    # the PHYSICAL cores of this laptop (8 logical, 4 physical); run_work.ps1 -Threads 4 sets it for every step
+  hyperparams:
+    learning_rate: 1.0e-5           # small, so that a large model stays stable
+    batch_size: 4                   # clips per forward pass
+    grad_accum_steps: 4             # 4 x 4 = 16 clips per step
+    max_steps: 88                   # = epochs x ceil(Train clips / 16) = 2 x ceil(702 / 16) = 2 x 44; run_work.ps1 -Step full sets it from the real Train size
+    warmup_steps: 4                 # min(5, max_steps // 20)
+  eval_every_steps: 22              # = max_steps // 4: four Val-loss points
+  log_every_steps: 5                # a line in metrics.csv every 5 steps
+  save_every_steps: 22              # a checkpoint every 22 steps (about every 10 minutes); each is about 4.6 GB, only the latest and the best are kept
+  save_optimizer_state: true        # true: a stopped run can be resumed
+
+features:
+  encoder_cache:
+    enabled: true                   # ON: the frozen encoder runs once per clip and its output is reused (identical results; measured with turbo on 8 clips)
+    dir: data/turbo_full/encoder_cache  # about 3.84 MB per clip in float16: 900 clips = about 3.5 GB
+    dtype: float16
+
+eval:
+  batch_size: 2                     # clips decoded together
+
+select:
+  test_confirmation: false          # the Test split is NOT opened by -Step full; the one-time Test scoring is a separate command (final-test, -WithTest), not in the first run
+
+progress:
+  interval_seconds: 30              # a progress line at most every 30 seconds
+report:
+  target_relative_wer_reduction: 0.10   # the aim: a Val WER at least 10% below the baseline of the same Val set
