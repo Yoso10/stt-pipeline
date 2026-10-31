@@ -1,0 +1,7 @@
+2026-10-07 23:25:50,880 INFO    stt.orchestrator: Stage prepare starts.
+2026-10-07 23:27:23,955 ERROR   stt.orchestrator: stage prepare failed: SubsampleConfigError: subsample.val_samples (a fixed Val slice) needs scope train_only: with all_splits every split is reduced by the same fraction.
+2026-10-07 23:27:24,014 INFO    stt.orchestrator: The experiment is in: data\part11_real\experiments\exp_0001
+2026-10-07 23:27:24,021 INFO    stt.orchestrator: To look at it, run in PowerShell from the project folder (after `$env:PYTHONPATH = "src"`):
+2026-10-07 23:27:24,022 INFO    stt.orchestrator:   python -m stt.runmanager list --dir data\part11_real\experiments
+2026-10-07 23:27:24,022 INFO    stt.orchestrator:   python -m stt.runmanager show exp_0001 --dir data\part11_real\experiments
+2026-10-07 23:27:24,022 INFO    stt.orchestrator:   python -m stt check

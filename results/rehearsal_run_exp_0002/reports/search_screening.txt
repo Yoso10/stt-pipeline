@@ -1,0 +1,5 @@
+subsample: requested 30 minutes, strategy by_sample, scope train_only, val fixed, seed 42, repeat 0
+  achieved 30.47 minutes for 30.00 requested: overshoot +0.47 minutes (at most one unit)
+  train    reduced   samples 702 -> 61, groups 58 -> 40, minutes 350.4 -> 30.5
+  val      untouched samples 101 -> 101, groups 7 -> 7, minutes 50.3 -> 50.3
+  test     untouched samples 97 -> 97, groups 8 -> 8, minutes 48.3 -> 48.3

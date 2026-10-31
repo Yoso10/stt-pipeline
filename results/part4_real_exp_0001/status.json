@@ -1,0 +1,14 @@
+{
+ "status": "failed",
+ "reason": "stage search failed: SearchError: No trial completed (2 failed, 0 pruned; stopped because of n_trials). Reasons: trial 0: TrainerConfigError: Invalid training hyperparameters: warmup_steps must be between 0 and max_steps (4), got 10. Fix train.hyperparams (or the searcher's values).; trial 1: TrainerConfigError: Invalid training hyperparameters: warmup_steps must be between 0 and max_steps (4), got 10. Fix train.hyperparams (or the searcher's values).. A common cause is a learning rate range that is too high: lower the upper bound of search.parameters.learning_rate.",
+ "stages": {
+  "prepare": {
+   "status": "ok",
+   "fingerprint": "b5603c59c87742ee"
+  },
+  "search": {
+   "status": "failed",
+   "fingerprint": "852477f7c458e569"
+  }
+ }
+}

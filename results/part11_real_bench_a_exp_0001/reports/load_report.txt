@@ -1,0 +1,11 @@
+seen 8723, loaded 8723, rejected 0
+rejection reasons: {}
+loaded per source_split: {'eval': 437, 'train': 8286}
+rejected per source_split: {}
+distinct group_id: 710; group_id present in more than one source_split: 326
+duration s: min 2.95 p50 30.00 mean 29.89 p95 30.00 max 30.00
+meta_bad_segments: n 8723 min 0 p50 2 mean 1.663 max 7
+meta_duration: n 8723 min 30 p50 30 mean 30 max 30
+meta_number_of_segments: n 8723 min 1 p50 6 mean 5.916 max 14
+meta_quality_score: n 8723 min 0.1 p50 0.3165 mean 0.3153 max 0.943
+meta_seek: n 8723 min 0 p50 202.7 mean 222.2 max 944.2

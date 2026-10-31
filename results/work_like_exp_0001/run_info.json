@@ -1,0 +1,20 @@
+{
+ "experiment_id": "exp_0001",
+ "config_ref": "exp_0001/config_full.yaml",
+ "parent_id": null,
+ "code_version": "0.0.0",
+ "library_versions": {
+  "torch": "2.14.1",
+  "transformers": "5.18.0",
+  "numpy": "2.5.3",
+  "pydantic": "2.13.5",
+  "PyYAML": "6.0.3",
+  "soundfile": "0.14.0",
+  "scipy": "1.18.1",
+  "pyarrow": "25.0.1",
+  "accelerate": "1.15.0",
+  "safetensors": "0.8.0"
+ },
+ "seed": 42,
+ "created_at": "2026-10-24T23:16:48"
+}

@@ -1,0 +1,14 @@
+split train: mode report, seen 6973, kept 6973, would reject 0, would-be kept ratio 1.0000
+  max_duration (structural, threshold 30.0): 0 fail
+  min_duration (structural, threshold 1.0): 0 fail
+  min_text_chars (structural, threshold 2.0): 0 fail
+
+split val: mode report, seen 875, kept 875, would reject 0, would-be kept ratio 1.0000
+  max_duration (structural, threshold 30.0): 0 fail
+  min_duration (structural, threshold 1.0): 0 fail
+  min_text_chars (structural, threshold 2.0): 0 fail
+
+split test: mode report, seen 875, kept 875, would reject 0, would-be kept ratio 1.0000
+  max_duration (structural, threshold 30.0): 0 fail
+  min_duration (structural, threshold 1.0): 0 fail
+  min_text_chars (structural, threshold 2.0): 0 fail

@@ -1,0 +1,54 @@
+# difference from the defaults of the config schemas
+data:
+  source:
+    type: hf_parquet
+    path: data\daf_yomi_raw
+  columns:
+    id: null
+    audio: audio
+    text: transcript
+    group: meta_entry_id
+    split: source_split
+  extra_types:
+    meta_seek: float
+    meta_duration: float
+    meta_quality_score: float
+    meta_number_of_segments: int
+    meta_bad_segments: int
+    meta_golden_segments: bool
+    has_prev: bool
+    has_timestamps: bool
+  extract:
+    dir: data\extracted\daf_yomi
+model:
+  path: models\whisper-large-v3-turbo-ivrit
+registry:
+  dir: data\work_like\registry
+report:
+  target_relative_wer_reduction: 0.1
+run:
+  experiments_dir: data\work_like\experiments
+search:
+  parameters:
+    learning_rate:
+      points: 4
+    grad_accum_steps: null
+  n_trials: 4
+  pruning:
+    enabled: false
+  finalists:
+    k: 2
+subsample:
+  enabled: true
+  preset: work_like
+train:
+  freeze_policy: freeze_encoder
+  hyperparams:
+    max_steps: 20
+    batch_size: 2
+    grad_accum_steps: 2
+    warmup_steps: 2
+  log_every_steps: 5
+  eval_every_steps: 10
+  save_every_steps: 20
+  cpu_threads: 4

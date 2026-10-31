@@ -1,0 +1,5 @@
+subsample: requested 20 samples, Val slice of 8 samples, strategy by_sample, scope train_only, val fixed, seed 42, repeat 0
+  achieved 20.00 samples for 20.00 requested: overshoot +0.00 samples (at most one unit)
+  train    reduced   samples 6973 -> 20, groups 566 -> 20, minutes 3474.2 -> 10.0
+  val      reduced   samples 875 -> 8, groups 72 -> 8, minutes 435.2 -> 4.0
+  test     untouched samples 875 -> 875, groups 72 -> 72, minutes 435.8 -> 435.8

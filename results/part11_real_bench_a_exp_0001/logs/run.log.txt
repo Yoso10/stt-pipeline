@@ -1,0 +1,44 @@
+2026-10-07 23:32:44,527 INFO    stt.orchestrator: Stage prepare starts.
+2026-10-07 23:32:54,127 INFO    stt.orchestrator: Stage prepare finished.
+2026-10-07 23:32:54,140 INFO    stt.orchestrator: Stage benchmark starts.
+2026-10-07 23:33:02,078 INFO    stt.orchestrator: Benchmark: 3 training step(s) on 12 Train examples, Val probe of 12 examples.
+2026-10-07 23:33:02,078 INFO    stt.trainercore: Freeze policy none: 37760640 of 37760640 parameters are trained.
+2026-10-07 23:33:06,941 INFO    stt.trainercore: [exp_0001_benchmark] step 1 of 3 (33.3%) (epoch 0.33) train_loss 4.4425 val_loss - lr 0 grad_norm 52.185 4.70 s/step elapsed 0:00:05 remaining 0:00:09
+2026-10-07 23:33:21,193 INFO    stt.trainercore: [exp_0001_benchmark] step 3 of 3 (100.0%) (epoch 1.00) train_loss 4.4425 val_loss 2.0009 lr 0 grad_norm 52.185 4.70 s/step elapsed 0:00:19 remaining 0:00:09
+2026-10-07 23:33:21,793 INFO    stt.trainercore: Run ended (max_steps). Model of step 3 saved in data\part11_real\bench_a_rehearsal\experiments\exp_0001\candidates\exp_0001_benchmark\exp_0001_benchmark_step_00003 (pipeline_model_info.json).
+2026-10-07 23:33:22,075 INFO    stt.orchestrator: Evaluating the benchmark probe model (whisper-tiny) on 12 files of 'val'.
+2026-10-07 23:33:28,387 INFO    stt.orchestrator: PROGRESS WER scoring of the benchmark probe on 'val': clip 4 of 12 (33.3%), elapsed 0:00:06, remaining about 0:00:13
+2026-10-07 23:33:42,411 INFO    stt.orchestrator: PROGRESS WER scoring of the benchmark probe on 'val': clip 12 of 12 (100.0%), elapsed 0:00:20, done
+2026-10-07 23:33:42,586 WARNING stt.evaluator: 3 of 12 outputs hit the length cap (a looping model?); they are flagged in the result.
+2026-10-07 23:33:42,586 INFO    stt.evaluator: val (eval_version 1, model whisper-tiny): 12 files, 549 words, WER 1.1056, mean per-file WER 1.1294, CER 0.7203; files with WER under 10%: 0.0%, under 20%: 0.0%; flags: empty_output 0, hit_length_cap 3, excluded_empty_reference 0; 20.3 s
+2026-10-07 23:33:42,602 INFO    stt.orchestrator: BENCHMARK on this machine: model whisper-tiny, 2 thread(s), 3 training step(s) measured.
+2026-10-07 23:33:42,602 INFO    stt.orchestrator: 
+2026-10-07 23:33:42,602 INFO    stt.orchestrator: Measured:
+2026-10-07 23:33:42,602 INFO    stt.orchestrator:   6.30 s per training step (batch 2 x 2 accumulation = 4 examples)
+2026-10-07 23:33:42,602 INFO    stt.orchestrator:   0.397 s per example for the Val loss (probe: 12 examples)
+2026-10-07 23:33:42,602 INFO    stt.orchestrator:   1.69 s per clip for the WER scoring (probe: 12 clips)
+2026-10-07 23:33:42,602 INFO    stt.orchestrator: 
+2026-10-07 23:33:42,602 INFO    stt.orchestrator: Planned time of `python -m stt run` with the current settings (n_trials 4, finalists 2, max_steps 20, Val loss on 101 example(s), Val 101 clips, Test 97 clips):
+2026-10-07 23:33:42,602 INFO    stt.orchestrator:          3 min  baseline on Val (101 clips, WER)
+2026-10-07 23:33:42,602 INFO    stt.orchestrator:         14 min  search (4 trials of 20 steps)
+2026-10-07 23:33:42,602 INFO    stt.orchestrator:          7 min  finalists (2 retrainings of 20 steps)
+2026-10-07 23:33:42,602 INFO    stt.orchestrator:          6 min  finalists on Val (2 x 101 clips, WER)
+2026-10-07 23:33:42,602 INFO    stt.orchestrator:          5 min  Test, winner and baseline (2 x 97 clips, WER; only when a finalist wins)
+2026-10-07 23:33:42,602 INFO    stt.orchestrator:         35 min  TOTAL (the Test part counted)
+2026-10-07 23:33:42,602 INFO    stt.orchestrator: 
+2026-10-07 23:33:42,602 INFO    stt.orchestrator: Notes:
+2026-10-07 23:33:42,602 INFO    stt.orchestrator:   - a training of 20 steps with 2 Val-loss evaluation(s) of 101 example(s) takes about 3 min
+2026-10-07 23:33:42,602 INFO    stt.orchestrator:   - early stopping and pruning can make a run shorter; the first training steps are slower than the later ones
+2026-10-07 23:33:42,602 INFO    stt.orchestrator:   - the numbers belong to this machine, these threads and this model: measure again on the target machine and model (O66)
+2026-10-07 23:33:42,602 INFO    stt.orchestrator: 
+2026-10-07 23:33:42,602 INFO    stt.orchestrator: Resources (measured on the benchmark's own training):
+2026-10-07 23:33:42,602 INFO    stt.orchestrator:   disk of the measuring trial folder: 609 MB (1 checkpoint folder(s), the largest 453 MB)
+2026-10-07 23:33:42,602 INFO    stt.orchestrator:   planned disk of `python -m stt run`: about 3.7 GB (6 trial folders: the search trials and the finalists)
+2026-10-07 23:33:42,602 INFO    stt.orchestrator:   a longer training keeps the latest AND the best checkpoint: plan up to about 6.4 GB
+2026-10-07 23:33:42,602 INFO    stt.orchestrator:   peak memory of this process: 1.8 GB (the peak working set)
+2026-10-07 23:33:42,637 INFO    stt.orchestrator: Stage benchmark finished.
+2026-10-07 23:33:42,651 INFO    stt.orchestrator: The experiment is in: data\part11_real\bench_a_rehearsal\experiments\exp_0001
+2026-10-07 23:33:42,651 INFO    stt.orchestrator: To look at it, run in PowerShell from the project folder (after `$env:PYTHONPATH = "src"`):
+2026-10-07 23:33:42,651 INFO    stt.orchestrator:   python -m stt.runmanager list --dir data\part11_real\bench_a_rehearsal\experiments
+2026-10-07 23:33:42,651 INFO    stt.orchestrator:   python -m stt.runmanager show exp_0001 --dir data\part11_real\bench_a_rehearsal\experiments
+2026-10-07 23:33:42,651 INFO    stt.orchestrator:   python -m stt check

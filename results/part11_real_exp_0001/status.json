@@ -1,0 +1,10 @@
+{
+ "status": "failed",
+ "reason": "stage prepare failed: SubsampleConfigError: subsample.val_samples (a fixed Val slice) needs scope train_only: with all_splits every split is reduced by the same fraction.",
+ "stages": {
+  "prepare": {
+   "status": "failed",
+   "fingerprint": "06b206d740abfe26"
+  }
+ }
+}

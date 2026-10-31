@@ -1,0 +1,27 @@
+{
+ "split": "val",
+ "eval_version": 1,
+ "model": "whisper-large-v3-turbo-ivrit",
+ "wer": 0.7974025974025974,
+ "wer_mean_per_file": 0.8171567041556621,
+ "cer": 0.3250883392226148,
+ "n_files": 8,
+ "n_words": 385,
+ "share_files_wer_below": {
+  "0.1": 0.0,
+  "0.2": 0.0
+ },
+ "flags": {
+  "empty_output": 0,
+  "hit_length_cap": 0,
+  "excluded_empty_reference": 0
+ },
+ "excluded_ids": [],
+ "decode_settings": {
+  "num_beams": 1,
+  "max_new_tokens": 448,
+  "batch_size": 2,
+  "max_tokens_per_audio_sec": 8.0
+ },
+ "seconds": 154.90600000007544
+}

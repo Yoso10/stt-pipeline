@@ -1,0 +1,11 @@
+{
+ "trial_id": 1,
+ "params": {
+  "learning_rate": 1.0772173e-05
+ },
+ "model_dir": "data\\rehearsal_run\\experiments\\exp_0002\\candidates\\exp_0002_final_trial_001\\exp_0002_final_trial_001_step_00020",
+ "val_loss": 1.6177352666854858,
+ "steps": 20,
+ "best_step": 20,
+ "stopped_reason": "max_steps"
+}

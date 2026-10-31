@@ -1,0 +1,16 @@
+{
+ "status": "ok",
+ "summary": {
+  "split": "val",
+  "baseline_wer": 0.8335,
+  "baseline_cer": 0.3889,
+  "n_files": 101,
+  "trained_wer": "no trained model in this experiment (run the train stage)",
+  "test_split": "'test' not evaluated (scored once, for the winner, through the Selector in Wave 2)"
+ },
+ "artifacts": [
+  "data\\work_like\\experiments\\exp_0002\\reports\\evaluation_baseline.json",
+  "data\\work_like\\experiments\\exp_0002\\reports\\eval_result_baseline.json"
+ ],
+ "error": null
+}

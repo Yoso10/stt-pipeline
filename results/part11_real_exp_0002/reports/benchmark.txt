@@ -1,0 +1,25 @@
+BENCHMARK on this machine: model whisper-tiny, 2 thread(s), 3 training step(s) measured.
+
+Measured:
+  11.70 s per training step (batch 2 x 2 accumulation = 4 examples)
+  0.777 s per example for the Val loss (probe: 12 examples)
+  3.39 s per clip for the WER scoring (probe: 12 clips)
+
+Planned time of `python -m stt run` with the current settings (n_trials 6, finalists 3, max_steps 30, Val loss on 101 example(s), Val 101 clips, Test 97 clips):
+         6 min  baseline on Val (101 clips, WER)
+        59 min  search (6 trials of 30 steps)
+        29 min  finalists (3 retrainings of 30 steps)
+        17 min  finalists on Val (3 x 101 clips, WER)
+        11 min  Test, winner and baseline (2 x 97 clips, WER; only when a finalist wins)
+     2 h 2 min  TOTAL (the Test part counted)
+
+Notes:
+  - a training of 30 steps with 3 Val-loss evaluation(s) of 101 example(s) takes about 10 min
+  - early stopping and pruning can make a run shorter; the first training steps are slower than the later ones
+  - the numbers belong to this machine, these threads and this model: measure again on the target machine and model (O66)
+
+Resources (measured on the benchmark's own training):
+  disk of the measuring trial folder: 609 MB (1 checkpoint folder(s), the largest 453 MB)
+  planned disk of `python -m stt run`: about 5.5 GB (9 trial folders: the search trials and the finalists)
+  a longer training keeps the latest AND the best checkpoint: plan up to about 9.6 GB
+  peak memory of this process: 1.8 GB (the peak working set)

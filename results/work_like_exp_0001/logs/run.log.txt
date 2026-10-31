@@ -1,0 +1,15 @@
+2026-10-24 23:16:48,537 INFO    stt.orchestrator: Stage prepare starts.
+2026-10-24 23:17:10,350 INFO    stt.orchestrator: Stage prepare finished.
+2026-10-24 23:17:10,357 INFO    stt.orchestrator: Stage evaluate starts.
+2026-10-24 23:19:00,246 INFO    stt.orchestrator: Evaluating the baseline model (whisper-large-v3-turbo-ivrit) on 8 files of 'val'.
+2026-10-24 23:19:39,137 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 2 of 8 (25.0%), elapsed 0:00:39, remaining about 0:01:57
+2026-10-24 23:20:18,550 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 4 of 8 (50.0%), elapsed 0:01:18, remaining about 0:01:18
+2026-10-24 23:20:56,121 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 6 of 8 (75.0%), elapsed 0:01:56, remaining about 0:00:39
+2026-10-24 23:21:35,141 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 8 of 8 (100.0%), elapsed 0:02:35, done
+2026-10-24 23:21:35,361 INFO    stt.evaluator: val (eval_version 1, model whisper-large-v3-turbo-ivrit): 8 files, 385 words, WER 0.7974, mean per-file WER 0.8172, CER 0.3251; files with WER under 10%: 0.0%, under 20%: 0.0%; flags: empty_output 0, hit_length_cap 0, excluded_empty_reference 0; 154.9 s
+2026-10-24 23:21:35,768 INFO    stt.orchestrator: Stage evaluate finished.
+2026-10-24 23:21:35,791 INFO    stt.orchestrator: The experiment is in: data\work_like\experiments\exp_0001
+2026-10-24 23:21:35,791 INFO    stt.orchestrator: To look at it, run in PowerShell from the project folder (after `$env:PYTHONPATH = "src"`):
+2026-10-24 23:21:35,791 INFO    stt.orchestrator:   python -m stt.runmanager list --dir data\work_like\experiments
+2026-10-24 23:21:35,791 INFO    stt.orchestrator:   python -m stt.runmanager show exp_0001 --dir data\work_like\experiments
+2026-10-24 23:21:35,791 INFO    stt.orchestrator:   python -m stt check

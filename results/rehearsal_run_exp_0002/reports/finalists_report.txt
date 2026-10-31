@@ -1,0 +1,7 @@
+finalists retrained on the full data and scored on the Val split (the selection stage compares them with the baseline):
+
+trial  Val WER  Val CER  Val loss  steps  files  model folder
+    2   1.0279   0.5977    1.4457     20    101  exp_0002_final_trial_002_step_00020
+       learning_rate=2.32079e-05
+    1   1.0498   0.6291    1.6177     20    101  exp_0002_final_trial_001_step_00020
+       learning_rate=1.07722e-05

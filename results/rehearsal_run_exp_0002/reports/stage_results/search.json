@@ -1,0 +1,25 @@
+{
+ "status": "ok",
+ "summary": {
+  "strategy": "grid",
+  "trials_started": 4,
+  "trials_complete": 3,
+  "trials_pruned": 0,
+  "trials_failed": 1,
+  "trials_from_earlier_run": 0,
+  "stopped_reason": "n_trials",
+  "best_val_loss": 1.46185,
+  "best_params": "{\"learning_rate\": 2.3207944e-05}",
+  "finalist_trials": "[2, 1]",
+  "screening_train_samples": 61,
+  "screening_val_samples": 101,
+  "seconds": 832.8,
+  "study_file": "data\\rehearsal_run\\experiments\\exp_0002\\search\\study.json"
+ },
+ "artifacts": [
+  "C:\\Users\\9090\\Desktop\\Work\\stt-pipeline\\data\\rehearsal_run\\experiments\\exp_0002\\reports\\search_screening.txt",
+  "C:\\Users\\9090\\Desktop\\Work\\stt-pipeline\\data\\rehearsal_run\\experiments\\exp_0002\\reports\\search_report.txt",
+  "C:\\Users\\9090\\Desktop\\Work\\stt-pipeline\\data\\rehearsal_run\\experiments\\exp_0002\\reports\\search_trials.json"
+ ],
+ "error": null
+}

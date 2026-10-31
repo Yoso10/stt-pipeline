@@ -1,0 +1,18 @@
+search (grid, seed 42): 4 trials (3 complete, 0 pruned, 1 failed; 0 from an earlier run)
+  best Val loss 1.4618 with {'learning_rate': 2.3207944e-05}
+  832.8 s, parallel trials 1, 2 thread(s) per trial
+  stopped because: n_trials
+  screening data: 61 Train and 101 Val samples (see search_screening.txt)
+
+trial  status    Val loss   steps  seconds  parameters
+    0  complete    1.7741      20    193.4  learning_rate=5e-06
+    1  complete    1.6248      20    202.3  learning_rate=1.07722e-05
+    2  complete    1.4618      20    195.6  learning_rate=2.32079e-05
+    3  failed           -       0    228.8  learning_rate=5e-05   [PermissionError: [WinError 5] Access is denied: 'data\\rehearsal_run\\experiments\\exp_0002\\candidates\\exp_0002_trial_003\\exp_0002_trial_003_step_00020.tmp' -> 'data\\rehearsal_run\\experiments\\exp_0002\\candidates\\exp_0002_trial_003\\exp_0002_trial_003_step_00020']
+
+finalists (best 2 by Val loss; they are retrained and scored by WER in a later stage):
+  1. trial 2  Val loss 1.4618  learning_rate=2.32079e-05
+  2. trial 1  Val loss 1.6248  learning_rate=1.07722e-05
+
+trial folders in candidates/ that the study does not list (an interrupted trial of a parallel search, or an old attempt renamed to _stale_N): exp_0002_trial_000_stale_1
+  They hold checkpoints and use disk space; a later `cleanup` proposes them, nothing deletes them by itself.

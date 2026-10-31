@@ -1,0 +1,294 @@
+runtime:
+  online: false
+  seed: 42
+benchmark:
+  steps: 3
+data:
+  source:
+    type: hf_parquet
+    path: data\daf_yomi_raw
+  columns:
+    id: null
+    audio: audio
+    text: transcript
+    group: meta_entry_id
+    split: source_split
+  group_fallback: fail
+  extra_types:
+    meta_seek: float
+    meta_duration: float
+    meta_quality_score: float
+    meta_number_of_segments: int
+    meta_bad_segments: int
+    meta_golden_segments: bool
+    has_prev: bool
+    has_timestamps: bool
+  extract:
+    dir: data\extracted\daf_yomi
+    overwrite: false
+  on_invalid: skip
+  max_rejected_ratio: 0.05
+eval:
+  metrics:
+  - wer
+  - cer
+  generation:
+    num_beams: 1
+    max_new_tokens: null
+    max_tokens_per_audio_sec: 8.0
+  batch_size: 4
+  thresholds:
+    wer_below:
+    - 0.1
+    - 0.2
+  significance:
+    method: paired_group_bootstrap
+    confidence: 0.9
+    one_sided: true
+    n_resamples: 2000
+    min_effect_abs: 0.0
+    min_groups: 5
+  review:
+    n_random: 20
+    n_worst: 10
+  sanity:
+    max_baseline_wer: null
+export:
+  formats:
+  - hf_safetensors
+  verify: true
+  verify_samples: 5
+  max_wer_diff: 0.02
+features:
+  num_workers: 0
+  cache:
+    enabled: false
+    dir: null
+  max_dropped_ratio: 0.05
+  downmix: mean
+  shuffle: false
+  seed: null
+filter:
+  mode: report
+  rules: {}
+  min_kept_ratio: 0.4
+learning_curve:
+  presets:
+  - smoke
+  - tiny
+  - half
+  - full
+  params_from: null
+model:
+  path: models\whisper-tiny
+  loader: hf_whisper
+  language: he
+  task: transcribe
+  dtype: float32
+pipeline:
+  stages:
+  - prepare
+  - evaluate
+  - search
+  - finalists
+  - select_and_register
+  skip_completed: true
+  eval_split: val
+  test_split: test
+progress:
+  interval_seconds: 30.0
+registry:
+  dir: data\part11_real\registry
+  keep_finalists: false
+  cleanup: true
+  transfer: move
+  checksums: true
+report:
+  title: null
+  attributes:
+  - duration
+  - label_tokens
+  - ref_words
+  - extra_meta_quality_score
+  - flag_had_digits
+  - flag_had_latin
+  - flag_had_brackets
+  min_points_for_correlation: 30
+  max_points_per_chart: 2000
+  groups_shown: 15
+  histogram_bins: 20
+  loss_noise_range: 0.01
+  absolute_audio_paths: false
+  target_relative_wer_reduction: 0.1
+  hints:
+    enabled_rules: null
+    overfitting_last_k_evals: 3
+    no_learning_min_rel_improvement: 0.01
+    unstable_spike_factor: 2.0
+    gain_top_group_fraction: 0.1
+    gain_share: 0.5
+    short_clip_quantile: 0.25
+    short_clip_wer_ratio: 1.5
+    length_cap_share: 0.05
+    failed_share: 0.3
+  progress:
+    refresh_seconds: 10
+    every_n_records: 1
+run:
+  experiments_dir: data\part11_real\experiments
+  parent: null
+  id_digits: 4
+  config_readonly: true
+  lock_heartbeat_seconds: 30.0
+  lock_stale_minutes: 10.0
+  log:
+    console_level: INFO
+    file_level: DEBUG
+  prevent_sleep: true
+search:
+  strategy: grid
+  parameters:
+    learning_rate:
+      kind: log_float
+      low: 5.0e-06
+      high: 5.0e-05
+      choices: []
+      points: 6
+  n_trials: 6
+  time_budget_minutes: null
+  pruning:
+    enabled: false
+    min_evals: 3
+  parallel_trials: 1
+  max_failed_ratio: 0.5
+  min_trials_before_abort: 4
+  finalists:
+    k: 3
+  finalist_repeats: 1
+  screening:
+    preset: tiny
+  study_dir: null
+select:
+  min_verdict: improved
+  tie_epsilon: 0.001
+  on_insufficient_groups: plain_difference
+  test_confirmation: true
+smoke:
+  n_samples: 12
+  duration_sec: 3.0
+  steps: 3
+  model_dir: tests\assets\tiny_whisper
+  work_dir: data\smoke
+split:
+  mode: grouped_ratio
+  group_key:
+    column: null
+    regex: null
+  names:
+  - train
+  - val
+  - test
+  ratios:
+  - 0.8
+  - 0.1
+  - 0.1
+  ratio_unit: duration
+  ratio_tolerance: 0.05
+  seed: null
+  min_samples_per_split: 30
+  min_groups_per_split: 2
+  on_oversized_group: fail
+  on_overlap: fail
+  time_block:
+    order_column: meta_seek
+    guard_gap_sec: 30.0
+  predefined:
+    source_map: {}
+  speaker_column: null
+  dir: null
+  version: v1
+  reuse: true
+  export_csv: false
+subsample:
+  enabled: true
+  size: all
+  strategy: by_sample
+  scope: train_only
+  val: fixed
+  val_samples: null
+  repeats: 1
+  repeat_index: 0
+  min_train_samples: 10
+  preset: work_like
+  presets: {}
+  dir: null
+text:
+  eval_version: 1
+  profiles:
+    train:
+      steps:
+      - unicode_clean
+      - strip_timestamps
+      - unify_quotes
+      - remove_bracket_markup
+      - collapse_whitespace
+      bracket_mode: null
+    eval:
+      steps:
+      - unicode_clean
+      - strip_timestamps
+      - remove_punctuation
+      - unify_quotes
+      - remove_nikud
+      - remove_bracket_markup
+      - lowercase_latin
+      - collapse_whitespace
+      bracket_mode: null
+  train:
+    timestamps: strip
+  bracket:
+    pairs:
+    - - '['
+      - ']'
+    - - (
+      - )
+    mode: chars_only
+  punctuation:
+    chars: .,;:!?…"'“”‘’׳״־-–—
+    space_chars: ־
+  quotes:
+    map:
+      '''': ׳
+      ’: ׳
+      '"': ״
+      “: ״
+      ”: ״
+  unicode:
+    invisible_chars: "​‌‍‎‏‪‫‬‭‮⁠⁦⁧⁨⁩­\uFEFF؜"
+  timestamp_pattern: <\|(\d+(?:\.\d+)?)\|>
+  inventory:
+    top_n: 50
+train:
+  freeze_policy: none
+  hyperparams:
+    learning_rate: 1.0e-05
+    max_steps: 30
+    batch_size: 2
+    grad_accum_steps: 2
+    warmup_steps: 3
+    weight_decay: 0.0
+    max_grad_norm: 1.0
+    seed: null
+  log_every_steps: 5
+  eval_every_steps: 10
+  save_every_steps: 30
+  early_stopping:
+    patience: 5
+    min_delta: 0.0
+  max_runtime_minutes: null
+  cpu_threads: 2
+  resume: false
+  output_dir: null
+  sinks:
+  - csv
+  - console

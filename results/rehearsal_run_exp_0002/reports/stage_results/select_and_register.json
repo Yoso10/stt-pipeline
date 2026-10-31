@@ -1,0 +1,29 @@
+{
+ "status": "ok",
+ "summary": {
+  "verdict": "winner",
+  "winner_trial": 2,
+  "baseline_val_wer": 1.1318,
+  "winner_val_wer": 1.0279,
+  "test_status": "confirmed",
+  "not_confirmed": 0,
+  "entry_id": "model_0001",
+  "entry_kind": "model",
+  "registry_dir": "data\\rehearsal_run\\registry",
+  "reason": "Trial 2 (learning_rate 2.32079e-05) is the winner: its Val WER is 1.0279 against 1.1318 for the baseline (improvement +0.1039; The candidate is better than the baseline at the 90% one-sided level (WER difference +0.1039, lower bound +0.0759, 7 groups)). The Test confirms it: Test WER 1.0599 for the winner against 1.1728 for the baseline (improvement +0.1130; The candidate is better than the baseline at the 90% one-sided level (WER difference +0.1130, lower bound +0.0588, 8 groups)).",
+  "best_trial": 2,
+  "best_val_wer": 1.0279,
+  "best_val_verdict": "improved",
+  "test_baseline_wer": 1.1728,
+  "test_winner_wer": 1.0599,
+  "export": "hf_safetensors ok"
+ },
+ "artifacts": [
+  "C:\\Users\\9090\\Desktop\\Work\\stt-pipeline\\data\\rehearsal_run\\experiments\\exp_0002\\reports\\selection.json",
+  "C:\\Users\\9090\\Desktop\\Work\\stt-pipeline\\data\\rehearsal_run\\experiments\\exp_0002\\reports\\selection_table.csv",
+  "C:\\Users\\9090\\Desktop\\Work\\stt-pipeline\\data\\rehearsal_run\\experiments\\exp_0002\\reports\\selection_reason.txt",
+  "data\\rehearsal_run\\registry\\model_0001\\model_card.json",
+  "data\\rehearsal_run\\registry\\model_0001\\exports.json"
+ ],
+ "error": null
+}

@@ -1,0 +1,21 @@
+{
+ "status": "ok",
+ "summary": {
+  "seconds_per_step": 6.297,
+  "seconds_per_val_loss_example": 0.3972,
+  "seconds_per_decode_clip": 1.694,
+  "threads": 2,
+  "model": "whisper-tiny",
+  "projected_run_seconds": 2079,
+  "projected_run": "35 min",
+  "projection": "{\"baseline on Val (101 clips, WER)\": 171, \"search (4 trials of 20 steps)\": 825, \"finalists (2 retrainings of 20 steps)\": 412, \"finalists on Val (2 x 101 clips, WER)\": 342, \"Test, winner and baseline (2 x 97 clips, WER; only when a finalist wins)\": 329}",
+  "measuring_model_dir": "data\\part11_real\\bench_a_rehearsal\\experiments\\exp_0001\\candidates\\exp_0001_benchmark\\exp_0001_benchmark_step_00003",
+  "trial_folder": "609 MB",
+  "peak_memory": "1.8 GB"
+ },
+ "artifacts": [
+  "C:\\Users\\9090\\Desktop\\Work\\stt-pipeline\\data\\part11_real\\bench_a_rehearsal\\experiments\\exp_0001\\reports\\benchmark.txt",
+  "C:\\Users\\9090\\Desktop\\Work\\stt-pipeline\\data\\part11_real\\bench_a_rehearsal\\experiments\\exp_0001\\reports\\benchmark.json"
+ ],
+ "error": null
+}

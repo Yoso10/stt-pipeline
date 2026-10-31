@@ -1,0 +1,47 @@
+2026-10-25 00:30:41,855 INFO    stt.orchestrator: Stage prepare starts.
+2026-10-25 00:31:54,432 INFO    stt.orchestrator: Stage prepare finished.
+2026-10-25 00:31:54,443 INFO    stt.orchestrator: Stage evaluate starts.
+2026-10-25 00:32:11,786 INFO    stt.orchestrator: Evaluating the baseline model (whisper-large-v3-turbo-ivrit) on 101 files of 'val'.
+2026-10-25 00:33:05,374 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 2 of 101 (2.0%), elapsed 0:00:54, remaining about 0:44:13
+2026-10-25 00:34:05,382 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 6 of 101 (5.9%), elapsed 0:01:54, remaining about 0:29:59
+2026-10-25 00:34:35,832 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 8 of 101 (7.9%), elapsed 0:02:24, remaining about 0:27:55
+2026-10-25 00:35:33,272 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 12 of 101 (11.9%), elapsed 0:03:22, remaining about 0:24:54
+2026-10-25 00:36:03,474 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 14 of 101 (13.9%), elapsed 0:03:52, remaining about 0:24:00
+2026-10-25 00:37:00,093 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 18 of 101 (17.8%), elapsed 0:04:48, remaining about 0:22:09
+2026-10-25 00:37:57,249 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 22 of 101 (21.8%), elapsed 0:05:45, remaining about 0:20:41
+2026-10-25 00:38:29,561 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 24 of 101 (23.8%), elapsed 0:06:18, remaining about 0:20:12
+2026-10-25 00:39:28,299 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 28 of 101 (27.7%), elapsed 0:07:17, remaining about 0:18:58
+2026-10-25 00:40:25,544 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 32 of 101 (31.7%), elapsed 0:08:14, remaining about 0:17:45
+2026-10-25 00:41:22,963 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 36 of 101 (35.6%), elapsed 0:09:11, remaining about 0:16:35
+2026-10-25 00:42:18,875 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 40 of 101 (39.6%), elapsed 0:10:07, remaining about 0:15:26
+2026-10-25 00:42:51,544 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 42 of 101 (41.6%), elapsed 0:10:40, remaining about 0:14:59
+2026-10-25 00:43:47,770 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 46 of 101 (45.5%), elapsed 0:11:36, remaining about 0:13:52
+2026-10-25 00:44:43,498 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 50 of 101 (49.5%), elapsed 0:12:32, remaining about 0:12:47
+2026-10-25 00:45:39,527 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 54 of 101 (53.5%), elapsed 0:13:28, remaining about 0:11:43
+2026-10-25 00:46:09,926 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 56 of 101 (55.4%), elapsed 0:13:58, remaining about 0:11:14
+2026-10-25 00:47:07,226 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 60 of 101 (59.4%), elapsed 0:14:55, remaining about 0:10:12
+2026-10-25 00:48:04,443 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 64 of 101 (63.4%), elapsed 0:15:53, remaining about 0:09:11
+2026-10-25 00:49:02,119 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 68 of 101 (67.3%), elapsed 0:16:50, remaining about 0:08:10
+2026-10-25 00:50:00,717 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 72 of 101 (71.3%), elapsed 0:17:49, remaining about 0:07:11
+2026-10-25 00:50:59,118 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 76 of 101 (75.2%), elapsed 0:18:47, remaining about 0:06:11
+2026-10-25 00:51:33,190 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 78 of 101 (77.2%), elapsed 0:19:21, remaining about 0:05:42
+2026-10-25 00:52:05,771 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 80 of 101 (79.2%), elapsed 0:19:54, remaining about 0:05:13
+2026-10-25 00:52:35,961 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 82 of 101 (81.2%), elapsed 0:20:24, remaining about 0:04:44
+2026-10-25 00:53:10,686 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 84 of 101 (83.2%), elapsed 0:20:59, remaining about 0:04:15
+2026-10-25 00:53:55,755 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 86 of 101 (85.1%), elapsed 0:21:44, remaining about 0:03:47
+2026-10-25 00:54:40,788 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 88 of 101 (87.1%), elapsed 0:22:29, remaining about 0:03:19
+2026-10-25 00:55:27,201 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 90 of 101 (89.1%), elapsed 0:23:15, remaining about 0:02:51
+2026-10-25 00:56:11,129 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 92 of 101 (91.1%), elapsed 0:23:59, remaining about 0:02:21
+2026-10-25 00:57:00,757 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 94 of 101 (93.1%), elapsed 0:24:49, remaining about 0:01:51
+2026-10-25 00:57:58,057 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 96 of 101 (95.0%), elapsed 0:25:46, remaining about 0:01:21
+2026-10-25 00:58:52,591 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 98 of 101 (97.0%), elapsed 0:26:41, remaining about 0:00:49
+2026-10-25 00:59:43,764 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 100 of 101 (99.0%), elapsed 0:27:32, remaining about 0:00:17
+2026-10-25 01:00:12,812 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 101 of 101 (100.0%), elapsed 0:28:01, done
+2026-10-25 01:00:15,601 WARNING stt.evaluator: 1 of 101 outputs hit the length cap (a looping model?); they are flagged in the result.
+2026-10-25 01:00:15,601 INFO    stt.evaluator: val (eval_version 1, model whisper-large-v3-turbo-ivrit): 101 files, 4697 words, WER 0.8335, mean per-file WER 0.9613, CER 0.3889; files with WER under 10%: 0.0%, under 20%: 0.0%; flags: empty_output 0, hit_length_cap 1, excluded_empty_reference 0; 1681.0 s
+2026-10-25 01:00:16,262 INFO    stt.orchestrator: Stage evaluate finished.
+2026-10-25 01:00:16,503 INFO    stt.orchestrator: The experiment is in: data\work_like\experiments\exp_0002
+2026-10-25 01:00:16,505 INFO    stt.orchestrator: To look at it, run in PowerShell from the project folder (after `$env:PYTHONPATH = "src"`):
+2026-10-25 01:00:16,505 INFO    stt.orchestrator:   python -m stt.runmanager list --dir data\work_like\experiments
+2026-10-25 01:00:16,505 INFO    stt.orchestrator:   python -m stt.runmanager show exp_0002 --dir data\work_like\experiments
+2026-10-25 01:00:16,505 INFO    stt.orchestrator:   python -m stt check

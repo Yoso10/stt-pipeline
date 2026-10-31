@@ -1,0 +1,91 @@
+{
+ "strategy": "grid",
+ "seed": 42,
+ "stopped_reason": "n_trials",
+ "space": {
+  "learning_rate": {
+   "kind": "log_float",
+   "low": 1e-05,
+   "high": 5e-05,
+   "choices": [],
+   "points": 2
+  },
+  "grad_accum_steps": {
+   "kind": "categorical",
+   "low": null,
+   "high": null,
+   "choices": [
+    1,
+    2
+   ],
+   "points": 3
+  }
+ },
+ "screening": {
+  "train_split": "train",
+  "val_split": "val",
+  "n_train": 61,
+  "n_val": 100,
+  "fingerprint": "f57abbe0938d6b4102858ec30a7c915f0ea06a88f1bf2bb383483668557b7fd3"
+ },
+ "trials": [
+  {
+   "trial_id": 0,
+   "params": {
+    "learning_rate": 1e-05,
+    "grad_accum_steps": 1
+   },
+   "status": "complete",
+   "val_loss": 1.9422049522399902,
+   "steps": 4,
+   "seconds": 164.53100000001723,
+   "model_dir": "C:\\Users\\9090\\Desktop\\Work\\stt-pipeline\\data\\part4_real\\experiments\\exp_0002\\candidates\\exp_0002_trial_000\\exp_0002_trial_000_step_00004",
+   "error": null,
+   "val_loss_reports": [
+    [
+     2,
+     1.9901889562606812
+    ],
+    [
+     4,
+     1.9422049522399902
+    ]
+   ]
+  },
+  {
+   "trial_id": 1,
+   "params": {
+    "learning_rate": 1e-05,
+    "grad_accum_steps": 2
+   },
+   "status": "complete",
+   "val_loss": 1.9127964973449707,
+   "steps": 4,
+   "seconds": 149.75,
+   "model_dir": "C:\\Users\\9090\\Desktop\\Work\\stt-pipeline\\data\\part4_real\\experiments\\exp_0002\\candidates\\exp_0002_trial_001\\exp_0002_trial_001_step_00004",
+   "error": null,
+   "val_loss_reports": [
+    [
+     2,
+     1.9651782512664795
+    ],
+    [
+     4,
+     1.9127964973449707
+    ]
+   ]
+  }
+ ],
+ "finalists": [
+  1,
+  0
+ ],
+ "best_val_loss": 1.9127964973449707,
+ "best_params": {
+  "learning_rate": 1e-05,
+  "grad_accum_steps": 2
+ },
+ "notes": [
+  "the best trial is at the edge of the range of 'learning_rate' (1e-05): consider a wider range in the next experiment"
+ ]
+}

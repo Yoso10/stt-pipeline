@@ -1,0 +1,56 @@
+{
+ "schema_version": 1,
+ "space": {
+  "parameters": {
+   "learning_rate": {
+    "kind": "log_float",
+    "low": 1e-05,
+    "high": 5e-05,
+    "choices": [],
+    "points": 2
+   },
+   "grad_accum_steps": {
+    "kind": "categorical",
+    "low": null,
+    "high": null,
+    "choices": [
+     1,
+     2
+    ],
+    "points": 3
+   }
+  },
+  "strategy": "grid",
+  "seed": 42
+ },
+ "trials": [
+  {
+   "trial_id": 0,
+   "params": {
+    "learning_rate": 1e-05,
+    "grad_accum_steps": 1
+   },
+   "status": "failed",
+   "val_loss": null,
+   "steps": 0,
+   "seconds": 9.0,
+   "model_dir": null,
+   "error": "TrainerConfigError: Invalid training hyperparameters: warmup_steps must be between 0 and max_steps (4), got 10. Fix train.hyperparams (or the searcher's values).",
+   "reports": []
+  },
+  {
+   "trial_id": 1,
+   "params": {
+    "learning_rate": 1e-05,
+    "grad_accum_steps": 2
+   },
+   "status": "failed",
+   "val_loss": null,
+   "steps": 0,
+   "seconds": 0.45300000003771856,
+   "model_dir": null,
+   "error": "TrainerConfigError: Invalid training hyperparameters: warmup_steps must be between 0 and max_steps (4), got 10. Fix train.hyperparams (or the searcher's values).",
+   "reports": []
+  }
+ ]
+}

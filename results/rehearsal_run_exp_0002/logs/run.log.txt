@@ -1,0 +1,149 @@
+2026-10-07 23:47:29,241 INFO    stt.orchestrator: Stage prepare starts.
+2026-10-07 23:47:39,028 INFO    stt.orchestrator: Stage prepare finished.
+2026-10-07 23:47:39,037 INFO    stt.orchestrator: PLAN: planned time of `python -m stt run` with the current settings: about 37 min (from the benchmark of exp_0001: whisper-tiny, 2 thread(s), 6.39 s per step, 1.92 s per clip; Val 101 clips, Test 97 clips)
+2026-10-07 23:47:39,037 INFO    stt.orchestrator: PLAN:      3 min  baseline on Val (101 clips, WER)
+2026-10-07 23:47:39,037 INFO    stt.orchestrator: PLAN:     14 min  search (4 trials of 20 steps)
+2026-10-07 23:47:39,037 INFO    stt.orchestrator: PLAN:      7 min  finalists (2 retrainings of 20 steps)
+2026-10-07 23:47:39,037 INFO    stt.orchestrator: PLAN:      6 min  finalists on Val (2 x 101 clips, WER)
+2026-10-07 23:47:39,038 INFO    stt.orchestrator: PLAN:      6 min  Test, winner and baseline (2 x 97 clips, WER; only when a finalist wins)
+2026-10-07 23:47:39,038 INFO    stt.orchestrator: PLAN: a rough estimate: early stopping and pruning make a run shorter; the first training steps are slower; the Test part counts only when a finalist wins.
+2026-10-07 23:47:39,040 INFO    stt.orchestrator: Stage evaluate starts.
+2026-10-07 23:47:46,753 INFO    stt.orchestrator: Evaluating the baseline model (whisper-tiny) on 101 files of 'val'.
+2026-10-07 23:47:53,055 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 4 of 101 (4.0%), elapsed 0:00:06, remaining about 0:02:33
+2026-10-07 23:48:24,472 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 20 of 101 (19.8%), elapsed 0:00:38, remaining about 0:02:33
+2026-10-07 23:48:59,703 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 32 of 101 (31.7%), elapsed 0:01:13, remaining about 0:02:37
+2026-10-07 23:49:37,524 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 48 of 101 (47.5%), elapsed 0:01:51, remaining about 0:02:02
+2026-10-07 23:50:14,950 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 64 of 101 (63.4%), elapsed 0:02:28, remaining about 0:01:26
+2026-10-07 23:50:50,376 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 76 of 101 (75.2%), elapsed 0:03:04, remaining about 0:01:00
+2026-10-07 23:51:25,125 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 96 of 101 (95.0%), elapsed 0:03:38, remaining about 0:00:11
+2026-10-07 23:51:34,399 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 101 of 101 (100.0%), elapsed 0:03:48, done
+2026-10-07 23:51:35,883 WARNING stt.evaluator: 17 of 101 outputs hit the length cap (a looping model?); they are flagged in the result.
+2026-10-07 23:51:35,883 INFO    stt.evaluator: val (eval_version 1, model whisper-tiny): 101 files, 4697 words, WER 1.1318, mean per-file WER 1.2789, CER 0.6925; files with WER under 10%: 0.0%, under 20%: 0.0%; flags: empty_output 0, hit_length_cap 17, excluded_empty_reference 0; 227.6 s
+2026-10-07 23:51:35,932 INFO    stt.orchestrator: Stage evaluate finished.
+2026-10-07 23:51:35,944 INFO    stt.orchestrator: Stage search starts.
+2026-10-07 23:51:35,944 INFO    stt.orchestrator: Search (grid, up to 4 trials, 1 parallel) on 61 Train and 101 Val samples.
+2026-10-07 23:51:36,322 INFO    stt.orchestrator: Trial 0 with {'learning_rate': 5e-06}: 61 train and 101 val examples, 2 thread(s).
+2026-10-07 23:51:36,324 INFO    stt.trainercore: Freeze policy none: 37760640 of 37760640 parameters are trained.
+2026-10-07 23:51:41,639 INFO    stt.trainercore: [exp_0002_trial_000] step 1 of 20 (5.0%) (epoch 0.06) train_loss 4.1586 val_loss - lr 0 grad_norm 63.822 5.09 s/step elapsed 0:00:05 remaining 0:01:37
+2026-10-08 00:02:20,779 INFO    stt.orchestrator: Stage prepare is already done with the same settings: skipped.
+2026-10-08 00:03:09,267 INFO    stt.orchestrator: PLAN: planned time of `python -m stt run` with the current settings: about 37 min (from the benchmark of exp_0001: whisper-tiny, 2 thread(s), 6.39 s per step, 1.92 s per clip; Val 101 clips, Test 97 clips)
+2026-10-08 00:03:09,267 INFO    stt.orchestrator: PLAN:      3 min  baseline on Val (101 clips, WER)
+2026-10-08 00:03:09,267 INFO    stt.orchestrator: PLAN:     14 min  search (4 trials of 20 steps)
+2026-10-08 00:03:09,267 INFO    stt.orchestrator: PLAN:      7 min  finalists (2 retrainings of 20 steps)
+2026-10-08 00:03:09,267 INFO    stt.orchestrator: PLAN:      6 min  finalists on Val (2 x 101 clips, WER)
+2026-10-08 00:03:09,267 INFO    stt.orchestrator: PLAN:      6 min  Test, winner and baseline (2 x 97 clips, WER; only when a finalist wins)
+2026-10-08 00:03:09,267 INFO    stt.orchestrator: PLAN: a rough estimate: early stopping and pruning make a run shorter; the first training steps are slower; the Test part counts only when a finalist wins.
+2026-10-08 00:03:09,283 INFO    stt.orchestrator: Stage evaluate is already done with the same settings: skipped.
+2026-10-08 00:03:09,283 INFO    stt.orchestrator: Stage search starts.
+2026-10-08 00:03:09,283 INFO    stt.orchestrator: Search (grid, up to 4 trials, 1 parallel) on 61 Train and 101 Val samples.
+2026-10-08 00:03:09,301 WARNING stt.orchestrator: The folder data\rehearsal_run\experiments\exp_0002\candidates\exp_0002_trial_000 of an earlier, interrupted run cannot be resumed (no complete checkpoint); it was renamed to exp_0002_trial_000_stale_1 and the run starts fresh.
+2026-10-08 00:03:19,554 INFO    stt.orchestrator: Trial 0 with {'learning_rate': 5e-06}: 61 train and 101 val examples, 2 thread(s).
+2026-10-08 00:03:19,556 INFO    stt.trainercore: Freeze policy none: 37760640 of 37760640 parameters are trained.
+2026-10-08 00:03:25,144 INFO    stt.trainercore: [exp_0002_trial_000] step 1 of 20 (5.0%) (epoch 0.06) train_loss 4.1586 val_loss - lr 0 grad_norm 63.822 5.38 s/step elapsed 0:00:05 remaining 0:01:42
+2026-10-08 00:04:09,106 INFO    stt.trainercore: [exp_0002_trial_000] step 10 of 20 (50.0%) (epoch 0.65) train_loss 3.7079 val_loss - lr 3.06e-06 grad_norm 33.535 14.46 s/step elapsed 0:00:49 remaining 0:02:25
+2026-10-08 00:04:50,803 INFO    stt.trainercore: [exp_0002_trial_000] step 10 of 20 (50.0%) (epoch 0.65) train_loss 3.7079 val_loss 1.8367 lr 3.06e-06 grad_norm 33.535 14.46 s/step elapsed 0:01:31 remaining 0:02:25
+2026-10-08 00:05:25,596 INFO    stt.trainercore: [exp_0002_trial_000] step 15 of 20 (75.0%) (epoch 0.97) train_loss 3.7748 val_loss - lr 1.67e-06 grad_norm 36.855 14.05 s/step elapsed 0:02:06 remaining 0:01:10
+2026-10-08 00:05:47,312 INFO    stt.trainercore: [exp_0002_trial_000] step 20 of 20 (100.0%) (epoch 1.26) train_loss 3.1618 val_loss - lr 2.78e-07 grad_norm 35.515 11.17 s/step elapsed 0:02:28 remaining 0:00:00
+2026-10-08 00:06:32,612 INFO    stt.trainercore: [exp_0002_trial_000] step 20 of 20 (100.0%) (epoch 1.26) train_loss 3.1618 val_loss 1.7741 lr 2.78e-07 grad_norm 35.515 11.17 s/step elapsed 0:03:13 remaining 0:00:00
+2026-10-08 00:06:33,297 INFO    stt.trainercore: Run ended (max_steps). Model of step 20 saved in data\rehearsal_run\experiments\exp_0002\candidates\exp_0002_trial_000\exp_0002_trial_000_step_00020 (pipeline_model_info.json).
+2026-10-08 00:06:33,321 INFO    stt.searcher: Search progress: trial 1 of 4 finished (25.0%), elapsed 0:03:24, remaining about 0:10:12 (up to 4 trials; a grid with fewer points stops earlier). Trial 0 complete {'learning_rate': 5e-06} (Val loss 1.7741).
+2026-10-08 00:06:33,825 INFO    stt.orchestrator: Trial 1 with {'learning_rate': 1.0772173e-05}: 61 train and 101 val examples, 2 thread(s).
+2026-10-08 00:06:33,834 INFO    stt.trainercore: Freeze policy none: 37760640 of 37760640 parameters are trained.
+2026-10-08 00:06:40,222 INFO    stt.trainercore: [exp_0002_trial_001] step 1 of 20 (5.0%) (epoch 0.06) train_loss 4.1586 val_loss - lr 0 grad_norm 63.822 6.25 s/step elapsed 0:00:06 remaining 0:01:59
+2026-10-08 00:07:32,123 INFO    stt.trainercore: [exp_0002_trial_001] step 10 of 20 (50.0%) (epoch 0.65) train_loss 3.4832 val_loss - lr 6.58e-06 grad_norm 32.229 17.47 s/step elapsed 0:00:58 remaining 0:02:55
+2026-10-08 00:08:18,999 INFO    stt.trainercore: [exp_0002_trial_001] step 10 of 20 (50.0%) (epoch 0.65) train_loss 3.4832 val_loss 1.7185 lr 6.58e-06 grad_norm 32.229 17.47 s/step elapsed 0:01:45 remaining 0:02:55
+2026-10-08 00:09:10,912 INFO    stt.trainercore: [exp_0002_trial_001] step 20 of 20 (100.0%) (epoch 1.26) train_loss 2.7798 val_loss - lr 5.98e-07 grad_norm 30.394 12.44 s/step elapsed 0:02:37 remaining 0:00:00
+2026-10-08 00:09:55,800 INFO    stt.trainercore: [exp_0002_trial_001] step 20 of 20 (100.0%) (epoch 1.26) train_loss 2.7798 val_loss 1.6248 lr 5.98e-07 grad_norm 30.394 12.44 s/step elapsed 0:03:22 remaining 0:00:00
+2026-10-08 00:09:56,490 INFO    stt.trainercore: Run ended (max_steps). Model of step 20 saved in data\rehearsal_run\experiments\exp_0002\candidates\exp_0002_trial_001\exp_0002_trial_001_step_00020 (pipeline_model_info.json).
+2026-10-08 00:09:56,522 INFO    stt.searcher: Search progress: trial 2 of 4 finished (50.0%), elapsed 0:06:47, remaining about 0:06:47 (up to 4 trials; a grid with fewer points stops earlier). Trial 1 complete {'learning_rate': 1.0772173e-05} (Val loss 1.6248).
+2026-10-08 00:09:56,880 INFO    stt.orchestrator: Trial 2 with {'learning_rate': 2.3207944e-05}: 61 train and 101 val examples, 2 thread(s).
+2026-10-08 00:09:56,880 INFO    stt.trainercore: Freeze policy none: 37760640 of 37760640 parameters are trained.
+2026-10-08 00:10:03,139 INFO    stt.trainercore: [exp_0002_trial_002] step 1 of 20 (5.0%) (epoch 0.06) train_loss 4.1586 val_loss - lr 0 grad_norm 63.822 6.12 s/step elapsed 0:00:06 remaining 0:01:56
+2026-10-08 00:10:51,237 INFO    stt.trainercore: [exp_0002_trial_002] step 10 of 20 (50.0%) (epoch 0.65) train_loss 3.2691 val_loss - lr 1.42e-05 grad_norm 31.786 15.70 s/step elapsed 0:00:54 remaining 0:02:37
+2026-10-08 00:11:35,626 INFO    stt.trainercore: [exp_0002_trial_002] step 10 of 20 (50.0%) (epoch 0.65) train_loss 3.2691 val_loss 1.5717 lr 1.42e-05 grad_norm 31.786 15.70 s/step elapsed 0:01:39 remaining 0:02:37
+2026-10-08 00:12:28,002 INFO    stt.trainercore: [exp_0002_trial_002] step 20 of 20 (100.0%) (epoch 1.26) train_loss 2.3332 val_loss - lr 1.29e-06 grad_norm 24.309 12.00 s/step elapsed 0:02:31 remaining 0:00:00
+2026-10-08 00:13:11,996 INFO    stt.trainercore: [exp_0002_trial_002] step 20 of 20 (100.0%) (epoch 1.26) train_loss 2.3332 val_loss 1.4618 lr 1.29e-06 grad_norm 24.309 12.00 s/step elapsed 0:03:15 remaining 0:00:00
+2026-10-08 00:13:12,723 INFO    stt.trainercore: Run ended (max_steps). Model of step 20 saved in data\rehearsal_run\experiments\exp_0002\candidates\exp_0002_trial_002\exp_0002_trial_002_step_00020 (pipeline_model_info.json).
+2026-10-08 00:13:12,750 INFO    stt.searcher: Search progress: trial 3 of 4 finished (75.0%), elapsed 0:10:03, remaining about 0:03:21 (up to 4 trials; a grid with fewer points stops earlier). Trial 2 complete {'learning_rate': 2.3207944e-05} (Val loss 1.4618).
+2026-10-08 00:13:13,167 INFO    stt.orchestrator: Trial 3 with {'learning_rate': 5e-05}: 61 train and 101 val examples, 2 thread(s).
+2026-10-08 00:13:13,173 INFO    stt.trainercore: Freeze policy none: 37760640 of 37760640 parameters are trained.
+2026-10-08 00:13:19,347 INFO    stt.trainercore: [exp_0002_trial_003] step 1 of 20 (5.0%) (epoch 0.06) train_loss 4.1586 val_loss - lr 0 grad_norm 63.822 5.94 s/step elapsed 0:00:06 remaining 0:01:53
+2026-10-08 00:14:08,840 INFO    stt.trainercore: [exp_0002_trial_003] step 10 of 20 (50.0%) (epoch 0.65) train_loss 3.0294 val_loss - lr 3.06e-05 grad_norm 31.754 16.38 s/step elapsed 0:00:55 remaining 0:02:44
+2026-10-08 00:14:56,016 INFO    stt.trainercore: [exp_0002_trial_003] step 10 of 20 (50.0%) (epoch 0.65) train_loss 3.0294 val_loss 1.4596 lr 3.06e-05 grad_norm 31.754 16.38 s/step elapsed 0:01:43 remaining 0:02:44
+2026-10-08 00:15:46,603 INFO    stt.trainercore: [exp_0002_trial_003] step 20 of 20 (100.0%) (epoch 1.26) train_loss 1.8863 val_loss - lr 2.78e-06 grad_norm 21.104 11.82 s/step elapsed 0:02:33 remaining 0:00:00
+2026-10-08 00:16:32,714 INFO    stt.trainercore: [exp_0002_trial_003] step 20 of 20 (100.0%) (epoch 1.26) train_loss 1.8863 val_loss 1.2865 lr 2.78e-06 grad_norm 21.104 11.82 s/step elapsed 0:03:19 remaining 0:00:00
+2026-10-08 00:17:01,837 INFO    stt.searcher: Search progress: trial 4 of 4 finished (100.0%), elapsed 0:13:53, remaining about 0:00:00 (up to 4 trials; a grid with fewer points stops earlier). Trial 3 failed {'learning_rate': 5e-05} (Val loss -).
+2026-10-08 00:17:02,872 INFO    stt.orchestrator: Stage search finished.
+2026-10-08 00:17:02,974 INFO    stt.orchestrator: Stage finalists starts.
+2026-10-08 00:17:03,111 INFO    stt.orchestrator: Retraining 2 finalist(s) on 702 Train samples (Val loss on 101 samples, WER on the 101 samples of 'val').
+2026-10-08 00:17:03,293 INFO    stt.orchestrator: PROGRESS finalists: starting finalist 1 of 2 (0.0% done), elapsed 0:00:00, remaining unknown until the first finalist is finished (trial 2: retraining, then its WER scoring on 'val')
+2026-10-08 00:17:10,356 INFO    stt.orchestrator: Finalist trial 2 with {'learning_rate': 2.3207944e-05}: 702 train and 101 val examples.
+2026-10-08 00:17:10,372 INFO    stt.trainercore: Freeze policy none: 37760640 of 37760640 parameters are trained.
+2026-10-08 00:17:15,356 INFO    stt.trainercore: [exp_0002_final_trial_002] step 1 of 20 (5.0%) (epoch 0.01) train_loss 4.6192 val_loss - lr 0 grad_norm 47.929 4.86 s/step elapsed 0:00:05 remaining 0:01:32
+2026-10-08 00:18:00,200 INFO    stt.trainercore: [exp_0002_final_trial_002] step 10 of 20 (50.0%) (epoch 0.06) train_loss 3.3041 val_loss - lr 1.42e-05 grad_norm 48.423 14.98 s/step elapsed 0:00:50 remaining 0:02:30
+2026-10-08 00:18:41,689 INFO    stt.trainercore: [exp_0002_final_trial_002] step 10 of 20 (50.0%) (epoch 0.06) train_loss 3.3041 val_loss 1.5641 lr 1.42e-05 grad_norm 48.423 14.98 s/step elapsed 0:01:31 remaining 0:02:30
+2026-10-08 00:19:38,455 INFO    stt.trainercore: [exp_0002_final_trial_002] step 20 of 20 (100.0%) (epoch 0.11) train_loss 2.9422 val_loss - lr 1.29e-06 grad_norm 30.538 16.94 s/step elapsed 0:02:28 remaining 0:00:00
+2026-10-08 00:20:24,761 INFO    stt.trainercore: [exp_0002_final_trial_002] step 20 of 20 (100.0%) (epoch 0.11) train_loss 2.9422 val_loss 1.4457 lr 1.29e-06 grad_norm 30.538 16.94 s/step elapsed 0:03:14 remaining 0:00:00
+2026-10-08 00:20:25,487 INFO    stt.trainercore: Run ended (max_steps). Model of step 20 saved in data\rehearsal_run\experiments\exp_0002\candidates\exp_0002_final_trial_002\exp_0002_final_trial_002_step_00020 (pipeline_model_info.json).
+2026-10-08 00:20:25,957 INFO    stt.orchestrator: Evaluating the finalist trial 2 model (exp_0002_final_trial_002_step_00020) on 101 files of 'val'.
+2026-10-08 00:20:34,545 INFO    stt.orchestrator: PROGRESS WER scoring of the finalist trial 2 on 'val': clip 4 of 101 (4.0%), elapsed 0:00:09, remaining about 0:03:28
+2026-10-08 00:21:05,829 INFO    stt.orchestrator: PROGRESS WER scoring of the finalist trial 2 on 'val': clip 20 of 101 (19.8%), elapsed 0:00:40, remaining about 0:02:41
+2026-10-08 00:21:37,775 INFO    stt.orchestrator: PROGRESS WER scoring of the finalist trial 2 on 'val': clip 36 of 101 (35.6%), elapsed 0:01:12, remaining about 0:02:10
+2026-10-08 00:22:08,399 INFO    stt.orchestrator: PROGRESS WER scoring of the finalist trial 2 on 'val': clip 52 of 101 (51.5%), elapsed 0:01:42, remaining about 0:01:37
+2026-10-08 00:22:42,664 INFO    stt.orchestrator: PROGRESS WER scoring of the finalist trial 2 on 'val': clip 72 of 101 (71.3%), elapsed 0:02:17, remaining about 0:00:55
+2026-10-08 00:23:14,429 INFO    stt.orchestrator: PROGRESS WER scoring of the finalist trial 2 on 'val': clip 88 of 101 (87.1%), elapsed 0:02:48, remaining about 0:00:25
+2026-10-08 00:23:40,538 INFO    stt.orchestrator: PROGRESS WER scoring of the finalist trial 2 on 'val': clip 101 of 101 (100.0%), elapsed 0:03:15, done
+2026-10-08 00:23:42,178 WARNING stt.evaluator: 23 of 101 outputs hit the length cap (a looping model?); they are flagged in the result.
+2026-10-08 00:23:42,180 INFO    stt.evaluator: val (eval_version 1, model exp_0002_final_trial_002_step_00020): 101 files, 4697 words, WER 1.0279, mean per-file WER 1.1844, CER 0.5977; files with WER under 10%: 0.0%, under 20%: 0.0%; flags: empty_output 0, hit_length_cap 23, excluded_empty_reference 0; 194.6 s
+2026-10-08 00:23:42,228 INFO    stt.orchestrator: PROGRESS finalists: starting finalist 2 of 2 (50.0% done), elapsed 0:06:39, remaining about 0:06:39 (from the 1 finished) (trial 1: retraining, then its WER scoring on 'val')
+2026-10-08 00:23:42,816 INFO    stt.orchestrator: Finalist trial 1 with {'learning_rate': 1.0772173e-05}: 702 train and 101 val examples.
+2026-10-08 00:23:42,819 INFO    stt.trainercore: Freeze policy none: 37760640 of 37760640 parameters are trained.
+2026-10-08 00:23:48,719 INFO    stt.trainercore: [exp_0002_final_trial_001] step 1 of 20 (5.0%) (epoch 0.01) train_loss 4.6192 val_loss - lr 0 grad_norm 47.929 5.77 s/step elapsed 0:00:06 remaining 0:01:50
+2026-10-08 00:24:38,897 INFO    stt.trainercore: [exp_0002_final_trial_001] step 10 of 20 (50.0%) (epoch 0.06) train_loss 3.5543 val_loss - lr 6.58e-06 grad_norm 48.139 17.18 s/step elapsed 0:00:56 remaining 0:02:52
+2026-10-08 00:25:31,565 INFO    stt.trainercore: [exp_0002_final_trial_001] step 10 of 20 (50.0%) (epoch 0.06) train_loss 3.5543 val_loss 1.7103 lr 6.58e-06 grad_norm 48.139 17.18 s/step elapsed 0:01:49 remaining 0:02:52
+2026-10-08 00:26:39,648 INFO    stt.trainercore: [exp_0002_final_trial_001] step 15 of 20 (75.0%) (epoch 0.09) train_loss 3.4146 val_loss - lr 3.59e-06 grad_norm 38.248 14.32 s/step elapsed 0:02:57 remaining 0:01:12
+2026-10-08 00:27:11,503 INFO    stt.trainercore: [exp_0002_final_trial_001] step 20 of 20 (100.0%) (epoch 0.11) train_loss 3.2370 val_loss - lr 5.98e-07 grad_norm 37.827 17.65 s/step elapsed 0:03:29 remaining 0:00:00
+2026-10-08 00:27:57,642 INFO    stt.trainercore: [exp_0002_final_trial_001] step 20 of 20 (100.0%) (epoch 0.11) train_loss 3.2370 val_loss 1.6177 lr 5.98e-07 grad_norm 37.827 17.65 s/step elapsed 0:04:15 remaining 0:00:00
+2026-10-08 00:27:58,383 INFO    stt.trainercore: Run ended (max_steps). Model of step 20 saved in data\rehearsal_run\experiments\exp_0002\candidates\exp_0002_final_trial_001\exp_0002_final_trial_001_step_00020 (pipeline_model_info.json).
+2026-10-08 00:27:58,909 INFO    stt.orchestrator: Evaluating the finalist trial 1 model (exp_0002_final_trial_001_step_00020) on 101 files of 'val'.
+2026-10-08 00:28:07,838 INFO    stt.orchestrator: PROGRESS WER scoring of the finalist trial 1 on 'val': clip 4 of 101 (4.0%), elapsed 0:00:09, remaining about 0:03:36
+2026-10-08 00:28:45,655 INFO    stt.orchestrator: PROGRESS WER scoring of the finalist trial 1 on 'val': clip 24 of 101 (23.8%), elapsed 0:00:47, remaining about 0:02:30
+2026-10-08 00:29:15,823 INFO    stt.orchestrator: PROGRESS WER scoring of the finalist trial 1 on 'val': clip 40 of 101 (39.6%), elapsed 0:01:17, remaining about 0:01:57
+2026-10-08 00:29:49,444 INFO    stt.orchestrator: PROGRESS WER scoring of the finalist trial 1 on 'val': clip 56 of 101 (55.4%), elapsed 0:01:51, remaining about 0:01:29
+2026-10-08 00:30:21,432 INFO    stt.orchestrator: PROGRESS WER scoring of the finalist trial 1 on 'val': clip 72 of 101 (71.3%), elapsed 0:02:23, remaining about 0:00:57
+2026-10-08 00:30:52,560 INFO    stt.orchestrator: PROGRESS WER scoring of the finalist trial 1 on 'val': clip 88 of 101 (87.1%), elapsed 0:02:54, remaining about 0:00:26
+2026-10-08 00:31:18,030 INFO    stt.orchestrator: PROGRESS WER scoring of the finalist trial 1 on 'val': clip 101 of 101 (100.0%), elapsed 0:03:19, done
+2026-10-08 00:31:19,652 WARNING stt.evaluator: 19 of 101 outputs hit the length cap (a looping model?); they are flagged in the result.
+2026-10-08 00:31:19,654 INFO    stt.evaluator: val (eval_version 1, model exp_0002_final_trial_001_step_00020): 101 files, 4697 words, WER 1.0498, mean per-file WER 1.1878, CER 0.6291; files with WER under 10%: 0.0%, under 20%: 0.0%; flags: empty_output 0, hit_length_cap 19, excluded_empty_reference 0; 199.1 s
+2026-10-08 00:31:19,750 INFO    stt.orchestrator: Stage finalists finished.
+2026-10-08 00:31:19,761 INFO    stt.orchestrator: Stage select_and_register starts.
+2026-10-08 00:31:20,357 INFO    stt.orchestrator: Evaluating the Test, finalist trial 2 model (exp_0002_final_trial_002_step_00020) on 97 files of 'test'.
+2026-10-08 00:31:27,394 INFO    stt.orchestrator: PROGRESS WER scoring of the Test, finalist trial 2 on 'test': clip 4 of 97 (4.1%), elapsed 0:00:07, remaining about 0:02:44
+2026-10-08 00:31:57,840 INFO    stt.orchestrator: PROGRESS WER scoring of the Test, finalist trial 2 on 'test': clip 20 of 97 (20.6%), elapsed 0:00:37, remaining about 0:02:24
+2026-10-08 00:32:28,446 INFO    stt.orchestrator: PROGRESS WER scoring of the Test, finalist trial 2 on 'test': clip 36 of 97 (37.1%), elapsed 0:01:08, remaining about 0:01:55
+2026-10-08 00:32:59,968 INFO    stt.orchestrator: PROGRESS WER scoring of the Test, finalist trial 2 on 'test': clip 52 of 97 (53.6%), elapsed 0:01:40, remaining about 0:01:26
+2026-10-08 00:33:32,159 INFO    stt.orchestrator: PROGRESS WER scoring of the Test, finalist trial 2 on 'test': clip 68 of 97 (70.1%), elapsed 0:02:12, remaining about 0:00:56
+2026-10-08 00:34:03,720 INFO    stt.orchestrator: PROGRESS WER scoring of the Test, finalist trial 2 on 'test': clip 84 of 97 (86.6%), elapsed 0:02:43, remaining about 0:00:25
+2026-10-08 00:34:28,967 INFO    stt.orchestrator: PROGRESS WER scoring of the Test, finalist trial 2 on 'test': clip 97 of 97 (100.0%), elapsed 0:03:09, done
+2026-10-08 00:34:30,666 WARNING stt.evaluator: 23 of 97 outputs hit the length cap (a looping model?); they are flagged in the result.
+2026-10-08 00:34:30,666 INFO    stt.evaluator: test (eval_version 1, model exp_0002_final_trial_002_step_00020): 97 files, 4559 words, WER 1.0599, mean per-file WER 1.2481, CER 0.6275; files with WER under 10%: 0.0%, under 20%: 0.0%; flags: empty_output 0, hit_length_cap 23, excluded_empty_reference 0; 188.6 s
+2026-10-08 00:34:31,115 INFO    stt.orchestrator: Evaluating the Test, baseline model (whisper-tiny) on 97 files of 'test'.
+2026-10-08 00:34:39,466 INFO    stt.orchestrator: PROGRESS WER scoring of the Test, baseline on 'test': clip 4 of 97 (4.1%), elapsed 0:00:08, remaining about 0:03:14
+2026-10-08 00:35:16,347 INFO    stt.orchestrator: PROGRESS WER scoring of the Test, baseline on 'test': clip 24 of 97 (24.7%), elapsed 0:00:45, remaining about 0:02:18
+2026-10-08 00:35:46,791 INFO    stt.orchestrator: PROGRESS WER scoring of the Test, baseline on 'test': clip 40 of 97 (41.2%), elapsed 0:01:16, remaining about 0:01:48
+2026-10-08 00:36:17,923 INFO    stt.orchestrator: PROGRESS WER scoring of the Test, baseline on 'test': clip 56 of 97 (57.7%), elapsed 0:01:47, remaining about 0:01:18
+2026-10-08 00:36:50,230 INFO    stt.orchestrator: PROGRESS WER scoring of the Test, baseline on 'test': clip 72 of 97 (74.2%), elapsed 0:02:19, remaining about 0:00:48
+2026-10-08 00:37:21,691 INFO    stt.orchestrator: PROGRESS WER scoring of the Test, baseline on 'test': clip 88 of 97 (90.7%), elapsed 0:02:51, remaining about 0:00:17
+2026-10-08 00:37:39,476 INFO    stt.orchestrator: PROGRESS WER scoring of the Test, baseline on 'test': clip 97 of 97 (100.0%), elapsed 0:03:08, done
+2026-10-08 00:37:41,180 WARNING stt.evaluator: 18 of 97 outputs hit the length cap (a looping model?); they are flagged in the result.
+2026-10-08 00:37:41,182 INFO    stt.evaluator: test (eval_version 1, model whisper-tiny): 97 files, 4559 words, WER 1.1728, mean per-file WER 1.3324, CER 0.7189; files with WER under 10%: 0.0%, under 20%: 0.0%; flags: empty_output 0, hit_length_cap 18, excluded_empty_reference 0; 188.4 s
+2026-10-08 00:37:42,150 INFO    stt.modelexporter: Exported model_0001 with hf_safetensors: ok.
+2026-10-08 00:37:42,158 INFO    stt.orchestrator: Stage select_and_register finished.
+2026-10-08 00:37:42,173 INFO    stt.orchestrator: VERDICT: winner. Trial 2 (learning_rate 2.32079e-05) is the winner: its Val WER is 1.0279 against 1.1318 for the baseline (improvement +0.1039; The candidate is better than the baseline at the 90% one-sided level (WER difference +0.1039, lower bound +0.0759, 7 groups)). The Test confirms it: Test WER 1.0599 for the winner against 1.1728 for the baseline (improvement +0.1130; The candidate is better than the baseline at the 90% one-sided level (WER difference +0.1130, lower bound +0.0588, 8 groups)).
+2026-10-08 00:37:42,173 INFO    stt.orchestrator: Test: confirmed. Registered as model_0001 in data\rehearsal_run\registry.
+2026-10-08 00:37:42,173 INFO    stt.orchestrator: Relative reduction of the Val WER against the baseline: 9.2% (target: 10%): not reached
+2026-10-08 00:37:42,173 INFO    stt.orchestrator: The experiment is in: data\rehearsal_run\experiments\exp_0002
+2026-10-08 00:37:42,173 INFO    stt.orchestrator: To look at it, run in PowerShell from the project folder (after `$env:PYTHONPATH = "src"`):
+2026-10-08 00:37:42,173 INFO    stt.orchestrator:   python -m stt.runmanager list --dir data\rehearsal_run\experiments
+2026-10-08 00:37:42,173 INFO    stt.orchestrator:   python -m stt.runmanager show exp_0002 --dir data\rehearsal_run\experiments
+2026-10-08 00:37:42,173 INFO    stt.orchestrator:   python -m stt check

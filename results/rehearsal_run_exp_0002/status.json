@@ -1,0 +1,26 @@
+{
+ "status": "completed",
+ "reason": null,
+ "stages": {
+  "prepare": {
+   "status": "ok",
+   "fingerprint": "99f9fc72623b3a01"
+  },
+  "evaluate": {
+   "status": "ok",
+   "fingerprint": "5f7f7b781e4cf079"
+  },
+  "search": {
+   "status": "ok",
+   "fingerprint": "d77d231187c56ee8"
+  },
+  "finalists": {
+   "status": "ok",
+   "fingerprint": "fbe7f3365a40d180"
+  },
+  "select_and_register": {
+   "status": "ok",
+   "fingerprint": "b490e5ed204374c8"
+  }
+ }
+}

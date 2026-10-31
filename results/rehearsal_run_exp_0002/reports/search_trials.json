@@ -1,0 +1,120 @@
+{
+ "strategy": "grid",
+ "seed": 42,
+ "stopped_reason": "n_trials",
+ "space": {
+  "learning_rate": {
+   "kind": "log_float",
+   "low": 5e-06,
+   "high": 5e-05,
+   "choices": [],
+   "points": 4
+  }
+ },
+ "screening": {
+  "train_split": "train",
+  "val_split": "val",
+  "n_train": 61,
+  "n_val": 101,
+  "fingerprint": "d09f4702efaed8ba3a95db9be96332a97a5b1085ff2cab5d1cf6e6e7adcf0134"
+ },
+ "trials": [
+  {
+   "trial_id": 0,
+   "params": {
+    "learning_rate": 5e-06
+   },
+   "status": "complete",
+   "val_loss": 1.7740553617477417,
+   "steps": 20,
+   "seconds": 193.375,
+   "model_dir": "data\\rehearsal_run\\experiments\\exp_0002\\candidates\\exp_0002_trial_000\\exp_0002_trial_000_step_00020",
+   "error": null,
+   "val_loss_reports": [
+    [
+     10,
+     1.836746096611023
+    ],
+    [
+     20,
+     1.7740553617477417
+    ]
+   ]
+  },
+  {
+   "trial_id": 1,
+   "params": {
+    "learning_rate": 1.0772173e-05
+   },
+   "status": "complete",
+   "val_loss": 1.6247587203979492,
+   "steps": 20,
+   "seconds": 202.34400000004098,
+   "model_dir": "data\\rehearsal_run\\experiments\\exp_0002\\candidates\\exp_0002_trial_001\\exp_0002_trial_001_step_00020",
+   "error": null,
+   "val_loss_reports": [
+    [
+     10,
+     1.7185235023498535
+    ],
+    [
+     20,
+     1.6247587203979492
+    ]
+   ]
+  },
+  {
+   "trial_id": 2,
+   "params": {
+    "learning_rate": 2.3207944e-05
+   },
+   "status": "complete",
+   "val_loss": 1.4618463516235352,
+   "steps": 20,
+   "seconds": 195.59299999999348,
+   "model_dir": "data\\rehearsal_run\\experiments\\exp_0002\\candidates\\exp_0002_trial_002\\exp_0002_trial_002_step_00020",
+   "error": null,
+   "val_loss_reports": [
+    [
+     10,
+     1.5717135667800903
+    ],
+    [
+     20,
+     1.4618463516235352
+    ]
+   ]
+  },
+  {
+   "trial_id": 3,
+   "params": {
+    "learning_rate": 5e-05
+   },
+   "status": "failed",
+   "val_loss": null,
+   "steps": 0,
+   "seconds": 228.76599999994505,
+   "model_dir": null,
+   "error": "PermissionError: [WinError 5] Access is denied: 'data\\\\rehearsal_run\\\\experiments\\\\exp_0002\\\\candidates\\\\exp_0002_trial_003\\\\exp_0002_trial_003_step_00020.tmp' -> 'data\\\\rehearsal_run\\\\experiments\\\\exp_0002\\\\candidates\\\\exp_0002_trial_003\\\\exp_0002_trial_003_step_00020'",
+   "val_loss_reports": [
+    [
+     10,
+     1.4595783948898315
+    ],
+    [
+     20,
+     1.2865172624588013
+    ]
+   ]
+  }
+ ],
+ "finalists": [
+  2,
+  1
+ ],
+ "best_val_loss": 1.4618463516235352,
+ "best_params": {
+  "learning_rate": 2.3207944e-05
+ },
+ "notes": []
+}

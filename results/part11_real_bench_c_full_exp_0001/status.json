@@ -1,0 +1,14 @@
+{
+ "status": "failed",
+ "reason": "stage benchmark failed: TrainerConfigError: Invalid training hyperparameters: warmup_steps must be between 0 and max_steps (3), got 10. Fix train.hyperparams (or the searcher's values).",
+ "stages": {
+  "prepare": {
+   "status": "ok",
+   "fingerprint": "b5603c59c87742ee"
+  },
+  "benchmark": {
+   "status": "failed",
+   "fingerprint": "ecef8455abbe599f"
+  }
+ }
+}

@@ -1,0 +1,30 @@
+2026-10-06 23:24:10,377 INFO    stt.orchestrator: Stage prepare starts.
+2026-10-06 23:24:20,070 INFO    stt.orchestrator: Stage prepare finished.
+2026-10-06 23:24:20,070 INFO    stt.orchestrator: Stage search starts.
+2026-10-06 23:24:20,105 INFO    stt.orchestrator: Search (grid, up to 2 trials, 1 parallel) on 61 Train and 100 Val samples.
+2026-10-06 23:24:27,982 INFO    stt.orchestrator: Trial 0 with {'learning_rate': 1e-05, 'grad_accum_steps': 1}: 61 train and 100 val examples, 2 thread(s).
+2026-10-06 23:24:27,982 INFO    stt.trainercore: Freeze policy none: 37760640 of 37760640 parameters are trained.
+2026-10-06 23:24:30,917 INFO    stt.trainercore: step 1 (epoch 0.03) train_loss 2.4412 val_loss - lr 1e-05 grad_norm 32.359 2.73 s/step elapsed 3 s eta 8 s
+2026-10-06 23:24:33,374 INFO    stt.trainercore: step 2 (epoch 0.06) train_loss 1.8312 val_loss - lr 7.5e-06 grad_norm 27.310 2.45 s/step elapsed 5 s eta 5 s
+2026-10-06 23:25:45,638 INFO    stt.trainercore: step 2 (epoch 0.06) train_loss 1.8312 val_loss 1.9902 lr 7.5e-06 grad_norm 27.310 2.45 s/step elapsed 77 s eta 5 s
+2026-10-06 23:25:50,299 INFO    stt.trainercore: step 3 (epoch 0.10) train_loss 2.2460 val_loss - lr 5e-06 grad_norm 29.637 3.97 s/step elapsed 82 s eta 4 s
+2026-10-06 23:25:55,022 INFO    stt.trainercore: step 4 (epoch 0.13) train_loss 1.8516 val_loss - lr 2.5e-06 grad_norm 27.028 4.39 s/step elapsed 87 s eta 0 s
+2026-10-06 23:27:11,930 INFO    stt.trainercore: step 4 (epoch 0.13) train_loss 1.8516 val_loss 1.9422 lr 2.5e-06 grad_norm 27.028 4.39 s/step elapsed 164 s eta 0 s
+2026-10-06 23:27:12,849 INFO    stt.trainercore: Run ended (max_steps). Model of step 4 saved in C:\Users\9090\Desktop\Work\stt-pipeline\data\part4_real\experiments\exp_0002\candidates\exp_0002_trial_000\exp_0002_trial_000_step_00004 (pipeline_model_info.json).
+2026-10-06 23:27:12,897 INFO    stt.searcher: Trial 0 complete {'learning_rate': 1e-05, 'grad_accum_steps': 1} (Val loss 1.9422).
+2026-10-06 23:27:13,481 INFO    stt.orchestrator: Trial 1 with {'learning_rate': 1e-05, 'grad_accum_steps': 2}: 61 train and 100 val examples, 2 thread(s).
+2026-10-06 23:27:13,481 INFO    stt.trainercore: Freeze policy none: 37760640 of 37760640 parameters are trained.
+2026-10-06 23:27:22,429 INFO    stt.trainercore: step 1 (epoch 0.06) train_loss 4.3460 val_loss - lr 1e-05 grad_norm 49.355 8.62 s/step elapsed 9 s eta 26 s
+2026-10-06 23:27:31,053 INFO    stt.trainercore: step 2 (epoch 0.13) train_loss 4.2134 val_loss - lr 7.5e-06 grad_norm 45.449 8.62 s/step elapsed 17 s eta 17 s
+2026-10-06 23:28:39,042 INFO    stt.trainercore: step 2 (epoch 0.13) train_loss 4.2134 val_loss 1.9652 lr 7.5e-06 grad_norm 45.449 8.62 s/step elapsed 85 s eta 17 s
+2026-10-06 23:28:58,099 INFO    stt.trainercore: step 3 (epoch 0.19) train_loss 3.3427 val_loss - lr 5e-06 grad_norm 40.594 5.17 s/step elapsed 104 s eta 5 s
+2026-10-06 23:29:03,229 INFO    stt.trainercore: step 4 (epoch 0.26) train_loss 3.6265 val_loss - lr 2.5e-06 grad_norm 39.835 5.00 s/step elapsed 109 s eta 0 s
+2026-10-06 23:29:42,061 INFO    stt.trainercore: step 4 (epoch 0.26) train_loss 3.6265 val_loss 1.9128 lr 2.5e-06 grad_norm 39.835 5.00 s/step elapsed 148 s eta 0 s
+2026-10-06 23:29:43,640 INFO    stt.trainercore: Run ended (max_steps). Model of step 4 saved in C:\Users\9090\Desktop\Work\stt-pipeline\data\part4_real\experiments\exp_0002\candidates\exp_0002_trial_001\exp_0002_trial_001_step_00004 (pipeline_model_info.json).
+2026-10-06 23:29:43,668 INFO    stt.searcher: Trial 1 complete {'learning_rate': 1e-05, 'grad_accum_steps': 2} (Val loss 1.9128).
+2026-10-06 23:29:43,679 INFO    stt.orchestrator: Stage search finished.
+2026-10-06 23:29:43,706 INFO    stt.orchestrator: The experiment is in: C:\Users\9090\Desktop\Work\stt-pipeline\data\part4_real\experiments\exp_0002
+2026-10-06 23:29:43,706 INFO    stt.orchestrator: To look at it, run in PowerShell from the project folder (after `$env:PYTHONPATH = "src"`):
+2026-10-06 23:29:43,706 INFO    stt.orchestrator:   python -m stt.runmanager list --dir C:\Users\9090\Desktop\Work\stt-pipeline\data\part4_real\experiments
+2026-10-06 23:29:43,706 INFO    stt.orchestrator:   python -m stt.runmanager show exp_0002 --dir C:\Users\9090\Desktop\Work\stt-pipeline\data\part4_real\experiments
+2026-10-06 23:29:43,706 INFO    stt.orchestrator:   python -m stt check

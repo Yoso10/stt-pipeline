@@ -1,0 +1,14 @@
+{
+ "status": "completed",
+ "reason": null,
+ "stages": {
+  "prepare": {
+   "status": "ok",
+   "fingerprint": "b5603c59c87742ee"
+  },
+  "benchmark": {
+   "status": "ok",
+   "fingerprint": "322ed6277430bb74"
+  }
+ }
+}

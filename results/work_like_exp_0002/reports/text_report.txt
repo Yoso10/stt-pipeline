@@ -1,0 +1,17 @@
+samples 8723, eval_version 1
+profiles: {'train': ['unicode_clean', 'strip_timestamps', 'unify_quotes', 'remove_bracket_markup', 'collapse_whitespace'], 'eval': ['unicode_clean', 'strip_timestamps', 'remove_punctuation', 'unify_quotes', 'remove_nikud', 'remove_bracket_markup', 'lowercase_latin', 'collapse_whitespace']}
+texts changed by the profile: {'train': 8723, 'eval': 8723}
+flags: {'had_brackets': 345, 'had_timestamps': 8723}
+became empty: {'train': 0, 'eval': 0}
+character inventory (10 of 10 distinct characters; not Hebrew letters, digits or spaces):
+  U+002E '.'      FULL STOP: raw 56219 in 8643 texts, train 56219, eval 0
+  U+002C ','      COMMA: raw 31974 in 8339 texts, train 31974, eval 0
+  U+003F '?'      QUESTION MARK: raw 6617 in 4574 texts, train 6617, eval 0
+  U+05F3 '׳'      HEBREW PUNCTUATION GERESH: raw 2167 in 1662 texts, train 2167, eval 0
+  U+0028 '('      LEFT PARENTHESIS: raw 296 in 264 texts, train 0, eval 0
+  U+0029 ')'      RIGHT PARENTHESIS: raw 296 in 264 texts, train 0, eval 0
+  U+005B '['      LEFT SQUARE BRACKET: raw 78 in 77 texts, train 0, eval 0
+  U+005D ']'      RIGHT SQUARE BRACKET: raw 77 in 76 texts, train 0, eval 0
+  U+2026 '…'      HORIZONTAL ELLIPSIS: raw 25 in 17 texts, train 25, eval 0
+  U+200E '\u200e' LEFT-TO-RIGHT MARK: raw 7 in 6 texts, train 0, eval 0
+Inventory counts for the raw text ignore the timestamp tokens (they contain digits, '.', '<', '|', '>').

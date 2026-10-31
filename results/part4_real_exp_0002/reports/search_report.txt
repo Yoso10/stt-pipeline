@@ -1,0 +1,14 @@
+search (grid, seed 42): 2 trials (2 complete, 0 pruned, 0 failed; 0 from an earlier run)
+  best Val loss 1.9128 with {'learning_rate': 1e-05, 'grad_accum_steps': 2}
+  323.6 s, parallel trials 1, 2 thread(s) per trial
+  NOTE: the best trial is at the edge of the range of 'learning_rate' (1e-05): consider a wider range in the next experiment
+  stopped because: n_trials
+  screening data: 61 Train and 100 Val samples (see search_screening.txt)
+
+trial  status    Val loss   steps  seconds  parameters
+    0  complete    1.9422       4    164.5  learning_rate=1e-05, grad_accum_steps=1
+    1  complete    1.9128       4    149.8  learning_rate=1e-05, grad_accum_steps=2
+
+finalists (best 2 by Val loss; they are retrained and scored by WER in a later stage):
+  1. trial 1  Val loss 1.9128  learning_rate=1e-05, grad_accum_steps=2
+  2. trial 0  Val loss 1.9422  learning_rate=1e-05, grad_accum_steps=1

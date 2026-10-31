@@ -1,0 +1,12 @@
+search (grid, seed 42): 2 trials (0 complete, 0 pruned, 2 failed; 0 from an earlier run)
+  best Val loss none
+  9.5 s, parallel trials 1, 2 thread(s) per trial
+  stopped because: n_trials
+  screening data: 61 Train and 100 Val samples (see search_screening.txt)
+
+trial  status    Val loss   steps  seconds  parameters
+    0  failed           -       0      9.0  learning_rate=1e-05, grad_accum_steps=1   [TrainerConfigError: Invalid training hyperparameters: warmup_steps must be between 0 and max_steps (4), got 10. Fix train.hyperparams (or the searcher's values).]
+    1  failed           -       0      0.5  learning_rate=1e-05, grad_accum_steps=2   [TrainerConfigError: Invalid training hyperparameters: warmup_steps must be between 0 and max_steps (4), got 10. Fix train.hyperparams (or the searcher's values).]
+
+finalists (best 0 by Val loss; they are retrained and scored by WER in a later stage):
+  none

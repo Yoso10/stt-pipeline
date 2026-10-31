@@ -1,0 +1,59 @@
+{
+ "measured": {
+  "model": "whisper-tiny",
+  "threads": 2,
+  "steps": 3,
+  "batch_size": 2,
+  "grad_accum_steps": 2,
+  "seconds_per_step": 6.33833333333799,
+  "seconds_per_val_loss_example": 0.3984166666632518,
+  "val_loss_probe": 12,
+  "seconds_per_decode_clip": 1.7916666666666667,
+  "decode_probe": 12
+ },
+ "sizes": {
+  "max_steps": 100,
+  "eval_every_steps": 50,
+  "n_trials": 4,
+  "finalists_k": 2,
+  "parallel_trials": 1,
+  "screening_val": 100,
+  "val_files": 875,
+  "test_files": 875
+ },
+ "parts": [
+  {
+   "part": "baseline on Val (875 clips, WER)",
+   "seconds": 1567.7083333333335
+  },
+  {
+   "part": "search (4 trials of 100 steps)",
+   "seconds": 2854.066666665797
+  },
+  {
+   "part": "finalists (2 retrainings of 100 steps)",
+   "seconds": 1427.0333333328986
+  },
+  {
+   "part": "finalists on Val (2 x 875 clips, WER)",
+   "seconds": 3135.416666666667
+  },
+  {
+   "part": "Test, winner and baseline (2 x 875 clips, WER; only when a finalist wins)",
+   "seconds": 3135.416666666667
+  }
+ ],
+ "total_seconds": 12119.641666665364,
+ "notes": [
+  "a training of 100 steps with 2 Val-loss evaluation(s) of 100 example(s) takes about 12 min",
+  "early stopping and pruning can make a run shorter; the first training steps are slower than the later ones",
+  "the numbers belong to this machine, these threads and this model: measure again on the target machine and model (O66)"
+ ],
+ "resources": {
+  "trial_folder_bytes": 608747836,
+  "checkpoint_folders": 1,
+  "largest_checkpoint_bytes": 453312053,
+  "peak_memory_bytes": 1840459776,
+  "trial_folders_of_a_run": 6
+ }
+}

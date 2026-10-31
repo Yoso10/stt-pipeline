@@ -1,0 +1,20 @@
+{
+ "status": "ok",
+ "summary": {
+  "samples": 8723,
+  "rejected_at_load": 0,
+  "eval_version": 1,
+  "kept_train": 6973,
+  "kept_val": 875,
+  "kept_test": 875,
+  "data_fingerprint": "349a08f9a17b140052fd0be1c23d6be61b5ce78e1a92894551f0f4325ae57b42",
+  "split_fingerprint": "5342b8562205736e53078e88a0a6327ed21a326aa8f38d3ef51bda419ef89456"
+ },
+ "artifacts": [
+  "C:\\Users\\9090\\Desktop\\Work\\stt-pipeline\\data\\part4_real\\experiments\\exp_0001\\reports\\load_report.txt",
+  "C:\\Users\\9090\\Desktop\\Work\\stt-pipeline\\data\\part4_real\\experiments\\exp_0001\\reports\\split_report.txt",
+  "C:\\Users\\9090\\Desktop\\Work\\stt-pipeline\\data\\part4_real\\experiments\\exp_0001\\reports\\text_report.txt",
+  "C:\\Users\\9090\\Desktop\\Work\\stt-pipeline\\data\\part4_real\\experiments\\exp_0001\\reports\\filter_report.txt"
+ ],
+ "error": null
+}

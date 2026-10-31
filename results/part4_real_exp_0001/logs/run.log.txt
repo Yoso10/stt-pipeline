@@ -1,0 +1,14 @@
+2026-10-06 23:22:47,797 INFO    stt.orchestrator: Stage prepare starts.
+2026-10-06 23:23:52,818 INFO    stt.orchestrator: Stage prepare finished.
+2026-10-06 23:23:52,827 INFO    stt.orchestrator: Stage search starts.
+2026-10-06 23:23:52,859 INFO    stt.orchestrator: Search (grid, up to 2 trials, 1 parallel) on 61 Train and 100 Val samples.
+2026-10-06 23:24:01,865 INFO    stt.orchestrator: Trial 0 with {'learning_rate': 1e-05, 'grad_accum_steps': 1}: 61 train and 100 val examples, 2 thread(s).
+2026-10-06 23:24:01,885 INFO    stt.searcher: Trial 0 failed {'learning_rate': 1e-05, 'grad_accum_steps': 1} (Val loss -).
+2026-10-06 23:24:02,325 INFO    stt.orchestrator: Trial 1 with {'learning_rate': 1e-05, 'grad_accum_steps': 2}: 61 train and 100 val examples, 2 thread(s).
+2026-10-06 23:24:02,352 INFO    stt.searcher: Trial 1 failed {'learning_rate': 1e-05, 'grad_accum_steps': 2} (Val loss -).
+2026-10-06 23:24:02,358 ERROR   stt.orchestrator: stage search failed: SearchError: No trial completed (2 failed, 0 pruned; stopped because of n_trials). Reasons: trial 0: TrainerConfigError: Invalid training hyperparameters: warmup_steps must be between 0 and max_steps (4), got 10. Fix train.hyperparams (or the searcher's values).; trial 1: TrainerConfigError: Invalid training hyperparameters: warmup_steps must be between 0 and max_steps (4), got 10. Fix train.hyperparams (or the searcher's values).. A common cause is a learning rate range that is too high: lower the upper bound of search.parameters.learning_rate.
+2026-10-06 23:24:02,388 INFO    stt.orchestrator: The experiment is in: C:\Users\9090\Desktop\Work\stt-pipeline\data\part4_real\experiments\exp_0001
+2026-10-06 23:24:02,388 INFO    stt.orchestrator: To look at it, run in PowerShell from the project folder (after `$env:PYTHONPATH = "src"`):
+2026-10-06 23:24:02,388 INFO    stt.orchestrator:   python -m stt.runmanager list --dir C:\Users\9090\Desktop\Work\stt-pipeline\data\part4_real\experiments
+2026-10-06 23:24:02,389 INFO    stt.orchestrator:   python -m stt.runmanager show exp_0001 --dir C:\Users\9090\Desktop\Work\stt-pipeline\data\part4_real\experiments
+2026-10-06 23:24:02,389 INFO    stt.orchestrator:   python -m stt check

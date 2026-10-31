@@ -1,0 +1,19 @@
+BENCHMARK on this machine: model whisper-tiny, 2 thread(s), 3 training step(s) measured.
+
+Measured:
+  4.77 s per training step (batch 2 x 2 accumulation = 4 examples)
+  0.420 s per example for the Val loss (probe: 12 examples)
+  1.93 s per clip for the WER scoring (probe: 12 clips)
+
+Planned time of `python -m stt run` with the current settings (n_trials 2, finalists 3, max_steps 4, Val loss on 100 example(s), Val 875 clips, Test 875 clips):
+        28 min  baseline on Val (875 clips, WER)
+         3 min  search (2 trials of 4 steps)
+         5 min  finalists (3 retrainings of 4 steps)
+    1 h 25 min  finalists on Val (3 x 875 clips, WER)
+        56 min  Test, winner and baseline (2 x 875 clips, WER; only when a finalist wins)
+    2 h 58 min  TOTAL (the Test part counted)
+
+Notes:
+  - a training of 4 steps with 2 Val-loss evaluation(s) of 100 example(s) takes about 2 min
+  - early stopping and pruning can make a run shorter; the first training steps are slower than the later ones
+  - the numbers belong to this machine, these threads and this model: measure again on the target machine and model (O66)

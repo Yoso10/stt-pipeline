@@ -1,0 +1,47 @@
+# difference from the defaults of the config schemas
+data:
+  source:
+    type: hf_parquet
+    path: data\daf_yomi_raw
+  columns:
+    id: null
+    audio: audio
+    text: transcript
+    group: meta_entry_id
+    split: source_split
+  extra_types:
+    meta_seek: float
+    meta_duration: float
+    meta_quality_score: float
+    meta_number_of_segments: int
+    meta_bad_segments: int
+    meta_golden_segments: bool
+    has_prev: bool
+    has_timestamps: bool
+  extract:
+    dir: data\extracted\daf_yomi
+model:
+  path: models\whisper-tiny
+registry:
+  dir: data\part11_real\bench_c_full\registry
+report:
+  target_relative_wer_reduction: 0.1
+run:
+  experiments_dir: data\part11_real\bench_c_full\experiments
+search:
+  parameters:
+    learning_rate:
+      points: 4
+    grad_accum_steps: null
+  n_trials: 4
+  pruning:
+    enabled: false
+  finalists:
+    k: 2
+subsample:
+  val_samples: 100
+train:
+  hyperparams:
+    batch_size: 2
+    grad_accum_steps: 2
+  cpu_threads: 2

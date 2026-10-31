@@ -1,0 +1,10 @@
+2026-10-07 23:33:44,024 INFO    stt.orchestrator: Stage prepare starts.
+2026-10-07 23:33:53,336 INFO    stt.orchestrator: Stage prepare finished.
+2026-10-07 23:33:53,336 INFO    stt.orchestrator: Stage benchmark starts.
+2026-10-07 23:34:01,125 INFO    stt.orchestrator: Benchmark: 3 training step(s) on 12 Train examples, Val probe of 12 examples.
+2026-10-07 23:34:01,125 ERROR   stt.orchestrator: stage benchmark failed: TrainerConfigError: Invalid training hyperparameters: warmup_steps must be between 0 and max_steps (3), got 10. Fix train.hyperparams (or the searcher's values).
+2026-10-07 23:34:01,177 INFO    stt.orchestrator: The experiment is in: data\part11_real\bench_c_full\experiments\exp_0001
+2026-10-07 23:34:01,179 INFO    stt.orchestrator: To look at it, run in PowerShell from the project folder (after `$env:PYTHONPATH = "src"`):
+2026-10-07 23:34:01,179 INFO    stt.orchestrator:   python -m stt.runmanager list --dir data\part11_real\bench_c_full\experiments
+2026-10-07 23:34:01,179 INFO    stt.orchestrator:   python -m stt.runmanager show exp_0001 --dir data\part11_real\bench_c_full\experiments
+2026-10-07 23:34:01,179 INFO    stt.orchestrator:   python -m stt check
