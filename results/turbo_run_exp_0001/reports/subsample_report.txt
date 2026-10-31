@@ -1,0 +1,5 @@
+subsample: requested 10% of the audio, strategy by_group, scope all_splits, val fixed, seed 42, repeat 0
+  achieved 309.03 minutes for 303.96 requested: overshoot +5.06 minutes (at most one unit)
+  train    reduced   samples 6102 -> 619, groups 496 -> 51, minutes 3039.6 -> 309.0
+  val      reduced   samples 1312 -> 139, groups 108 -> 11, minutes 653.2 -> 69.2
+  test     reduced   samples 1309 -> 131, groups 106 -> 10, minutes 652.5 -> 65.3

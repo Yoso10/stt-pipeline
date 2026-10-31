@@ -1,0 +1,33 @@
+{
+ "schema_version": 1,
+ "exports": [
+  {
+   "entry_id": "model_0001",
+   "exporter": "hf_safetensors",
+   "target_dir": "model",
+   "files": [
+    "model/added_tokens.json",
+    "model/config.json",
+    "model/generation_config.json",
+    "model/merges.txt",
+    "model/model.safetensors",
+    "model/normalizer.json",
+    "model/pipeline_model_info.json",
+    "model/preprocessor_config.json",
+    "model/special_tokens_map.json",
+    "model/tokenizer.json",
+    "model/tokenizer_config.json",
+    "model/vocab.json"
+   ],
+   "verify": {
+    "level": "load",
+    "ok": true,
+    "detail": "the folder is a complete Whisper folder; loads through the ModelLoader (808878080 parameters, 128 mel bins); the loaded parameter count equals the 808878080 the weights file declares; the mel bins match config.json; the architecture equals the base model's (whisper-large-v3-turbo-ivrit).",
+    "wer_diff": null
+   },
+   "status": "ok",
+   "seconds": 0.0,
+   "exported_at": "2026-10-31T14:57:03"
+  }
+ ]
+}

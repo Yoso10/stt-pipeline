@@ -1,0 +1,10 @@
+mode grouped_ratio, seed 42, version v1, ratio unit duration
+samples 8723, groups 710, dropped (guard gap) 0, dropped (overlap) 0
+  train: 6102 samples, 496 groups, 50.66 h, ratio 0.700 (requested 0.700)
+  val: 1312 samples, 108 groups, 10.89 h, ratio 0.150 (requested 0.150)
+  test: 1309 samples, 106 groups, 10.87 h, ratio 0.150 (requested 0.150)
+largest groups (share of data): 108d9851 0.35%, e73b5f56 0.33%, 6f995700 0.32%, 9fe03b5a 0.30%, 40bb3e0e 0.29%
+group overlap check: ok: no group appears in more than one split
+source_split -> split: {'eval': {'test': 70, 'train': 294, 'val': 73}, 'train': {'test': 1239, 'train': 5808, 'val': 1239}}
+speakers: not checked (set split.speaker_column to a speaker or creator field). Splits are made by group only, so the Test may share speakers with Train.
+data fingerprint 349a08f9a17b1400, split fingerprint e5889fa9e5e85a00

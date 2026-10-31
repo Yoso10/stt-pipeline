@@ -1,0 +1,414 @@
+2026-10-31 01:32:09,341 INFO    stt.orchestrator: Stage prepare starts.
+2026-10-31 01:33:24,825 INFO    stt.orchestrator: Stage prepare finished.
+2026-10-31 01:33:24,825 INFO    stt.orchestrator: PLAN: no benchmark numbers for this model and thread count: run python -m stt benchmark (the run goes on without a planned time)
+2026-10-31 01:33:24,825 INFO    stt.orchestrator: Stage evaluate starts.
+2026-10-31 01:33:55,649 INFO    stt.featurepipeline: Encoder cache (val): 139 of 139 clips are missing, about 0.53 GB in data\turbo_run\encoder_cache\enc_c091ad3ca74af944_float16; computing them once.
+2026-10-31 01:35:15,497 INFO    stt.featurepipeline: Encoder cache: 6 of 139 clips done, elapsed 80 s, remaining about 1765 s.
+2026-10-31 01:36:42,101 INFO    stt.featurepipeline: Encoder cache: 12 of 139 clips done, elapsed 166 s, remaining about 1759 s.
+2026-10-31 01:38:13,867 INFO    stt.featurepipeline: Encoder cache: 18 of 139 clips done, elapsed 258 s, remaining about 1734 s.
+2026-10-31 01:39:56,324 INFO    stt.featurepipeline: Encoder cache: 24 of 139 clips done, elapsed 360 s, remaining about 1727 s.
+2026-10-31 01:41:39,468 INFO    stt.featurepipeline: Encoder cache: 30 of 139 clips done, elapsed 464 s, remaining about 1684 s.
+2026-10-31 01:43:18,784 INFO    stt.featurepipeline: Encoder cache: 36 of 139 clips done, elapsed 563 s, remaining about 1611 s.
+2026-10-31 01:44:57,165 INFO    stt.featurepipeline: Encoder cache: 42 of 139 clips done, elapsed 661 s, remaining about 1527 s.
+2026-10-31 01:46:41,480 INFO    stt.featurepipeline: Encoder cache: 48 of 139 clips done, elapsed 766 s, remaining about 1451 s.
+2026-10-31 01:48:22,067 INFO    stt.featurepipeline: Encoder cache: 54 of 139 clips done, elapsed 866 s, remaining about 1363 s.
+2026-10-31 01:50:03,900 INFO    stt.featurepipeline: Encoder cache: 60 of 139 clips done, elapsed 968 s, remaining about 1275 s.
+2026-10-31 01:51:43,756 INFO    stt.featurepipeline: Encoder cache: 66 of 139 clips done, elapsed 1068 s, remaining about 1181 s.
+2026-10-31 01:53:22,919 INFO    stt.featurepipeline: Encoder cache: 72 of 139 clips done, elapsed 1167 s, remaining about 1086 s.
+2026-10-31 01:55:15,623 INFO    stt.featurepipeline: Encoder cache: 78 of 139 clips done, elapsed 1280 s, remaining about 1001 s.
+2026-10-31 01:57:21,389 INFO    stt.featurepipeline: Encoder cache: 84 of 139 clips done, elapsed 1406 s, remaining about 920 s.
+2026-10-31 01:59:08,502 INFO    stt.featurepipeline: Encoder cache: 90 of 139 clips done, elapsed 1513 s, remaining about 824 s.
+2026-10-31 02:01:07,146 INFO    stt.featurepipeline: Encoder cache: 96 of 139 clips done, elapsed 1631 s, remaining about 731 s.
+2026-10-31 02:03:01,597 INFO    stt.featurepipeline: Encoder cache: 102 of 139 clips done, elapsed 1746 s, remaining about 633 s.
+2026-10-31 02:05:01,676 INFO    stt.featurepipeline: Encoder cache: 108 of 139 clips done, elapsed 1866 s, remaining about 536 s.
+2026-10-31 02:07:14,329 INFO    stt.featurepipeline: Encoder cache: 114 of 139 clips done, elapsed 1998 s, remaining about 438 s.
+2026-10-31 02:09:29,843 INFO    stt.featurepipeline: Encoder cache: 120 of 139 clips done, elapsed 2134 s, remaining about 338 s.
+2026-10-31 02:11:43,096 INFO    stt.featurepipeline: Encoder cache: 126 of 139 clips done, elapsed 2267 s, remaining about 234 s.
+2026-10-31 02:13:56,995 INFO    stt.featurepipeline: Encoder cache: 132 of 139 clips done, elapsed 2401 s, remaining about 127 s.
+2026-10-31 02:16:10,459 INFO    stt.featurepipeline: Encoder cache: 138 of 139 clips done, elapsed 2535 s, remaining about 18 s.
+2026-10-31 02:16:31,765 INFO    stt.featurepipeline: Encoder cache: 139 of 139 clips done, elapsed 2556 s, remaining about 0 s.
+2026-10-31 02:17:50,294 INFO    stt.featurepipeline: Encoder cache self-check passed on 3 clips (largest relative loss difference 1.36e-05).
+2026-10-31 02:17:50,757 INFO    stt.orchestrator: Evaluating the baseline model (whisper-large-v3-turbo-ivrit) on 139 files of 'val'.
+2026-10-31 02:18:01,395 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 2 of 139 (1.4%), elapsed 0:00:11, remaining about 0:12:09
+2026-10-31 02:18:40,765 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 10 of 139 (7.2%), elapsed 0:00:50, remaining about 0:10:45
+2026-10-31 02:19:15,596 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 18 of 139 (12.9%), elapsed 0:01:25, remaining about 0:09:30
+2026-10-31 02:19:50,481 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 26 of 139 (18.7%), elapsed 0:02:00, remaining about 0:08:40
+2026-10-31 02:20:26,063 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 34 of 139 (24.5%), elapsed 0:02:35, remaining about 0:08:00
+2026-10-31 02:21:03,687 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 42 of 139 (30.2%), elapsed 0:03:13, remaining about 0:07:26
+2026-10-31 02:21:33,692 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 48 of 139 (34.5%), elapsed 0:03:43, remaining about 0:07:03
+2026-10-31 02:22:13,812 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 56 of 139 (40.3%), elapsed 0:04:23, remaining about 0:06:30
+2026-10-31 02:22:44,999 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 62 of 139 (44.6%), elapsed 0:04:54, remaining about 0:06:05
+2026-10-31 02:23:21,159 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 70 of 139 (50.4%), elapsed 0:05:30, remaining about 0:05:26
+2026-10-31 02:23:53,463 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 76 of 139 (54.7%), elapsed 0:06:03, remaining about 0:05:01
+2026-10-31 02:24:24,636 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 82 of 139 (59.0%), elapsed 0:06:34, remaining about 0:04:34
+2026-10-31 02:24:58,268 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 90 of 139 (64.7%), elapsed 0:07:08, remaining about 0:03:53
+2026-10-31 02:25:34,087 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 98 of 139 (70.5%), elapsed 0:07:43, remaining about 0:03:14
+2026-10-31 02:26:10,275 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 106 of 139 (76.3%), elapsed 0:08:20, remaining about 0:02:36
+2026-10-31 02:26:46,089 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 114 of 139 (82.0%), elapsed 0:08:55, remaining about 0:01:57
+2026-10-31 02:27:21,758 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 122 of 139 (87.8%), elapsed 0:09:31, remaining about 0:01:20
+2026-10-31 02:28:00,020 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 130 of 139 (93.5%), elapsed 0:10:09, remaining about 0:00:42
+2026-10-31 02:28:43,095 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 138 of 139 (99.3%), elapsed 0:10:52, remaining about 0:00:05
+2026-10-31 02:28:50,186 INFO    stt.orchestrator: PROGRESS WER scoring of the baseline on 'val': clip 139 of 139 (100.0%), elapsed 0:10:59, done
+2026-10-31 02:28:54,536 INFO    stt.evaluator: val (eval_version 1, model whisper-large-v3-turbo-ivrit): 139 files, 6397 words, WER 0.8224, mean per-file WER 0.9388, CER 0.3762; files with WER under 10%: 0.0%, under 20%: 0.0%; flags: empty_output 0, hit_length_cap 0, excluded_empty_reference 0; 659.4 s
+2026-10-31 02:28:55,315 INFO    stt.orchestrator: Stage evaluate finished.
+2026-10-31 02:28:55,373 INFO    stt.orchestrator: Stage search starts.
+2026-10-31 02:28:55,516 INFO    stt.orchestrator: Search (grid, up to 3 trials, 1 parallel) on 61 Train and 139 Val samples.
+2026-10-31 02:29:17,558 INFO    stt.featurepipeline: Encoder cache (train): 61 of 61 clips are missing, about 0.23 GB in data\turbo_run\encoder_cache\enc_c091ad3ca74af944_float16; computing them once.
+2026-10-31 02:30:25,749 INFO    stt.featurepipeline: Encoder cache: 3 of 61 clips done, elapsed 68 s, remaining about 1319 s.
+2026-10-31 02:31:32,094 INFO    stt.featurepipeline: Encoder cache: 6 of 61 clips done, elapsed 135 s, remaining about 1233 s.
+2026-10-31 02:32:40,609 INFO    stt.featurepipeline: Encoder cache: 9 of 61 clips done, elapsed 203 s, remaining about 1173 s.
+2026-10-31 02:33:45,664 INFO    stt.featurepipeline: Encoder cache: 12 of 61 clips done, elapsed 268 s, remaining about 1095 s.
+2026-10-31 02:34:50,572 INFO    stt.featurepipeline: Encoder cache: 15 of 61 clips done, elapsed 333 s, remaining about 1021 s.
+2026-10-31 02:35:58,335 INFO    stt.featurepipeline: Encoder cache: 18 of 61 clips done, elapsed 401 s, remaining about 957 s.
+2026-10-31 02:37:05,268 INFO    stt.featurepipeline: Encoder cache: 21 of 61 clips done, elapsed 468 s, remaining about 891 s.
+2026-10-31 02:38:10,646 INFO    stt.featurepipeline: Encoder cache: 24 of 61 clips done, elapsed 533 s, remaining about 822 s.
+2026-10-31 02:39:27,078 INFO    stt.featurepipeline: Encoder cache: 27 of 61 clips done, elapsed 610 s, remaining about 768 s.
+2026-10-31 02:40:32,862 INFO    stt.featurepipeline: Encoder cache: 30 of 61 clips done, elapsed 675 s, remaining about 698 s.
+2026-10-31 02:41:37,914 INFO    stt.featurepipeline: Encoder cache: 33 of 61 clips done, elapsed 740 s, remaining about 628 s.
+2026-10-31 02:42:43,051 INFO    stt.featurepipeline: Encoder cache: 36 of 61 clips done, elapsed 806 s, remaining about 559 s.
+2026-10-31 02:43:47,224 INFO    stt.featurepipeline: Encoder cache: 39 of 61 clips done, elapsed 870 s, remaining about 491 s.
+2026-10-31 02:44:51,063 INFO    stt.featurepipeline: Encoder cache: 42 of 61 clips done, elapsed 934 s, remaining about 422 s.
+2026-10-31 02:45:56,134 INFO    stt.featurepipeline: Encoder cache: 45 of 61 clips done, elapsed 999 s, remaining about 355 s.
+2026-10-31 02:47:01,512 INFO    stt.featurepipeline: Encoder cache: 48 of 61 clips done, elapsed 1064 s, remaining about 288 s.
+2026-10-31 02:48:06,637 INFO    stt.featurepipeline: Encoder cache: 51 of 61 clips done, elapsed 1129 s, remaining about 221 s.
+2026-10-31 02:49:18,874 INFO    stt.featurepipeline: Encoder cache: 54 of 61 clips done, elapsed 1201 s, remaining about 156 s.
+2026-10-31 02:50:19,893 INFO    stt.featurepipeline: Encoder cache: 57 of 61 clips done, elapsed 1262 s, remaining about 89 s.
+2026-10-31 02:51:11,139 INFO    stt.featurepipeline: Encoder cache: 60 of 61 clips done, elapsed 1314 s, remaining about 22 s.
+2026-10-31 02:51:28,035 INFO    stt.featurepipeline: Encoder cache: 61 of 61 clips done, elapsed 1330 s, remaining about 0 s.
+2026-10-31 02:51:28,896 INFO    stt.featurepipeline: Encoder cache (val): all 139 clips are in data\turbo_run\encoder_cache\enc_c091ad3ca74af944_float16.
+2026-10-31 02:51:28,926 INFO    stt.orchestrator: Trial 0 with {'learning_rate': 5e-06}: 61 train and 139 val examples, 4 thread(s).
+2026-10-31 02:51:28,981 INFO    stt.trainercore: Freeze policy freeze_encoder: 171909120 of 808878080 parameters are trained.
+2026-10-31 02:52:29,814 INFO    stt.trainercore: [exp_0001_trial_000] step 1 of 156 (0.6%) (epoch 0.25) train_loss 4.7038 val_loss - lr 0 grad_norm 37.653 57.44 s/step elapsed 0:00:58 remaining 2:28:23
+2026-10-31 02:54:59,176 INFO    stt.trainercore: [exp_0001_trial_000] step 5 of 156 (3.2%) (epoch 1.25) train_loss 4.5581 val_loss - lr 4e-06 grad_norm 27.003 98.09 s/step elapsed 0:03:27 remaining 4:06:51
+2026-10-31 02:57:58,559 INFO    stt.trainercore: [exp_0001_trial_000] step 10 of 156 (6.4%) (epoch 2.50) train_loss 3.7552 val_loss - lr 4.87e-06 grad_norm 25.858 112.63 s/step elapsed 0:06:26 remaining 4:34:04
+2026-10-31 03:00:43,655 INFO    stt.trainercore: [exp_0001_trial_000] step 15 of 156 (9.6%) (epoch 3.75) train_loss 3.2204 val_loss - lr 4.7e-06 grad_norm 15.722 99.29 s/step elapsed 0:09:11 remaining 3:53:20
+2026-10-31 03:03:14,124 INFO    stt.trainercore: [exp_0001_trial_000] step 20 of 156 (12.8%) (epoch 5.00) train_loss 2.6683 val_loss - lr 4.54e-06 grad_norm 23.608 89.93 s/step elapsed 0:11:42 remaining 3:23:50
+2026-10-31 03:04:55,341 INFO    stt.trainercore: [exp_0001_trial_000] step 20 of 156 (12.8%) (epoch 5.00) train_loss 2.6683 val_loss 0.7718 lr 4.54e-06 grad_norm 23.608 89.93 s/step elapsed 0:13:23 remaining 3:23:50
+2026-10-31 03:10:03,588 INFO    stt.trainercore: [exp_0001_trial_000] step 25 of 156 (16.0%) (epoch 6.25) train_loss 2.4636 val_loss - lr 4.37e-06 grad_norm 13.373 115.57 s/step elapsed 0:18:31 remaining 4:12:19
+2026-10-31 03:12:15,152 INFO    stt.trainercore: [exp_0001_trial_000] step 30 of 156 (19.2%) (epoch 7.50) train_loss 2.1581 val_loss - lr 4.21e-06 grad_norm 13.497 78.17 s/step elapsed 0:20:43 remaining 2:44:09
+2026-10-31 03:14:39,942 INFO    stt.trainercore: [exp_0001_trial_000] step 35 of 156 (22.4%) (epoch 8.75) train_loss 1.8707 val_loss - lr 4.04e-06 grad_norm 11.827 84.51 s/step elapsed 0:23:08 remaining 2:50:25
+2026-10-31 03:17:12,978 INFO    stt.trainercore: [exp_0001_trial_000] step 40 of 156 (25.6%) (epoch 10.00) train_loss 1.5684 val_loss - lr 3.87e-06 grad_norm 13.620 91.73 s/step elapsed 0:25:41 remaining 2:57:21
+2026-10-31 03:18:58,218 INFO    stt.trainercore: [exp_0001_trial_000] step 40 of 156 (25.6%) (epoch 10.00) train_loss 1.5684 val_loss 0.6977 lr 3.87e-06 grad_norm 13.620 91.73 s/step elapsed 0:27:26 remaining 2:57:21
+2026-10-31 03:23:49,526 INFO    stt.trainercore: [exp_0001_trial_000] step 45 of 156 (28.8%) (epoch 11.25) train_loss 1.4634 val_loss - lr 3.71e-06 grad_norm 10.473 116.86 s/step elapsed 0:32:17 remaining 3:36:11
+2026-10-31 03:26:26,464 INFO    stt.trainercore: [exp_0001_trial_000] step 50 of 156 (32.1%) (epoch 12.50) train_loss 1.2743 val_loss - lr 3.54e-06 grad_norm 10.446 94.40 s/step elapsed 0:34:54 remaining 2:46:46
+2026-10-31 03:29:05,931 INFO    stt.trainercore: [exp_0001_trial_000] step 55 of 156 (35.3%) (epoch 13.75) train_loss 1.1766 val_loss - lr 3.38e-06 grad_norm 9.826 93.35 s/step elapsed 0:37:34 remaining 2:37:08
+2026-10-31 03:31:36,488 INFO    stt.trainercore: [exp_0001_trial_000] step 60 of 156 (38.5%) (epoch 15.00) train_loss 1.0190 val_loss - lr 3.21e-06 grad_norm 13.308 91.84 s/step elapsed 0:40:04 remaining 2:26:57
+2026-10-31 03:33:19,033 INFO    stt.trainercore: [exp_0001_trial_000] step 60 of 156 (38.5%) (epoch 15.00) train_loss 1.0190 val_loss 0.6928 lr 3.21e-06 grad_norm 13.308 91.84 s/step elapsed 0:41:47 remaining 2:26:57
+2026-10-31 03:38:02,617 INFO    stt.trainercore: [exp_0001_trial_000] step 65 of 156 (41.7%) (epoch 16.25) train_loss 0.9036 val_loss - lr 3.05e-06 grad_norm 8.365 100.83 s/step elapsed 0:46:30 remaining 2:32:56
+2026-10-31 03:40:39,966 INFO    stt.trainercore: [exp_0001_trial_000] step 70 of 156 (44.9%) (epoch 17.50) train_loss 0.7810 val_loss - lr 2.88e-06 grad_norm 8.123 95.65 s/step elapsed 0:49:08 remaining 2:17:06
+2026-10-31 03:43:12,718 INFO    stt.trainercore: [exp_0001_trial_000] step 75 of 156 (48.1%) (epoch 18.75) train_loss 0.7302 val_loss - lr 2.72e-06 grad_norm 7.946 90.56 s/step elapsed 0:51:40 remaining 2:02:15
+2026-10-31 03:45:40,093 INFO    stt.trainercore: [exp_0001_trial_000] step 80 of 156 (51.3%) (epoch 20.00) train_loss 0.6362 val_loss - lr 2.55e-06 grad_norm 10.503 88.83 s/step elapsed 0:54:08 remaining 1:52:31
+2026-10-31 03:47:21,427 INFO    stt.trainercore: [exp_0001_trial_000] step 80 of 156 (51.3%) (epoch 20.00) train_loss 0.6362 val_loss 0.7025 lr 2.55e-06 grad_norm 10.503 88.83 s/step elapsed 0:55:49 remaining 1:52:31
+2026-10-31 03:52:47,112 INFO    stt.trainercore: [exp_0001_trial_000] step 85 of 156 (54.5%) (epoch 21.25) train_loss 0.5579 val_loss - lr 2.38e-06 grad_norm 7.743 74.53 s/step elapsed 1:01:15 remaining 1:28:12
+2026-10-31 03:55:07,665 INFO    stt.trainercore: [exp_0001_trial_000] step 90 of 156 (57.7%) (epoch 22.50) train_loss 0.5052 val_loss - lr 2.22e-06 grad_norm 7.059 83.76 s/step elapsed 1:03:35 remaining 1:32:08
+2026-10-31 03:57:38,031 INFO    stt.trainercore: [exp_0001_trial_000] step 95 of 156 (60.9%) (epoch 23.75) train_loss 0.4536 val_loss - lr 2.05e-06 grad_norm 6.037 86.59 s/step elapsed 1:06:06 remaining 1:28:02
+2026-10-31 04:00:10,855 INFO    stt.trainercore: [exp_0001_trial_000] step 100 of 156 (64.1%) (epoch 25.00) train_loss 0.4109 val_loss - lr 1.89e-06 grad_norm 6.176 91.77 s/step elapsed 1:08:39 remaining 1:25:39
+2026-10-31 04:01:53,803 INFO    stt.trainercore: [exp_0001_trial_000] step 100 of 156 (64.1%) (epoch 25.00) train_loss 0.4109 val_loss 0.7203 lr 1.89e-06 grad_norm 6.176 91.77 s/step elapsed 1:10:22 remaining 1:25:39
+2026-10-31 04:06:47,786 INFO    stt.trainercore: [exp_0001_trial_000] step 105 of 156 (67.3%) (epoch 26.25) train_loss 0.3552 val_loss - lr 1.72e-06 grad_norm 4.966 86.56 s/step elapsed 1:15:16 remaining 1:13:35
+2026-10-31 04:09:00,700 INFO    stt.trainercore: [exp_0001_trial_000] step 110 of 156 (70.5%) (epoch 27.50) train_loss 0.3301 val_loss - lr 1.56e-06 grad_norm 4.973 77.70 s/step elapsed 1:17:28 remaining 0:59:34
+2026-10-31 04:11:27,609 INFO    stt.trainercore: [exp_0001_trial_000] step 115 of 156 (73.7%) (epoch 28.75) train_loss 0.3100 val_loss - lr 1.39e-06 grad_norm 5.398 85.96 s/step elapsed 1:19:55 remaining 0:58:44
+2026-10-31 04:13:57,094 INFO    stt.trainercore: [exp_0001_trial_000] step 120 of 156 (76.9%) (epoch 30.00) train_loss 0.2730 val_loss - lr 1.23e-06 grad_norm 6.328 88.22 s/step elapsed 1:22:25 remaining 0:52:56
+2026-10-31 04:15:38,513 INFO    stt.trainercore: [exp_0001_trial_000] step 120 of 156 (76.9%) (epoch 30.00) train_loss 0.2730 val_loss 0.7375 lr 1.23e-06 grad_norm 6.328 88.22 s/step elapsed 1:24:06 remaining 0:52:56
+2026-10-31 04:20:11,890 INFO    stt.trainercore: [exp_0001_trial_000] step 125 of 156 (80.1%) (epoch 31.25) train_loss 0.2575 val_loss - lr 1.06e-06 grad_norm 4.482 112.34 s/step elapsed 1:28:40 remaining 0:58:02
+2026-10-31 04:22:52,049 INFO    stt.trainercore: [exp_0001_trial_000] step 130 of 156 (83.3%) (epoch 32.50) train_loss 0.2399 val_loss - lr 8.94e-07 grad_norm 3.873 97.41 s/step elapsed 1:31:20 remaining 0:42:13
+2026-10-31 04:25:23,756 INFO    stt.trainercore: [exp_0001_trial_000] step 135 of 156 (86.5%) (epoch 33.75) train_loss 0.2277 val_loss - lr 7.28e-07 grad_norm 4.401 90.85 s/step elapsed 1:33:51 remaining 0:31:48
+2026-10-31 04:27:54,162 INFO    stt.trainercore: [exp_0001_trial_000] step 140 of 156 (89.7%) (epoch 35.00) train_loss 0.2160 val_loss - lr 5.63e-07 grad_norm 4.044 88.56 s/step elapsed 1:36:22 remaining 0:23:37
+2026-10-31 04:29:38,713 INFO    stt.trainercore: [exp_0001_trial_000] step 140 of 156 (89.7%) (epoch 35.00) train_loss 0.2160 val_loss 0.7479 lr 5.63e-07 grad_norm 4.044 88.56 s/step elapsed 1:38:06 remaining 0:23:37
+2026-10-31 04:33:22,676 INFO    stt.trainercore: [exp_0001_trial_000] step 145 of 156 (92.9%) (epoch 36.25) train_loss 0.2072 val_loss - lr 3.97e-07 grad_norm 3.687 103.96 s/step elapsed 1:41:50 remaining 0:19:04
+2026-10-31 04:35:57,116 INFO    stt.trainercore: [exp_0001_trial_000] step 150 of 156 (96.2%) (epoch 37.50) train_loss 0.2032 val_loss - lr 2.32e-07 grad_norm 3.325 94.46 s/step elapsed 1:44:25 remaining 0:09:27
+2026-10-31 04:38:37,483 INFO    stt.trainercore: [exp_0001_trial_000] step 155 of 156 (99.4%) (epoch 38.75) train_loss 0.1988 val_loss - lr 6.62e-08 grad_norm 3.256 95.11 s/step elapsed 1:47:05 remaining 0:01:35
+2026-10-31 04:40:46,738 INFO    stt.trainercore: [exp_0001_trial_000] step 156 of 156 (100.0%) (epoch 39.00) train_loss 0.1988 val_loss 0.7506 lr 6.62e-08 grad_norm 3.256 95.11 s/step elapsed 1:49:14 remaining 0:01:35
+2026-10-31 04:43:12,433 INFO    stt.trainercore: Run ended (early_stopping). Model of step 60 saved in data\turbo_run\experiments\exp_0001\candidates\exp_0001_trial_000\exp_0001_trial_000_step_00060 (pipeline_model_info.json).
+2026-10-31 04:43:13,200 INFO    stt.searcher: Search progress: trial 1 of 3 finished (33.3%), elapsed 2:14:18, remaining about 4:28:35 (up to 3 trials; a grid with fewer points stops earlier). Trial 0 complete {'learning_rate': 5e-06} (Val loss 0.6928).
+2026-10-31 04:43:23,275 INFO    stt.featurepipeline: Encoder cache (train): all 61 clips are in data\turbo_run\encoder_cache\enc_c091ad3ca74af944_float16.
+2026-10-31 04:43:23,654 INFO    stt.featurepipeline: Encoder cache (val): all 139 clips are in data\turbo_run\encoder_cache\enc_c091ad3ca74af944_float16.
+2026-10-31 04:43:23,663 INFO    stt.orchestrator: Trial 1 with {'learning_rate': 1.5811388e-05}: 61 train and 139 val examples, 4 thread(s).
+2026-10-31 04:43:23,676 INFO    stt.trainercore: Freeze policy freeze_encoder: 171909120 of 808878080 parameters are trained.
+2026-10-31 04:43:54,475 INFO    stt.trainercore: [exp_0001_trial_001] step 1 of 156 (0.6%) (epoch 0.25) train_loss 4.7038 val_loss - lr 0 grad_norm 37.653 28.73 s/step elapsed 0:00:29 remaining 1:14:14
+2026-10-31 04:45:36,061 INFO    stt.trainercore: [exp_0001_trial_001] step 5 of 156 (3.2%) (epoch 1.25) train_loss 4.3469 val_loss - lr 1.26e-05 grad_norm 31.519 64.14 s/step elapsed 0:02:10 remaining 2:41:25
+2026-10-31 04:47:53,262 INFO    stt.trainercore: [exp_0001_trial_001] step 10 of 156 (6.4%) (epoch 2.50) train_loss 3.1257 val_loss - lr 1.54e-05 grad_norm 15.737 81.79 s/step elapsed 0:04:28 remaining 3:19:01
+2026-10-31 04:50:27,679 INFO    stt.trainercore: [exp_0001_trial_001] step 15 of 156 (9.6%) (epoch 3.75) train_loss 2.2314 val_loss - lr 1.49e-05 grad_norm 13.647 92.35 s/step elapsed 0:07:02 remaining 3:37:01
+2026-10-31 04:52:58,418 INFO    stt.trainercore: [exp_0001_trial_001] step 20 of 156 (12.8%) (epoch 5.00) train_loss 1.5066 val_loss - lr 1.43e-05 grad_norm 17.076 90.43 s/step elapsed 0:09:33 remaining 3:24:59
+2026-10-31 04:54:43,248 INFO    stt.trainercore: [exp_0001_trial_001] step 20 of 156 (12.8%) (epoch 5.00) train_loss 1.5066 val_loss 0.6845 lr 1.43e-05 grad_norm 17.076 90.43 s/step elapsed 0:11:18 remaining 3:24:59
+2026-10-31 05:00:04,428 INFO    stt.trainercore: [exp_0001_trial_001] step 25 of 156 (16.0%) (epoch 6.25) train_loss 1.1435 val_loss - lr 1.38e-05 grad_norm 11.956 143.40 s/step elapsed 0:16:39 remaining 5:13:06
+2026-10-31 05:02:39,372 INFO    stt.trainercore: [exp_0001_trial_001] step 30 of 156 (19.2%) (epoch 7.50) train_loss 0.8166 val_loss - lr 1.33e-05 grad_norm 8.435 93.45 s/step elapsed 0:19:14 remaining 3:16:15
+2026-10-31 05:05:11,587 INFO    stt.trainercore: [exp_0001_trial_001] step 35 of 156 (22.4%) (epoch 8.75) train_loss 0.5263 val_loss - lr 1.28e-05 grad_norm 6.522 90.54 s/step elapsed 0:21:46 remaining 3:02:35
+2026-10-31 05:07:39,780 INFO    stt.trainercore: [exp_0001_trial_001] step 40 of 156 (25.6%) (epoch 10.00) train_loss 0.3279 val_loss - lr 1.23e-05 grad_norm 6.212 89.22 s/step elapsed 0:24:14 remaining 2:52:29
+2026-10-31 05:09:23,108 INFO    stt.trainercore: [exp_0001_trial_001] step 40 of 156 (25.6%) (epoch 10.00) train_loss 0.3279 val_loss 0.7063 lr 1.23e-05 grad_norm 6.212 89.22 s/step elapsed 0:25:57 remaining 2:52:29
+2026-10-31 05:15:08,342 INFO    stt.trainercore: [exp_0001_trial_001] step 45 of 156 (28.8%) (epoch 11.25) train_loss 0.2109 val_loss - lr 1.17e-05 grad_norm 4.628 132.97 s/step elapsed 0:31:43 remaining 4:05:59
+2026-10-31 05:17:19,862 INFO    stt.trainercore: [exp_0001_trial_001] step 50 of 156 (32.1%) (epoch 12.50) train_loss 0.1237 val_loss - lr 1.12e-05 grad_norm 2.475 78.44 s/step elapsed 0:33:54 remaining 2:18:35
+2026-10-31 05:19:48,524 INFO    stt.trainercore: [exp_0001_trial_001] step 55 of 156 (35.3%) (epoch 13.75) train_loss 0.0781 val_loss - lr 1.07e-05 grad_norm 1.807 86.69 s/step elapsed 0:36:23 remaining 2:25:56
+2026-10-31 05:22:19,748 INFO    stt.trainercore: [exp_0001_trial_001] step 60 of 156 (38.5%) (epoch 15.00) train_loss 0.0507 val_loss - lr 1.02e-05 grad_norm 1.599 90.86 s/step elapsed 0:38:54 remaining 2:25:23
+2026-10-31 05:24:02,497 INFO    stt.trainercore: [exp_0001_trial_001] step 60 of 156 (38.5%) (epoch 15.00) train_loss 0.0507 val_loss 0.7915 lr 1.02e-05 grad_norm 1.599 90.86 s/step elapsed 0:40:37 remaining 2:25:23
+2026-10-31 05:28:17,116 INFO    stt.trainercore: [exp_0001_trial_001] step 65 of 156 (41.7%) (epoch 16.25) train_loss 0.0339 val_loss - lr 9.63e-06 grad_norm 0.872 84.78 s/step elapsed 0:44:51 remaining 2:08:35
+2026-10-31 05:30:33,428 INFO    stt.trainercore: [exp_0001_trial_001] step 70 of 156 (44.9%) (epoch 17.50) train_loss 0.0235 val_loss - lr 9.11e-06 grad_norm 0.540 82.22 s/step elapsed 0:47:08 remaining 1:57:51
+2026-10-31 05:32:59,601 INFO    stt.trainercore: [exp_0001_trial_001] step 75 of 156 (48.1%) (epoch 18.75) train_loss 0.0174 val_loss - lr 8.59e-06 grad_norm 0.415 85.16 s/step elapsed 0:49:34 remaining 1:54:58
+2026-10-31 05:35:25,668 INFO    stt.trainercore: [exp_0001_trial_001] step 80 of 156 (51.3%) (epoch 20.00) train_loss 0.0134 val_loss - lr 8.06e-06 grad_norm 0.435 88.06 s/step elapsed 0:52:00 remaining 1:51:33
+2026-10-31 05:37:10,780 INFO    stt.trainercore: [exp_0001_trial_001] step 80 of 156 (51.3%) (epoch 20.00) train_loss 0.0134 val_loss 0.8356 lr 8.06e-06 grad_norm 0.435 88.06 s/step elapsed 0:53:45 remaining 1:51:33
+2026-10-31 05:42:20,682 INFO    stt.trainercore: [exp_0001_trial_001] step 85 of 156 (54.5%) (epoch 21.25) train_loss 0.0106 val_loss - lr 7.54e-06 grad_norm 0.223 86.71 s/step elapsed 0:58:55 remaining 1:42:36
+2026-10-31 05:44:31,141 INFO    stt.trainercore: [exp_0001_trial_001] step 90 of 156 (57.7%) (epoch 22.50) train_loss 0.0091 val_loss - lr 7.02e-06 grad_norm 0.152 77.67 s/step elapsed 1:01:05 remaining 1:25:26
+2026-10-31 05:46:53,792 INFO    stt.trainercore: [exp_0001_trial_001] step 95 of 156 (60.9%) (epoch 23.75) train_loss 0.0076 val_loss - lr 6.49e-06 grad_norm 0.126 82.88 s/step elapsed 1:03:28 remaining 1:24:15
+2026-10-31 05:49:26,778 INFO    stt.trainercore: [exp_0001_trial_001] step 100 of 156 (64.1%) (epoch 25.00) train_loss 0.0070 val_loss - lr 5.97e-06 grad_norm 0.126 90.33 s/step elapsed 1:06:01 remaining 1:24:19
+2026-10-31 05:51:07,816 INFO    stt.trainercore: [exp_0001_trial_001] step 100 of 156 (64.1%) (epoch 25.00) train_loss 0.0070 val_loss 0.8574 lr 5.97e-06 grad_norm 0.126 90.33 s/step elapsed 1:07:42 remaining 1:24:19
+2026-10-31 05:56:11,431 INFO    stt.trainercore: [exp_0001_trial_001] step 105 of 156 (67.3%) (epoch 26.25) train_loss 0.0063 val_loss - lr 5.44e-06 grad_norm 0.098 110.29 s/step elapsed 1:12:46 remaining 1:33:45
+2026-10-31 05:58:21,341 INFO    stt.trainercore: [exp_0001_trial_001] step 110 of 156 (70.5%) (epoch 27.50) train_loss 0.0059 val_loss - lr 4.92e-06 grad_norm 0.091 77.09 s/step elapsed 1:14:56 remaining 0:59:06
+2026-10-31 06:00:49,461 INFO    stt.trainercore: [exp_0001_trial_001] step 115 of 156 (73.7%) (epoch 28.75) train_loss 0.0057 val_loss - lr 4.4e-06 grad_norm 0.088 87.63 s/step elapsed 1:17:24 remaining 0:59:53
+2026-10-31 06:03:19,826 INFO    stt.trainercore: [exp_0001_trial_001] step 120 of 156 (76.9%) (epoch 30.00) train_loss 0.0053 val_loss - lr 3.87e-06 grad_norm 0.122 89.11 s/step elapsed 1:19:54 remaining 0:53:28
+2026-10-31 06:05:05,160 INFO    stt.trainercore: [exp_0001_trial_001] step 120 of 156 (76.9%) (epoch 30.00) train_loss 0.0053 val_loss 0.8692 lr 3.87e-06 grad_norm 0.122 89.11 s/step elapsed 1:21:39 remaining 0:53:28
+2026-10-31 06:05:05,162 WARNING stt.trainercore: Early stopping at step 120: the Val loss did not improve after the first evaluation (step 20, 0.6845). Check the learning rate and the data; see TROUBLESHOOTING (TrainerCore).
+2026-10-31 06:08:29,454 INFO    stt.trainercore: Run ended (early_stopping). Model of step 20 saved in data\turbo_run\experiments\exp_0001\candidates\exp_0001_trial_001\exp_0001_trial_001_step_00020 (pipeline_model_info.json).
+2026-10-31 06:08:30,093 INFO    stt.searcher: Search progress: trial 2 of 3 finished (66.7%), elapsed 3:39:35, remaining about 1:49:47 (up to 3 trials; a grid with fewer points stops earlier). Trial 1 complete {'learning_rate': 1.5811388e-05} (Val loss 0.6845).
+2026-10-31 06:08:40,381 INFO    stt.featurepipeline: Encoder cache (train): all 61 clips are in data\turbo_run\encoder_cache\enc_c091ad3ca74af944_float16.
+2026-10-31 06:08:40,714 INFO    stt.featurepipeline: Encoder cache (val): all 139 clips are in data\turbo_run\encoder_cache\enc_c091ad3ca74af944_float16.
+2026-10-31 06:08:40,720 INFO    stt.orchestrator: Trial 2 with {'learning_rate': 5e-05}: 61 train and 139 val examples, 4 thread(s).
+2026-10-31 06:08:40,731 INFO    stt.trainercore: Freeze policy freeze_encoder: 171909120 of 808878080 parameters are trained.
+2026-10-31 06:09:07,521 INFO    stt.trainercore: [exp_0001_trial_002] step 1 of 156 (0.6%) (epoch 0.25) train_loss 4.7038 val_loss - lr 0 grad_norm 37.653 25.72 s/step elapsed 0:00:26 remaining 1:06:26
+2026-10-31 06:10:48,984 INFO    stt.trainercore: [exp_0001_trial_002] step 5 of 156 (3.2%) (epoch 1.25) train_loss 4.2241 val_loss - lr 4e-05 grad_norm 49.041 64.07 s/step elapsed 0:02:07 remaining 2:41:15
+2026-10-31 06:13:06,244 INFO    stt.trainercore: [exp_0001_trial_002] step 10 of 156 (6.4%) (epoch 2.50) train_loss 2.2937 val_loss - lr 4.87e-05 grad_norm 14.738 81.82 s/step elapsed 0:04:24 remaining 3:19:05
+2026-10-31 06:15:40,091 INFO    stt.trainercore: [exp_0001_trial_002] step 15 of 156 (9.6%) (epoch 3.75) train_loss 1.2319 val_loss - lr 4.7e-05 grad_norm 13.035 89.83 s/step elapsed 0:06:58 remaining 3:31:06
+2026-10-31 06:18:14,487 INFO    stt.trainercore: [exp_0001_trial_002] step 20 of 156 (12.8%) (epoch 5.00) train_loss 0.5583 val_loss - lr 4.54e-05 grad_norm 9.796 92.48 s/step elapsed 0:09:33 remaining 3:29:37
+2026-10-31 06:19:59,195 INFO    stt.trainercore: [exp_0001_trial_002] step 20 of 156 (12.8%) (epoch 5.00) train_loss 0.5583 val_loss 0.7136 lr 4.54e-05 grad_norm 9.796 92.48 s/step elapsed 0:11:17 remaining 3:29:37
+2026-10-31 06:25:43,177 INFO    stt.trainercore: [exp_0001_trial_002] step 25 of 156 (16.0%) (epoch 6.25) train_loss 0.2436 val_loss - lr 4.37e-05 grad_norm 4.218 161.23 s/step elapsed 0:17:01 remaining 5:52:02
+2026-10-31 06:28:22,105 INFO    stt.trainercore: [exp_0001_trial_002] step 30 of 156 (19.2%) (epoch 7.50) train_loss 0.1212 val_loss - lr 4.21e-05 grad_norm 4.341 95.40 s/step elapsed 0:19:40 remaining 3:20:20
+2026-10-31 06:30:58,251 INFO    stt.trainercore: [exp_0001_trial_002] step 35 of 156 (22.4%) (epoch 8.75) train_loss 0.0546 val_loss - lr 4.04e-05 grad_norm 4.440 93.66 s/step elapsed 0:22:16 remaining 3:08:52
+2026-10-31 06:33:28,051 INFO    stt.trainercore: [exp_0001_trial_002] step 40 of 156 (25.6%) (epoch 10.00) train_loss 0.0302 val_loss - lr 3.87e-05 grad_norm 1.620 89.92 s/step elapsed 0:24:46 remaining 2:53:51
+2026-10-31 06:35:08,219 INFO    stt.trainercore: [exp_0001_trial_002] step 40 of 156 (25.6%) (epoch 10.00) train_loss 0.0302 val_loss 0.8304 lr 3.87e-05 grad_norm 1.620 89.92 s/step elapsed 0:26:26 remaining 2:53:51
+2026-10-31 06:40:33,772 INFO    stt.trainercore: [exp_0001_trial_002] step 45 of 156 (28.8%) (epoch 11.25) train_loss 0.0165 val_loss - lr 3.71e-05 grad_norm 0.834 121.92 s/step elapsed 0:31:52 remaining 3:45:33
+2026-10-31 06:42:44,965 INFO    stt.trainercore: [exp_0001_trial_002] step 50 of 156 (32.1%) (epoch 12.50) train_loss 0.0104 val_loss - lr 3.54e-05 grad_norm 0.492 77.96 s/step elapsed 0:34:03 remaining 2:17:44
+2026-10-31 06:45:08,471 INFO    stt.trainercore: [exp_0001_trial_002] step 55 of 156 (35.3%) (epoch 13.75) train_loss 0.0110 val_loss - lr 3.38e-05 grad_norm 2.893 84.03 s/step elapsed 0:36:27 remaining 2:21:27
+2026-10-31 06:47:36,533 INFO    stt.trainercore: [exp_0001_trial_002] step 60 of 156 (38.5%) (epoch 15.00) train_loss 0.0073 val_loss - lr 3.21e-05 grad_norm 0.241 89.49 s/step elapsed 0:38:55 remaining 2:23:11
+2026-10-31 06:49:20,816 INFO    stt.trainercore: [exp_0001_trial_002] step 60 of 156 (38.5%) (epoch 15.00) train_loss 0.0073 val_loss 0.9230 lr 3.21e-05 grad_norm 0.241 89.49 s/step elapsed 0:40:39 remaining 2:23:11
+2026-10-31 06:53:48,067 INFO    stt.trainercore: [exp_0001_trial_002] step 65 of 156 (41.7%) (epoch 16.25) train_loss 0.0121 val_loss - lr 3.05e-05 grad_norm 0.171 81.07 s/step elapsed 0:45:06 remaining 2:02:57
+2026-10-31 06:56:08,200 INFO    stt.trainercore: [exp_0001_trial_002] step 70 of 156 (44.9%) (epoch 17.50) train_loss 0.0125 val_loss - lr 2.88e-05 grad_norm 2.260 83.88 s/step elapsed 0:47:26 remaining 2:00:14
+2026-10-31 06:58:46,096 INFO    stt.trainercore: [exp_0001_trial_002] step 75 of 156 (48.1%) (epoch 18.75) train_loss 0.0072 val_loss - lr 2.72e-05 grad_norm 1.510 88.34 s/step elapsed 0:50:04 remaining 1:59:15
+2026-10-31 07:01:16,196 INFO    stt.trainercore: [exp_0001_trial_002] step 80 of 156 (51.3%) (epoch 20.00) train_loss 0.0052 val_loss - lr 2.55e-05 grad_norm 1.094 90.24 s/step elapsed 0:52:34 remaining 1:54:19
+2026-10-31 07:02:57,127 INFO    stt.trainercore: [exp_0001_trial_002] step 80 of 156 (51.3%) (epoch 20.00) train_loss 0.0052 val_loss 0.9519 lr 2.55e-05 grad_norm 1.094 90.24 s/step elapsed 0:54:15 remaining 1:54:19
+2026-10-31 07:07:34,377 INFO    stt.trainercore: [exp_0001_trial_002] step 85 of 156 (54.5%) (epoch 21.25) train_loss 0.0102 val_loss - lr 2.38e-05 grad_norm 0.321 103.78 s/step elapsed 0:58:53 remaining 2:02:48
+2026-10-31 07:10:14,983 INFO    stt.trainercore: [exp_0001_trial_002] step 90 of 156 (57.7%) (epoch 22.50) train_loss 0.0059 val_loss - lr 2.22e-05 grad_norm 0.149 97.40 s/step elapsed 1:01:33 remaining 1:47:09
+2026-10-31 07:12:49,474 INFO    stt.trainercore: [exp_0001_trial_002] step 95 of 156 (60.9%) (epoch 23.75) train_loss 0.0022 val_loss - lr 2.05e-05 grad_norm 0.131 90.84 s/step elapsed 1:04:08 remaining 1:32:21
+2026-10-31 07:15:18,341 INFO    stt.trainercore: [exp_0001_trial_002] step 100 of 156 (64.1%) (epoch 25.00) train_loss 0.0020 val_loss - lr 1.89e-05 grad_norm 0.067 88.66 s/step elapsed 1:06:37 remaining 1:22:45
+2026-10-31 07:16:59,311 INFO    stt.trainercore: [exp_0001_trial_002] step 100 of 156 (64.1%) (epoch 25.00) train_loss 0.0020 val_loss 0.9477 lr 1.89e-05 grad_norm 0.067 88.66 s/step elapsed 1:08:18 remaining 1:22:45
+2026-10-31 07:21:39,155 INFO    stt.trainercore: [exp_0001_trial_002] step 105 of 156 (67.3%) (epoch 26.25) train_loss 0.0017 val_loss - lr 1.72e-05 grad_norm 0.038 111.77 s/step elapsed 1:12:57 remaining 1:35:00
+2026-10-31 07:24:10,805 INFO    stt.trainercore: [exp_0001_trial_002] step 110 of 156 (70.5%) (epoch 27.50) train_loss 0.0015 val_loss - lr 1.56e-05 grad_norm 0.029 91.03 s/step elapsed 1:15:29 remaining 1:09:47
+2026-10-31 07:26:44,008 INFO    stt.trainercore: [exp_0001_trial_002] step 115 of 156 (73.7%) (epoch 28.75) train_loss 0.0014 val_loss - lr 1.39e-05 grad_norm 0.025 90.62 s/step elapsed 1:18:02 remaining 1:01:56
+2026-10-31 07:29:20,230 INFO    stt.trainercore: [exp_0001_trial_002] step 120 of 156 (76.9%) (epoch 30.00) train_loss 0.0012 val_loss - lr 1.23e-05 grad_norm 0.030 91.87 s/step elapsed 1:20:38 remaining 0:55:07
+2026-10-31 07:30:59,866 INFO    stt.trainercore: [exp_0001_trial_002] step 120 of 156 (76.9%) (epoch 30.00) train_loss 0.0012 val_loss 0.9479 lr 1.23e-05 grad_norm 0.030 91.87 s/step elapsed 1:22:18 remaining 0:55:07
+2026-10-31 07:30:59,871 WARNING stt.trainercore: Early stopping at step 120: the Val loss did not improve after the first evaluation (step 20, 0.7136). Check the learning rate and the data; see TROUBLESHOOTING (TrainerCore).
+2026-10-31 07:35:03,329 INFO    stt.trainercore: Run ended (early_stopping). Model of step 20 saved in data\turbo_run\experiments\exp_0001\candidates\exp_0001_trial_002\exp_0001_trial_002_step_00020 (pipeline_model_info.json).
+2026-10-31 07:35:03,945 INFO    stt.searcher: Search progress: trial 3 of 3 finished (100.0%), elapsed 5:06:08, remaining about 0:00:00 (up to 3 trials; a grid with fewer points stops earlier). Trial 2 complete {'learning_rate': 5e-05} (Val loss 0.7136).
+2026-10-31 07:35:04,017 INFO    stt.orchestrator: Stage search finished.
+2026-10-31 07:35:04,074 INFO    stt.orchestrator: Stage finalists starts.
+2026-10-31 07:35:04,150 INFO    stt.orchestrator: Retraining 2 finalist(s) on 619 Train samples (Val loss on 139 samples, WER on the 139 samples of 'val').
+2026-10-31 07:35:04,150 INFO    stt.orchestrator: PROGRESS finalists: starting finalist 1 of 2 (0.0% done), elapsed 0:00:00, remaining unknown until the first finalist is finished (trial 1: retraining, then its WER scoring on 'val')
+2026-10-31 07:35:24,512 INFO    stt.featurepipeline: Encoder cache (train): 558 of 619 clips are missing, about 2.14 GB in data\turbo_run\encoder_cache\enc_c091ad3ca74af944_float16; computing them once.
+2026-10-31 07:41:41,632 INFO    stt.featurepipeline: Encoder cache: 27 of 558 clips done, elapsed 377 s, remaining about 7417 s.
+2026-10-31 07:49:22,435 INFO    stt.featurepipeline: Encoder cache: 54 of 558 clips done, elapsed 838 s, remaining about 7821 s.
+2026-10-31 07:56:54,599 INFO    stt.featurepipeline: Encoder cache: 81 of 558 clips done, elapsed 1290 s, remaining about 7597 s.
+2026-10-31 08:04:23,424 INFO    stt.featurepipeline: Encoder cache: 108 of 558 clips done, elapsed 1739 s, remaining about 7246 s.
+2026-10-31 08:11:55,648 INFO    stt.featurepipeline: Encoder cache: 135 of 558 clips done, elapsed 2191 s, remaining about 6866 s.
+2026-10-31 08:19:38,392 INFO    stt.featurepipeline: Encoder cache: 162 of 558 clips done, elapsed 2654 s, remaining about 6487 s.
+2026-10-31 08:27:19,734 INFO    stt.featurepipeline: Encoder cache: 189 of 558 clips done, elapsed 3115 s, remaining about 6082 s.
+2026-10-31 08:34:52,142 INFO    stt.featurepipeline: Encoder cache: 216 of 558 clips done, elapsed 3568 s, remaining about 5649 s.
+2026-10-31 08:42:21,959 INFO    stt.featurepipeline: Encoder cache: 243 of 558 clips done, elapsed 4017 s, remaining about 5208 s.
+2026-10-31 08:52:28,806 INFO    stt.featurepipeline: Encoder cache: 270 of 558 clips done, elapsed 4624 s, remaining about 4933 s.
+2026-10-31 09:00:03,973 INFO    stt.featurepipeline: Encoder cache: 297 of 558 clips done, elapsed 5079 s, remaining about 4464 s.
+2026-10-31 09:07:31,612 INFO    stt.featurepipeline: Encoder cache: 324 of 558 clips done, elapsed 5527 s, remaining about 3992 s.
+2026-10-31 09:15:55,487 INFO    stt.featurepipeline: Encoder cache: 351 of 558 clips done, elapsed 6031 s, remaining about 3557 s.
+2026-10-31 09:25:41,558 INFO    stt.featurepipeline: Encoder cache: 378 of 558 clips done, elapsed 6617 s, remaining about 3151 s.
+2026-10-31 09:33:34,510 INFO    stt.featurepipeline: Encoder cache: 405 of 558 clips done, elapsed 7090 s, remaining about 2678 s.
+2026-10-31 09:41:29,457 INFO    stt.featurepipeline: Encoder cache: 432 of 558 clips done, elapsed 7565 s, remaining about 2206 s.
+2026-10-31 09:49:09,808 INFO    stt.featurepipeline: Encoder cache: 459 of 558 clips done, elapsed 8025 s, remaining about 1731 s.
+2026-10-31 09:56:53,315 INFO    stt.featurepipeline: Encoder cache: 486 of 558 clips done, elapsed 8489 s, remaining about 1258 s.
+2026-10-31 10:04:24,484 INFO    stt.featurepipeline: Encoder cache: 513 of 558 clips done, elapsed 8940 s, remaining about 784 s.
+2026-10-31 10:11:53,126 INFO    stt.featurepipeline: Encoder cache: 540 of 558 clips done, elapsed 9389 s, remaining about 313 s.
+2026-10-31 10:16:48,879 INFO    stt.featurepipeline: Encoder cache: 558 of 558 clips done, elapsed 9684 s, remaining about 0 s.
+2026-10-31 10:16:49,600 INFO    stt.featurepipeline: Encoder cache (val): all 139 clips are in data\turbo_run\encoder_cache\enc_c091ad3ca74af944_float16.
+2026-10-31 10:16:49,620 INFO    stt.orchestrator: Finalist trial 1 with {'learning_rate': 1.5811388e-05}: 619 train and 139 val examples.
+2026-10-31 10:16:49,655 INFO    stt.trainercore: Freeze policy freeze_encoder: 171909120 of 808878080 parameters are trained.
+2026-10-31 10:17:34,692 INFO    stt.trainercore: [exp_0001_final_trial_001] step 1 of 156 (0.6%) (epoch 0.03) train_loss 4.0792 val_loss - lr 0 grad_norm 35.705 42.33 s/step elapsed 0:00:42 remaining 1:49:21
+2026-10-31 10:20:20,227 INFO    stt.trainercore: [exp_0001_final_trial_001] step 5 of 156 (3.2%) (epoch 0.13) train_loss 4.1581 val_loss - lr 1.26e-05 grad_norm 23.367 103.42 s/step elapsed 0:03:28 remaining 4:20:16
+2026-10-31 10:23:49,359 INFO    stt.trainercore: [exp_0001_final_trial_001] step 10 of 156 (6.4%) (epoch 0.26) train_loss 3.5588 val_loss - lr 1.54e-05 grad_norm 15.732 125.09 s/step elapsed 0:06:57 remaining 5:04:23
+2026-10-31 10:27:01,535 INFO    stt.trainercore: [exp_0001_final_trial_001] step 15 of 156 (9.6%) (epoch 0.39) train_loss 2.9357 val_loss - lr 1.49e-05 grad_norm 15.673 121.44 s/step elapsed 0:10:09 remaining 4:45:24
+2026-10-31 10:29:54,774 INFO    stt.trainercore: [exp_0001_final_trial_001] step 20 of 156 (12.8%) (epoch 0.52) train_loss 2.5488 val_loss - lr 1.43e-05 grad_norm 15.013 101.77 s/step elapsed 0:13:02 remaining 3:50:41
+2026-10-31 10:31:58,605 INFO    stt.trainercore: [exp_0001_final_trial_001] step 20 of 156 (12.8%) (epoch 0.52) train_loss 2.5488 val_loss 0.6092 lr 1.43e-05 grad_norm 15.013 101.77 s/step elapsed 0:15:06 remaining 3:50:41
+2026-10-31 10:39:10,050 INFO    stt.trainercore: [exp_0001_final_trial_001] step 25 of 156 (16.0%) (epoch 0.65) train_loss 2.3086 val_loss - lr 1.38e-05 grad_norm 14.582 155.78 s/step elapsed 0:22:18 remaining 5:40:07
+2026-10-31 10:41:49,399 INFO    stt.trainercore: [exp_0001_final_trial_001] step 30 of 156 (19.2%) (epoch 0.77) train_loss 2.3032 val_loss - lr 1.33e-05 grad_norm 12.860 88.98 s/step elapsed 0:24:57 remaining 3:06:51
+2026-10-31 10:45:15,217 INFO    stt.trainercore: [exp_0001_final_trial_001] step 35 of 156 (22.4%) (epoch 0.90) train_loss 2.2455 val_loss - lr 1.28e-05 grad_norm 13.635 124.43 s/step elapsed 0:28:23 remaining 4:10:56
+2026-10-31 10:48:30,450 INFO    stt.trainercore: [exp_0001_final_trial_001] step 40 of 156 (25.6%) (epoch 1.03) train_loss 1.9131 val_loss - lr 1.23e-05 grad_norm 12.401 117.91 s/step elapsed 0:31:38 remaining 3:47:57
+2026-10-31 10:50:21,235 INFO    stt.trainercore: [exp_0001_final_trial_001] step 40 of 156 (25.6%) (epoch 1.03) train_loss 1.9131 val_loss 0.5207 lr 1.23e-05 grad_norm 12.401 117.91 s/step elapsed 0:33:29 remaining 3:47:57
+2026-10-31 10:58:10,117 INFO    stt.trainercore: [exp_0001_final_trial_001] step 45 of 156 (28.8%) (epoch 1.15) train_loss 1.7791 val_loss - lr 1.17e-05 grad_norm 10.861 90.80 s/step elapsed 0:41:18 remaining 2:47:59
+2026-10-31 11:00:32,762 INFO    stt.trainercore: [exp_0001_final_trial_001] step 50 of 156 (32.1%) (epoch 1.28) train_loss 1.7620 val_loss - lr 1.12e-05 grad_norm 13.906 86.27 s/step elapsed 0:43:40 remaining 2:32:25
+2026-10-31 11:03:12,366 INFO    stt.trainercore: [exp_0001_final_trial_001] step 55 of 156 (35.3%) (epoch 1.41) train_loss 1.6093 val_loss - lr 1.07e-05 grad_norm 12.531 94.03 s/step elapsed 0:46:20 remaining 2:38:17
+2026-10-31 11:05:57,107 INFO    stt.trainercore: [exp_0001_final_trial_001] step 60 of 156 (38.5%) (epoch 1.54) train_loss 1.6602 val_loss - lr 1.02e-05 grad_norm 12.547 98.25 s/step elapsed 0:49:05 remaining 2:37:12
+2026-10-31 11:07:41,402 INFO    stt.trainercore: [exp_0001_final_trial_001] step 60 of 156 (38.5%) (epoch 1.54) train_loss 1.6602 val_loss 0.4868 lr 1.02e-05 grad_norm 12.547 98.25 s/step elapsed 0:50:49 remaining 2:37:12
+2026-10-31 11:13:44,067 INFO    stt.trainercore: [exp_0001_final_trial_001] step 65 of 156 (41.7%) (epoch 1.67) train_loss 1.6310 val_loss - lr 9.63e-06 grad_norm 13.090 97.62 s/step elapsed 0:56:52 remaining 2:28:04
+2026-10-31 11:16:24,274 INFO    stt.trainercore: [exp_0001_final_trial_001] step 70 of 156 (44.9%) (epoch 1.80) train_loss 1.5362 val_loss - lr 9.11e-06 grad_norm 11.145 96.45 s/step elapsed 0:59:32 remaining 2:18:15
+2026-10-31 11:19:10,194 INFO    stt.trainercore: [exp_0001_final_trial_001] step 75 of 156 (48.1%) (epoch 1.93) train_loss 1.4445 val_loss - lr 8.59e-06 grad_norm 10.706 99.54 s/step elapsed 1:02:18 remaining 2:14:23
+2026-10-31 11:21:41,002 INFO    stt.trainercore: [exp_0001_final_trial_001] step 80 of 156 (51.3%) (epoch 2.05) train_loss 1.4207 val_loss - lr 8.06e-06 grad_norm 9.619 89.81 s/step elapsed 1:04:49 remaining 1:53:46
+2026-10-31 11:23:23,087 INFO    stt.trainercore: [exp_0001_final_trial_001] step 80 of 156 (51.3%) (epoch 2.05) train_loss 1.4207 val_loss 0.4662 lr 8.06e-06 grad_norm 9.619 89.81 s/step elapsed 1:06:31 remaining 1:53:46
+2026-10-31 11:28:54,937 INFO    stt.trainercore: [exp_0001_final_trial_001] step 85 of 156 (54.5%) (epoch 2.18) train_loss 1.2856 val_loss - lr 7.54e-06 grad_norm 11.367 102.76 s/step elapsed 1:12:03 remaining 2:01:36
+2026-10-31 11:31:15,454 INFO    stt.trainercore: [exp_0001_final_trial_001] step 90 of 156 (57.7%) (epoch 2.31) train_loss 1.3141 val_loss - lr 7.02e-06 grad_norm 11.229 83.43 s/step elapsed 1:14:23 remaining 1:31:47
+2026-10-31 11:33:50,057 INFO    stt.trainercore: [exp_0001_final_trial_001] step 95 of 156 (60.9%) (epoch 2.44) train_loss 1.2997 val_loss - lr 6.49e-06 grad_norm 10.944 91.11 s/step elapsed 1:16:58 remaining 1:32:38
+2026-10-31 11:36:31,353 INFO    stt.trainercore: [exp_0001_final_trial_001] step 100 of 156 (64.1%) (epoch 2.57) train_loss 1.1859 val_loss - lr 5.97e-06 grad_norm 9.554 96.36 s/step elapsed 1:19:39 remaining 1:29:56
+2026-10-31 11:38:11,719 INFO    stt.trainercore: [exp_0001_final_trial_001] step 100 of 156 (64.1%) (epoch 2.57) train_loss 1.1859 val_loss 0.4622 lr 5.97e-06 grad_norm 9.554 96.36 s/step elapsed 1:21:19 remaining 1:29:56
+2026-10-31 11:44:09,740 INFO    stt.trainercore: [exp_0001_final_trial_001] step 105 of 156 (67.3%) (epoch 2.70) train_loss 1.2862 val_loss - lr 5.44e-06 grad_norm 10.546 87.55 s/step elapsed 1:27:17 remaining 1:14:25
+2026-10-31 11:46:24,684 INFO    stt.trainercore: [exp_0001_final_trial_001] step 110 of 156 (70.5%) (epoch 2.83) train_loss 1.3172 val_loss - lr 4.92e-06 grad_norm 13.303 79.78 s/step elapsed 1:29:32 remaining 1:01:10
+2026-10-31 11:48:57,551 INFO    stt.trainercore: [exp_0001_final_trial_001] step 115 of 156 (73.7%) (epoch 2.95) train_loss 1.2550 val_loss - lr 4.4e-06 grad_norm 11.210 88.71 s/step elapsed 1:32:05 remaining 1:00:37
+2026-10-31 11:51:27,579 INFO    stt.trainercore: [exp_0001_final_trial_001] step 120 of 156 (76.9%) (epoch 3.08) train_loss 1.0932 val_loss - lr 3.87e-06 grad_norm 10.543 88.94 s/step elapsed 1:34:35 remaining 0:53:22
+2026-10-31 11:53:09,971 INFO    stt.trainercore: [exp_0001_final_trial_001] step 120 of 156 (76.9%) (epoch 3.08) train_loss 1.0932 val_loss 0.4553 lr 3.87e-06 grad_norm 10.543 88.94 s/step elapsed 1:36:18 remaining 0:53:22
+2026-10-31 11:57:47,244 INFO    stt.trainercore: [exp_0001_final_trial_001] step 125 of 156 (80.1%) (epoch 3.21) train_loss 1.1070 val_loss - lr 3.35e-06 grad_norm 10.136 103.93 s/step elapsed 1:40:55 remaining 0:53:42
+2026-10-31 12:00:25,609 INFO    stt.trainercore: [exp_0001_final_trial_001] step 130 of 156 (83.3%) (epoch 3.34) train_loss 1.0996 val_loss - lr 2.83e-06 grad_norm 10.183 94.97 s/step elapsed 1:43:33 remaining 0:41:09
+2026-10-31 12:03:02,966 INFO    stt.trainercore: [exp_0001_final_trial_001] step 135 of 156 (86.5%) (epoch 3.46) train_loss 1.0424 val_loss - lr 2.3e-06 grad_norm 9.956 94.76 s/step elapsed 1:46:11 remaining 0:33:10
+2026-10-31 12:05:46,458 INFO    stt.trainercore: [exp_0001_final_trial_001] step 140 of 156 (89.7%) (epoch 3.59) train_loss 1.1408 val_loss - lr 1.78e-06 grad_norm 10.235 95.53 s/step elapsed 1:48:54 remaining 0:25:29
+2026-10-31 12:07:26,808 INFO    stt.trainercore: [exp_0001_final_trial_001] step 140 of 156 (89.7%) (epoch 3.59) train_loss 1.1408 val_loss 0.4571 lr 1.78e-06 grad_norm 10.235 95.53 s/step elapsed 1:50:34 remaining 0:25:29
+2026-10-31 12:12:30,505 INFO    stt.trainercore: [exp_0001_final_trial_001] step 145 of 156 (92.9%) (epoch 3.72) train_loss 1.0287 val_loss - lr 1.26e-06 grad_norm 10.276 68.77 s/step elapsed 1:55:38 remaining 0:12:37
+2026-10-31 12:14:44,073 INFO    stt.trainercore: [exp_0001_final_trial_001] step 150 of 156 (96.2%) (epoch 3.85) train_loss 1.0030 val_loss - lr 7.33e-07 grad_norm 10.358 79.52 s/step elapsed 1:57:52 remaining 0:07:57
+2026-10-31 12:17:08,519 INFO    stt.trainercore: [exp_0001_final_trial_001] step 155 of 156 (99.4%) (epoch 3.98) train_loss 1.0909 val_loss - lr 2.09e-07 grad_norm 9.397 85.42 s/step elapsed 2:00:16 remaining 0:01:25
+2026-10-31 12:19:11,305 INFO    stt.trainercore: [exp_0001_final_trial_001] step 156 of 156 (100.0%) (epoch 4.00) train_loss 1.0909 val_loss 0.4550 lr 2.09e-07 grad_norm 9.397 85.42 s/step elapsed 2:02:19 remaining 0:01:25
+2026-10-31 12:23:05,267 INFO    stt.trainercore: Run ended (max_steps). Model of step 156 saved in data\turbo_run\experiments\exp_0001\candidates\exp_0001_final_trial_001\exp_0001_final_trial_001_step_00156 (pipeline_model_info.json).
+2026-10-31 12:23:18,014 INFO    stt.featurepipeline: Encoder cache (val): all 139 clips are in data\turbo_run\encoder_cache\enc_c091ad3ca74af944_float16.
+2026-10-31 12:23:18,172 INFO    stt.orchestrator: Evaluating the finalist trial 1 model (exp_0001_final_trial_001_step_00156) on 139 files of 'val'.
+2026-10-31 12:23:23,502 INFO    stt.orchestrator: PROGRESS WER scoring of the finalist trial 1 on 'val': clip 2 of 139 (1.4%), elapsed 0:00:05, remaining about 0:06:05
+2026-10-31 12:23:53,658 INFO    stt.orchestrator: PROGRESS WER scoring of the finalist trial 1 on 'val': clip 14 of 139 (10.1%), elapsed 0:00:35, remaining about 0:05:17
+2026-10-31 12:24:27,236 INFO    stt.orchestrator: PROGRESS WER scoring of the finalist trial 1 on 'val': clip 26 of 139 (18.7%), elapsed 0:01:09, remaining about 0:05:00
+2026-10-31 12:24:59,828 INFO    stt.orchestrator: PROGRESS WER scoring of the finalist trial 1 on 'val': clip 38 of 139 (27.3%), elapsed 0:01:42, remaining about 0:04:30
+2026-10-31 12:25:33,853 INFO    stt.orchestrator: PROGRESS WER scoring of the finalist trial 1 on 'val': clip 50 of 139 (36.0%), elapsed 0:02:16, remaining about 0:04:01
+2026-10-31 12:26:06,307 INFO    stt.orchestrator: PROGRESS WER scoring of the finalist trial 1 on 'val': clip 60 of 139 (43.2%), elapsed 0:02:48, remaining about 0:03:41
+2026-10-31 12:26:40,884 INFO    stt.orchestrator: PROGRESS WER scoring of the finalist trial 1 on 'val': clip 72 of 139 (51.8%), elapsed 0:03:23, remaining about 0:03:09
+2026-10-31 12:27:16,523 INFO    stt.orchestrator: PROGRESS WER scoring of the finalist trial 1 on 'val': clip 84 of 139 (60.4%), elapsed 0:03:58, remaining about 0:02:36
+2026-10-31 12:27:51,884 INFO    stt.orchestrator: PROGRESS WER scoring of the finalist trial 1 on 'val': clip 96 of 139 (69.1%), elapsed 0:04:34, remaining about 0:02:03
+2026-10-31 12:28:22,214 INFO    stt.orchestrator: PROGRESS WER scoring of the finalist trial 1 on 'val': clip 106 of 139 (76.3%), elapsed 0:05:04, remaining about 0:01:35
+2026-10-31 12:28:55,490 INFO    stt.orchestrator: PROGRESS WER scoring of the finalist trial 1 on 'val': clip 116 of 139 (83.5%), elapsed 0:05:37, remaining about 0:01:07
+2026-10-31 12:29:29,775 INFO    stt.orchestrator: PROGRESS WER scoring of the finalist trial 1 on 'val': clip 128 of 139 (92.1%), elapsed 0:06:12, remaining about 0:00:32
+2026-10-31 12:30:02,067 INFO    stt.orchestrator: PROGRESS WER scoring of the finalist trial 1 on 'val': clip 138 of 139 (99.3%), elapsed 0:06:44, remaining about 0:00:03
+2026-10-31 12:30:07,659 INFO    stt.orchestrator: PROGRESS WER scoring of the finalist trial 1 on 'val': clip 139 of 139 (100.0%), elapsed 0:06:49, done
+2026-10-31 12:30:09,555 INFO    stt.evaluator: val (eval_version 1, model exp_0001_final_trial_001_step_00156): 139 files, 6397 words, WER 0.4157, mean per-file WER 0.4666, CER 0.1844; files with WER under 10%: 1.4%, under 20%: 2.9%; flags: empty_output 0, hit_length_cap 0, excluded_empty_reference 0; 409.5 s
+2026-10-31 12:30:10,458 INFO    stt.orchestrator: PROGRESS finalists: starting finalist 2 of 2 (50.0% done), elapsed 4:55:06, remaining about 4:55:06 (from the 1 finished) (trial 0: retraining, then its WER scoring on 'val')
+2026-10-31 12:30:25,565 INFO    stt.featurepipeline: Encoder cache (train): all 619 clips are in data\turbo_run\encoder_cache\enc_c091ad3ca74af944_float16.
+2026-10-31 12:30:25,768 INFO    stt.featurepipeline: Encoder cache (val): all 139 clips are in data\turbo_run\encoder_cache\enc_c091ad3ca74af944_float16.
+2026-10-31 12:30:25,774 INFO    stt.orchestrator: Finalist trial 0 with {'learning_rate': 5e-06}: 619 train and 139 val examples.
+2026-10-31 12:30:25,782 INFO    stt.trainercore: Freeze policy freeze_encoder: 171909120 of 808878080 parameters are trained.
+2026-10-31 12:31:02,560 INFO    stt.trainercore: [exp_0001_final_trial_000] step 1 of 156 (0.6%) (epoch 0.03) train_loss 4.0792 val_loss - lr 0 grad_norm 35.705 35.17 s/step elapsed 0:00:35 remaining 1:30:52
+2026-10-31 12:33:15,761 INFO    stt.trainercore: [exp_0001_final_trial_000] step 5 of 156 (3.2%) (epoch 0.13) train_loss 4.3622 val_loss - lr 4e-06 grad_norm 26.097 84.62 s/step elapsed 0:02:48 remaining 3:32:57
+2026-10-31 12:35:46,585 INFO    stt.trainercore: [exp_0001_final_trial_000] step 10 of 156 (6.4%) (epoch 0.26) train_loss 3.9156 val_loss - lr 4.87e-06 grad_norm 21.655 93.21 s/step elapsed 0:05:19 remaining 3:46:49
+2026-10-31 12:38:14,517 INFO    stt.trainercore: [exp_0001_final_trial_000] step 15 of 156 (9.6%) (epoch 0.39) train_loss 3.5086 val_loss - lr 4.7e-06 grad_norm 18.173 88.32 s/step elapsed 0:07:47 remaining 3:27:33
+2026-10-31 12:40:48,285 INFO    stt.trainercore: [exp_0001_final_trial_000] step 20 of 156 (12.8%) (epoch 0.52) train_loss 3.1698 val_loss - lr 4.54e-06 grad_norm 16.333 94.52 s/step elapsed 0:10:21 remaining 3:34:15
+2026-10-31 12:42:17,287 INFO    stt.trainercore: [exp_0001_final_trial_000] step 20 of 156 (12.8%) (epoch 0.52) train_loss 3.1698 val_loss 0.7504 lr 4.54e-06 grad_norm 16.333 94.52 s/step elapsed 0:11:50 remaining 3:34:15
+2026-10-31 12:45:56,155 INFO    stt.trainercore: [exp_0001_final_trial_000] step 25 of 156 (16.0%) (epoch 0.65) train_loss 2.8961 val_loss - lr 4.37e-06 grad_norm 15.378 71.98 s/step elapsed 0:15:29 remaining 2:37:10
+2026-10-31 12:48:12,671 INFO    stt.trainercore: [exp_0001_final_trial_000] step 30 of 156 (19.2%) (epoch 0.77) train_loss 2.8795 val_loss - lr 4.21e-06 grad_norm 13.473 81.51 s/step elapsed 0:17:45 remaining 2:51:11
+2026-10-31 12:50:42,758 INFO    stt.trainercore: [exp_0001_final_trial_000] step 35 of 156 (22.4%) (epoch 0.90) train_loss 2.7891 val_loss - lr 4.04e-06 grad_norm 14.200 89.56 s/step elapsed 0:20:15 remaining 3:00:37
+2026-10-31 12:53:05,838 INFO    stt.trainercore: [exp_0001_final_trial_000] step 40 of 156 (25.6%) (epoch 1.03) train_loss 2.4031 val_loss - lr 3.87e-06 grad_norm 13.784 88.12 s/step elapsed 0:22:38 remaining 2:50:22
+2026-10-31 12:54:34,831 INFO    stt.trainercore: [exp_0001_final_trial_000] step 40 of 156 (25.6%) (epoch 1.03) train_loss 2.4031 val_loss 0.6306 lr 3.87e-06 grad_norm 13.784 88.12 s/step elapsed 0:24:07 remaining 2:50:22
+2026-10-31 12:58:26,610 INFO    stt.trainercore: [exp_0001_final_trial_000] step 45 of 156 (28.8%) (epoch 1.15) train_loss 2.4360 val_loss - lr 3.71e-06 grad_norm 12.372 90.48 s/step elapsed 0:27:59 remaining 2:47:23
+2026-10-31 13:00:41,673 INFO    stt.trainercore: [exp_0001_final_trial_000] step 50 of 156 (32.1%) (epoch 1.28) train_loss 2.4354 val_loss - lr 3.54e-06 grad_norm 16.080 81.35 s/step elapsed 0:30:14 remaining 2:23:43
+2026-10-31 13:03:04,878 INFO    stt.trainercore: [exp_0001_final_trial_000] step 55 of 156 (35.3%) (epoch 1.41) train_loss 2.1946 val_loss - lr 3.38e-06 grad_norm 13.544 86.53 s/step elapsed 0:32:38 remaining 2:25:39
+2026-10-31 13:05:19,317 INFO    stt.trainercore: [exp_0001_final_trial_000] step 60 of 156 (38.5%) (epoch 1.54) train_loss 2.2742 val_loss - lr 3.21e-06 grad_norm 14.190 81.11 s/step elapsed 0:34:52 remaining 2:09:46
+2026-10-31 13:06:43,418 INFO    stt.trainercore: [exp_0001_final_trial_000] step 60 of 156 (38.5%) (epoch 1.54) train_loss 2.2742 val_loss 0.5865 lr 3.21e-06 grad_norm 14.190 81.11 s/step elapsed 0:36:16 remaining 2:09:46
+2026-10-31 13:10:25,140 INFO    stt.trainercore: [exp_0001_final_trial_000] step 65 of 156 (41.7%) (epoch 1.67) train_loss 2.2180 val_loss - lr 3.05e-06 grad_norm 13.296 93.85 s/step elapsed 0:39:58 remaining 2:22:20
+2026-10-31 13:12:42,283 INFO    stt.trainercore: [exp_0001_final_trial_000] step 70 of 156 (44.9%) (epoch 1.80) train_loss 2.1129 val_loss - lr 2.88e-06 grad_norm 12.774 84.05 s/step elapsed 0:42:15 remaining 2:00:28
+2026-10-31 13:14:50,972 INFO    stt.trainercore: [exp_0001_final_trial_000] step 75 of 156 (48.1%) (epoch 1.93) train_loss 1.9855 val_loss - lr 2.72e-06 grad_norm 14.226 77.39 s/step elapsed 0:44:24 remaining 1:44:29
+2026-10-31 13:16:53,062 INFO    stt.trainercore: [exp_0001_final_trial_000] step 80 of 156 (51.3%) (epoch 2.05) train_loss 1.9435 val_loss - lr 2.55e-06 grad_norm 12.163 72.60 s/step elapsed 0:46:26 remaining 1:31:58
+2026-10-31 13:18:18,841 INFO    stt.trainercore: [exp_0001_final_trial_000] step 80 of 156 (51.3%) (epoch 2.05) train_loss 1.9435 val_loss 0.5577 lr 2.55e-06 grad_norm 12.163 72.60 s/step elapsed 0:47:51 remaining 1:31:58
+2026-10-31 13:22:29,865 INFO    stt.trainercore: [exp_0001_final_trial_000] step 85 of 156 (54.5%) (epoch 2.18) train_loss 1.9725 val_loss - lr 2.38e-06 grad_norm 14.268 83.49 s/step elapsed 0:52:02 remaining 1:38:48
+2026-10-31 13:24:40,707 INFO    stt.trainercore: [exp_0001_final_trial_000] step 90 of 156 (57.7%) (epoch 2.31) train_loss 1.9782 val_loss - lr 2.22e-06 grad_norm 13.503 77.67 s/step elapsed 0:54:13 remaining 1:25:27
+2026-10-31 13:26:51,715 INFO    stt.trainercore: [exp_0001_final_trial_000] step 95 of 156 (60.9%) (epoch 2.44) train_loss 2.0030 val_loss - lr 2.05e-06 grad_norm 12.375 78.33 s/step elapsed 0:56:24 remaining 1:19:38
+2026-10-31 13:29:05,301 INFO    stt.trainercore: [exp_0001_final_trial_000] step 100 of 156 (64.1%) (epoch 2.57) train_loss 1.8459 val_loss - lr 1.89e-06 grad_norm 12.751 80.32 s/step elapsed 0:58:38 remaining 1:14:58
+2026-10-31 13:30:30,173 INFO    stt.trainercore: [exp_0001_final_trial_000] step 100 of 156 (64.1%) (epoch 2.57) train_loss 1.8459 val_loss 0.5423 lr 1.89e-06 grad_norm 12.751 80.32 s/step elapsed 1:00:03 remaining 1:14:58
+2026-10-31 13:34:08,572 INFO    stt.trainercore: [exp_0001_final_trial_000] step 105 of 156 (67.3%) (epoch 2.70) train_loss 1.9659 val_loss - lr 1.72e-06 grad_norm 13.832 91.66 s/step elapsed 1:03:41 remaining 1:17:55
+2026-10-31 13:36:16,202 INFO    stt.trainercore: [exp_0001_final_trial_000] step 110 of 156 (70.5%) (epoch 2.83) train_loss 1.9587 val_loss - lr 1.56e-06 grad_norm 16.100 75.16 s/step elapsed 1:05:49 remaining 0:57:37
+2026-10-31 13:38:26,611 INFO    stt.trainercore: [exp_0001_final_trial_000] step 115 of 156 (73.7%) (epoch 2.95) train_loss 1.8939 val_loss - lr 1.39e-06 grad_norm 13.980 78.43 s/step elapsed 1:07:59 remaining 0:53:36
+2026-10-31 13:40:24,989 INFO    stt.trainercore: [exp_0001_final_trial_000] step 120 of 156 (76.9%) (epoch 3.08) train_loss 1.7821 val_loss - lr 1.23e-06 grad_norm 13.297 70.99 s/step elapsed 1:09:58 remaining 0:42:36
+2026-10-31 13:41:46,559 INFO    stt.trainercore: [exp_0001_final_trial_000] step 120 of 156 (76.9%) (epoch 3.08) train_loss 1.7821 val_loss 0.5343 lr 1.23e-06 grad_norm 13.297 70.99 s/step elapsed 1:11:19 remaining 0:42:36
+2026-10-31 13:44:56,278 INFO    stt.trainercore: [exp_0001_final_trial_000] step 125 of 156 (80.1%) (epoch 3.21) train_loss 1.8136 val_loss - lr 1.06e-06 grad_norm 13.012 85.70 s/step elapsed 1:14:29 remaining 0:44:17
+2026-10-31 13:47:04,736 INFO    stt.trainercore: [exp_0001_final_trial_000] step 130 of 156 (83.3%) (epoch 3.34) train_loss 1.8132 val_loss - lr 8.94e-07 grad_norm 13.073 75.73 s/step elapsed 1:16:37 remaining 0:32:49
+2026-10-31 13:49:24,183 INFO    stt.trainercore: [exp_0001_final_trial_000] step 135 of 156 (86.5%) (epoch 3.46) train_loss 1.7457 val_loss - lr 7.28e-07 grad_norm 12.641 83.32 s/step elapsed 1:18:57 remaining 0:29:10
+2026-10-31 13:51:34,465 INFO    stt.trainercore: [exp_0001_final_trial_000] step 140 of 156 (89.7%) (epoch 3.59) train_loss 1.9040 val_loss - lr 5.63e-07 grad_norm 13.038 77.68 s/step elapsed 1:21:07 remaining 0:20:43
+2026-10-31 13:52:59,591 INFO    stt.trainercore: [exp_0001_final_trial_000] step 140 of 156 (89.7%) (epoch 3.59) train_loss 1.9040 val_loss 0.5304 lr 5.63e-07 grad_norm 13.038 77.68 s/step elapsed 1:22:32 remaining 0:20:43
+2026-10-31 13:56:21,277 INFO    stt.trainercore: [exp_0001_final_trial_000] step 145 of 156 (92.9%) (epoch 3.72) train_loss 1.7421 val_loss - lr 3.97e-07 grad_norm 12.788 90.52 s/step elapsed 1:25:54 remaining 0:16:36
+2026-10-31 13:58:32,775 INFO    stt.trainercore: [exp_0001_final_trial_000] step 150 of 156 (96.2%) (epoch 3.85) train_loss 1.7018 val_loss - lr 2.32e-07 grad_norm 13.596 78.26 s/step elapsed 1:28:05 remaining 0:07:50
+2026-10-31 14:00:50,624 INFO    stt.trainercore: [exp_0001_final_trial_000] step 155 of 156 (99.4%) (epoch 3.98) train_loss 1.8407 val_loss - lr 6.62e-08 grad_norm 12.221 84.54 s/step elapsed 1:30:23 remaining 0:01:25
+2026-10-31 14:02:30,598 INFO    stt.trainercore: [exp_0001_final_trial_000] step 156 of 156 (100.0%) (epoch 4.00) train_loss 1.8407 val_loss 0.5290 lr 6.62e-08 grad_norm 12.221 84.54 s/step elapsed 1:32:03 remaining 0:01:25
+2026-10-31 14:04:18,828 INFO    stt.trainercore: Run ended (max_steps). Model of step 156 saved in data\turbo_run\experiments\exp_0001\candidates\exp_0001_final_trial_000\exp_0001_final_trial_000_step_00156 (pipeline_model_info.json).
+2026-10-31 14:05:05,306 INFO    stt.featurepipeline: Encoder cache (val): all 139 clips are in data\turbo_run\encoder_cache\enc_c091ad3ca74af944_float16.
+2026-10-31 14:05:05,509 INFO    stt.orchestrator: Evaluating the finalist trial 0 model (exp_0001_final_trial_000_step_00156) on 139 files of 'val'.
+2026-10-31 14:05:35,035 INFO    stt.orchestrator: PROGRESS WER scoring of the finalist trial 0 on 'val': clip 2 of 139 (1.4%), elapsed 0:00:30, remaining about 0:33:43
+2026-10-31 14:06:09,407 INFO    stt.orchestrator: PROGRESS WER scoring of the finalist trial 0 on 'val': clip 16 of 139 (11.5%), elapsed 0:01:04, remaining about 0:08:11
+2026-10-31 14:06:39,598 INFO    stt.orchestrator: PROGRESS WER scoring of the finalist trial 0 on 'val': clip 28 of 139 (20.1%), elapsed 0:01:34, remaining about 0:06:13
+2026-10-31 14:07:13,039 INFO    stt.orchestrator: PROGRESS WER scoring of the finalist trial 0 on 'val': clip 40 of 139 (28.8%), elapsed 0:02:08, remaining about 0:05:16
+2026-10-31 14:07:46,185 INFO    stt.orchestrator: PROGRESS WER scoring of the finalist trial 0 on 'val': clip 52 of 139 (37.4%), elapsed 0:02:41, remaining about 0:04:29
+2026-10-31 14:08:17,157 INFO    stt.orchestrator: PROGRESS WER scoring of the finalist trial 0 on 'val': clip 62 of 139 (44.6%), elapsed 0:03:12, remaining about 0:03:58
+2026-10-31 14:08:52,876 INFO    stt.orchestrator: PROGRESS WER scoring of the finalist trial 0 on 'val': clip 74 of 139 (53.2%), elapsed 0:03:47, remaining about 0:03:20
+2026-10-31 14:09:27,156 INFO    stt.orchestrator: PROGRESS WER scoring of the finalist trial 0 on 'val': clip 86 of 139 (61.9%), elapsed 0:04:22, remaining about 0:02:41
+2026-10-31 14:09:59,020 INFO    stt.orchestrator: PROGRESS WER scoring of the finalist trial 0 on 'val': clip 98 of 139 (70.5%), elapsed 0:04:54, remaining about 0:02:03
+2026-10-31 14:10:32,440 INFO    stt.orchestrator: PROGRESS WER scoring of the finalist trial 0 on 'val': clip 110 of 139 (79.1%), elapsed 0:05:27, remaining about 0:01:26
+2026-10-31 14:11:06,971 INFO    stt.orchestrator: PROGRESS WER scoring of the finalist trial 0 on 'val': clip 122 of 139 (87.8%), elapsed 0:06:01, remaining about 0:00:50
+2026-10-31 14:11:37,157 INFO    stt.orchestrator: PROGRESS WER scoring of the finalist trial 0 on 'val': clip 132 of 139 (95.0%), elapsed 0:06:32, remaining about 0:00:21
+2026-10-31 14:12:01,804 INFO    stt.orchestrator: PROGRESS WER scoring of the finalist trial 0 on 'val': clip 139 of 139 (100.0%), elapsed 0:06:56, done
+2026-10-31 14:12:03,736 INFO    stt.evaluator: val (eval_version 1, model exp_0001_final_trial_000_step_00156): 139 files, 6397 words, WER 0.5166, mean per-file WER 0.6171, CER 0.2382; files with WER under 10%: 0.0%, under 20%: 0.7%; flags: empty_output 0, hit_length_cap 0, excluded_empty_reference 0; 416.3 s
+2026-10-31 14:12:04,783 INFO    stt.orchestrator: Stage finalists finished.
+2026-10-31 14:12:04,829 INFO    stt.orchestrator: Stage select_and_register starts.
+2026-10-31 14:12:14,609 INFO    stt.featurepipeline: Encoder cache (test): 131 of 131 clips are missing, about 0.50 GB in data\turbo_run\encoder_cache\enc_c091ad3ca74af944_float16; computing them once.
+2026-10-31 14:13:47,207 INFO    stt.featurepipeline: Encoder cache: 6 of 131 clips done, elapsed 93 s, remaining about 1929 s.
+2026-10-31 14:15:13,050 INFO    stt.featurepipeline: Encoder cache: 12 of 131 clips done, elapsed 178 s, remaining about 1770 s.
+2026-10-31 14:16:35,684 INFO    stt.featurepipeline: Encoder cache: 18 of 131 clips done, elapsed 261 s, remaining about 1639 s.
+2026-10-31 14:17:57,130 INFO    stt.featurepipeline: Encoder cache: 24 of 131 clips done, elapsed 343 s, remaining about 1527 s.
+2026-10-31 14:19:22,584 INFO    stt.featurepipeline: Encoder cache: 30 of 131 clips done, elapsed 428 s, remaining about 1441 s.
+2026-10-31 14:20:47,033 INFO    stt.featurepipeline: Encoder cache: 36 of 131 clips done, elapsed 512 s, remaining about 1352 s.
+2026-10-31 14:22:15,769 INFO    stt.featurepipeline: Encoder cache: 42 of 131 clips done, elapsed 601 s, remaining about 1274 s.
+2026-10-31 14:23:42,942 INFO    stt.featurepipeline: Encoder cache: 48 of 131 clips done, elapsed 688 s, remaining about 1190 s.
+2026-10-31 14:25:08,809 INFO    stt.featurepipeline: Encoder cache: 54 of 131 clips done, elapsed 774 s, remaining about 1104 s.
+2026-10-31 14:26:35,713 INFO    stt.featurepipeline: Encoder cache: 60 of 131 clips done, elapsed 861 s, remaining about 1019 s.
+2026-10-31 14:28:00,720 INFO    stt.featurepipeline: Encoder cache: 66 of 131 clips done, elapsed 946 s, remaining about 932 s.
+2026-10-31 14:29:30,602 INFO    stt.featurepipeline: Encoder cache: 72 of 131 clips done, elapsed 1036 s, remaining about 849 s.
+2026-10-31 14:30:59,504 INFO    stt.featurepipeline: Encoder cache: 78 of 131 clips done, elapsed 1125 s, remaining about 764 s.
+2026-10-31 14:32:33,769 INFO    stt.featurepipeline: Encoder cache: 84 of 131 clips done, elapsed 1219 s, remaining about 682 s.
+2026-10-31 14:34:07,818 INFO    stt.featurepipeline: Encoder cache: 90 of 131 clips done, elapsed 1313 s, remaining about 598 s.
+2026-10-31 14:35:36,298 INFO    stt.featurepipeline: Encoder cache: 96 of 131 clips done, elapsed 1402 s, remaining about 511 s.
+2026-10-31 14:37:01,964 INFO    stt.featurepipeline: Encoder cache: 102 of 131 clips done, elapsed 1487 s, remaining about 423 s.
+2026-10-31 14:38:26,595 INFO    stt.featurepipeline: Encoder cache: 108 of 131 clips done, elapsed 1572 s, remaining about 335 s.
+2026-10-31 14:39:55,299 INFO    stt.featurepipeline: Encoder cache: 114 of 131 clips done, elapsed 1661 s, remaining about 248 s.
+2026-10-31 14:41:21,830 INFO    stt.featurepipeline: Encoder cache: 120 of 131 clips done, elapsed 1747 s, remaining about 160 s.
+2026-10-31 14:42:44,602 INFO    stt.featurepipeline: Encoder cache: 126 of 131 clips done, elapsed 1830 s, remaining about 73 s.
+2026-10-31 14:43:54,624 INFO    stt.featurepipeline: Encoder cache: 131 of 131 clips done, elapsed 1900 s, remaining about 0 s.
+2026-10-31 14:43:54,753 INFO    stt.orchestrator: Evaluating the Test, finalist trial 1 model (exp_0001_final_trial_001_step_00156) on 131 files of 'test'.
+2026-10-31 14:44:00,978 INFO    stt.orchestrator: PROGRESS WER scoring of the Test, finalist trial 1 on 'test': clip 2 of 131 (1.5%), elapsed 0:00:06, remaining about 0:06:41
+2026-10-31 14:44:32,913 INFO    stt.orchestrator: PROGRESS WER scoring of the Test, finalist trial 1 on 'test': clip 14 of 131 (10.7%), elapsed 0:00:38, remaining about 0:05:19
+2026-10-31 14:45:04,536 INFO    stt.orchestrator: PROGRESS WER scoring of the Test, finalist trial 1 on 'test': clip 26 of 131 (19.8%), elapsed 0:01:10, remaining about 0:04:42
+2026-10-31 14:45:38,444 INFO    stt.orchestrator: PROGRESS WER scoring of the Test, finalist trial 1 on 'test': clip 38 of 131 (29.0%), elapsed 0:01:44, remaining about 0:04:14
+2026-10-31 14:46:10,619 INFO    stt.orchestrator: PROGRESS WER scoring of the Test, finalist trial 1 on 'test': clip 50 of 131 (38.2%), elapsed 0:02:16, remaining about 0:03:40
+2026-10-31 14:46:42,564 INFO    stt.orchestrator: PROGRESS WER scoring of the Test, finalist trial 1 on 'test': clip 62 of 131 (47.3%), elapsed 0:02:48, remaining about 0:03:07
+2026-10-31 14:47:14,990 INFO    stt.orchestrator: PROGRESS WER scoring of the Test, finalist trial 1 on 'test': clip 74 of 131 (56.5%), elapsed 0:03:20, remaining about 0:02:34
+2026-10-31 14:47:47,237 INFO    stt.orchestrator: PROGRESS WER scoring of the Test, finalist trial 1 on 'test': clip 86 of 131 (65.6%), elapsed 0:03:52, remaining about 0:02:02
+2026-10-31 14:48:18,893 INFO    stt.orchestrator: PROGRESS WER scoring of the Test, finalist trial 1 on 'test': clip 98 of 131 (74.8%), elapsed 0:04:24, remaining about 0:01:29
+2026-10-31 14:48:50,233 INFO    stt.orchestrator: PROGRESS WER scoring of the Test, finalist trial 1 on 'test': clip 108 of 131 (82.4%), elapsed 0:04:55, remaining about 0:01:03
+2026-10-31 14:49:22,876 INFO    stt.orchestrator: PROGRESS WER scoring of the Test, finalist trial 1 on 'test': clip 120 of 131 (91.6%), elapsed 0:05:28, remaining about 0:00:30
+2026-10-31 14:49:56,590 INFO    stt.orchestrator: PROGRESS WER scoring of the Test, finalist trial 1 on 'test': clip 131 of 131 (100.0%), elapsed 0:06:02, done
+2026-10-31 14:49:58,328 INFO    stt.evaluator: test (eval_version 1, model exp_0001_final_trial_001_step_00156): 131 files, 6258 words, WER 0.4375, mean per-file WER 0.5084, CER 0.2041; files with WER under 10%: 0.8%, under 20%: 5.3%; flags: empty_output 0, hit_length_cap 0, excluded_empty_reference 0; 361.8 s
+2026-10-31 14:50:08,275 INFO    stt.featurepipeline: Encoder cache (test): all 131 clips are in data\turbo_run\encoder_cache\enc_c091ad3ca74af944_float16.
+2026-10-31 14:50:08,315 INFO    stt.orchestrator: Evaluating the Test, baseline model (whisper-large-v3-turbo-ivrit) on 131 files of 'test'.
+2026-10-31 14:50:15,240 INFO    stt.orchestrator: PROGRESS WER scoring of the Test, baseline on 'test': clip 2 of 131 (1.5%), elapsed 0:00:07, remaining about 0:07:26
+2026-10-31 14:50:50,542 INFO    stt.orchestrator: PROGRESS WER scoring of the Test, baseline on 'test': clip 14 of 131 (10.7%), elapsed 0:00:42, remaining about 0:05:53
+2026-10-31 14:51:26,287 INFO    stt.orchestrator: PROGRESS WER scoring of the Test, baseline on 'test': clip 26 of 131 (19.8%), elapsed 0:01:18, remaining about 0:05:15
+2026-10-31 14:51:56,833 INFO    stt.orchestrator: PROGRESS WER scoring of the Test, baseline on 'test': clip 36 of 131 (27.5%), elapsed 0:01:49, remaining about 0:04:46
+2026-10-31 14:52:29,607 INFO    stt.orchestrator: PROGRESS WER scoring of the Test, baseline on 'test': clip 46 of 131 (35.1%), elapsed 0:02:21, remaining about 0:04:21
+2026-10-31 14:53:04,104 INFO    stt.orchestrator: PROGRESS WER scoring of the Test, baseline on 'test': clip 58 of 131 (44.3%), elapsed 0:02:56, remaining about 0:03:41
+2026-10-31 14:53:40,244 INFO    stt.orchestrator: PROGRESS WER scoring of the Test, baseline on 'test': clip 70 of 131 (53.4%), elapsed 0:03:32, remaining about 0:03:05
+2026-10-31 14:54:11,418 INFO    stt.orchestrator: PROGRESS WER scoring of the Test, baseline on 'test': clip 80 of 131 (61.1%), elapsed 0:04:03, remaining about 0:02:35
+2026-10-31 14:54:42,823 INFO    stt.orchestrator: PROGRESS WER scoring of the Test, baseline on 'test': clip 90 of 131 (68.7%), elapsed 0:04:34, remaining about 0:02:05
+2026-10-31 14:55:13,866 INFO    stt.orchestrator: PROGRESS WER scoring of the Test, baseline on 'test': clip 100 of 131 (76.3%), elapsed 0:05:06, remaining about 0:01:35
+2026-10-31 14:55:44,106 INFO    stt.orchestrator: PROGRESS WER scoring of the Test, baseline on 'test': clip 110 of 131 (84.0%), elapsed 0:05:36, remaining about 0:01:04
+2026-10-31 14:56:14,725 INFO    stt.orchestrator: PROGRESS WER scoring of the Test, baseline on 'test': clip 120 of 131 (91.6%), elapsed 0:06:06, remaining about 0:00:34
+2026-10-31 14:56:48,388 INFO    stt.orchestrator: PROGRESS WER scoring of the Test, baseline on 'test': clip 130 of 131 (99.2%), elapsed 0:06:40, remaining about 0:00:03
+2026-10-31 14:56:53,810 INFO    stt.orchestrator: PROGRESS WER scoring of the Test, baseline on 'test': clip 131 of 131 (100.0%), elapsed 0:06:46, done
+2026-10-31 14:56:55,941 WARNING stt.evaluator: 1 of 131 outputs hit the length cap (a looping model?); they are flagged in the result.
+2026-10-31 14:56:55,941 INFO    stt.evaluator: test (eval_version 1, model whisper-large-v3-turbo-ivrit): 131 files, 6258 words, WER 0.8202, mean per-file WER 1.0056, CER 0.3736; files with WER under 10%: 0.0%, under 20%: 0.0%; flags: empty_output 0, hit_length_cap 1, excluded_empty_reference 0; 405.5 s
+2026-10-31 14:57:11,204 INFO    stt.modelexporter: Exported model_0001 with hf_safetensors: ok.
+2026-10-31 14:57:11,216 INFO    stt.orchestrator: Stage select_and_register finished.
+2026-10-31 14:57:11,339 INFO    stt.orchestrator: VERDICT: winner. Trial 1 (learning_rate 1.58114e-05) is the winner: its Val WER is 0.4157 against 0.8224 for the baseline (improvement +0.4068; The candidate is better than the baseline at the 90% one-sided level (WER difference +0.4068, lower bound +0.3777, 11 groups)). The Test confirms it: Test WER 0.4375 for the winner against 0.8202 for the baseline (improvement +0.3827; The candidate is better than the baseline at the 90% one-sided level (WER difference +0.3827, lower bound +0.3602, 10 groups)).
+2026-10-31 14:57:11,359 INFO    stt.orchestrator: Test: confirmed. Registered as model_0001 in data\turbo_run\registry.
+2026-10-31 14:57:11,360 INFO    stt.orchestrator: Relative reduction of the Val WER against the baseline: 49.5% (target: 10%): reached
+2026-10-31 14:57:11,360 INFO    stt.orchestrator: The experiment is in: data\turbo_run\experiments\exp_0001
+2026-10-31 14:57:11,361 INFO    stt.orchestrator: To look at it, run in PowerShell from the project folder (after `$env:PYTHONPATH = "src"`):
+2026-10-31 14:57:11,361 INFO    stt.orchestrator:   python -m stt.runmanager list --dir data\turbo_run\experiments
+2026-10-31 14:57:11,361 INFO    stt.orchestrator:   python -m stt.runmanager show exp_0001 --dir data\turbo_run\experiments
+2026-10-31 14:57:11,361 INFO    stt.orchestrator:   python -m stt check

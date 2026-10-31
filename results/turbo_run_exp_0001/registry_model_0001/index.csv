@@ -1,0 +1,2 @@
+﻿entry_id,experiment_id,kind,verdict,eval_version,test_fingerprint,test_evaluations,val_wer,val_baseline_wer,val_delta_wer,val_verdict,test_status,test_wer,test_baseline_wer,test_verdict,trial_id,params,model_dir,code_version,generated_at
+model_0001,exp_0001,model,winner,1,213934a0839e21c19bbcce7453362fbe1c2d6be4d5bb449596083120cb59464c,1,0.41566359230889477,0.8224167578552446,0.4067531655463498,improved,confirmed,0.4375199744327261,0.8202301054650047,improved,1,"{""learning_rate"": 1.5811388e-05}",model_0001/model,0.0.0,2026-10-31T14:56:56

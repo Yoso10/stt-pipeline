@@ -1,0 +1,114 @@
+{
+ "schema_version": 1,
+ "entry_id": "model_0001",
+ "experiment_id": "exp_0001",
+ "kind": "model",
+ "verdict": "winner",
+ "base_model_name": "whisper-large-v3-turbo-ivrit",
+ "base_model_path": "models\\whisper-large-v3-turbo-ivrit",
+ "data_fingerprint": "349a08f9a17b140052fd0be1c23d6be61b5ce78e1a92894551f0f4325ae57b42",
+ "split_fingerprint": "e5889fa9e5e85a00679f975f55df63e34d488add8af7c376c23e13dde2489de7",
+ "subsample_fingerprint": "7fc4e3b230f6e17f84efa5f5f0b22d9c6ba2cfb263d4533298cc4602d19c779b",
+ "test_fingerprint": "213934a0839e21c19bbcce7453362fbe1c2d6be4d5bb449596083120cb59464c",
+ "config_ref": "exp_0001/config_full.yaml",
+ "eval_version": 1,
+ "val": {
+  "split": "val",
+  "model": "exp_0001_final_trial_001_step_00156",
+  "n_files": 139,
+  "n_words": 6397,
+  "wer": 0.41566359230889477,
+  "cer": 0.18439517260735336,
+  "wer_mean_per_file": 0.4666426885385071,
+  "share_files_wer_below": {
+   "0.1": 0.014388489208633094,
+   "0.2": 0.02877697841726619
+  },
+  "baseline_wer": 0.8224167578552446,
+  "delta_wer_vs_baseline": 0.4067531655463498,
+  "ci_low": 0.3777101418877559,
+  "ci_high": 0.43367807682152115,
+  "confidence": 0.9,
+  "verdict": "improved",
+  "n_groups": 11
+ },
+ "test": {
+  "split": "test",
+  "model": "exp_0001_final_trial_001_step_00156",
+  "n_files": 131,
+  "n_words": 6258,
+  "wer": 0.4375199744327261,
+  "cer": 0.204050844193362,
+  "wer_mean_per_file": 0.5083738434503945,
+  "share_files_wer_below": {
+   "0.1": 0.007633587786259542,
+   "0.2": 0.05343511450381679
+  },
+  "baseline_wer": 0.8202301054650047,
+  "delta_wer_vs_baseline": 0.3827101310322787,
+  "ci_low": 0.3601583845001399,
+  "ci_high": 0.4061287807367319,
+  "confidence": 0.9,
+  "verdict": "improved",
+  "n_groups": 10
+ },
+ "test_status": "confirmed",
+ "decode_settings": {
+  "num_beams": 1,
+  "max_new_tokens": 448,
+  "batch_size": 2,
+  "max_tokens_per_audio_sec": 8.0
+ },
+ "searched_params": {
+  "learning_rate": 1.5811388e-05
+ },
+ "finalists": [
+  {
+   "trial_id": 1,
+   "params": {
+    "learning_rate": 1.5811388e-05
+   },
+   "val_wer": 0.41566359230889477,
+   "delta_wer": 0.4067531655463498,
+   "verdict": "improved",
+   "val_loss": 0.45495355129241943,
+   "steps": 156,
+   "eligible": true,
+   "note": "WINNER"
+  },
+  {
+   "trial_id": 0,
+   "params": {
+    "learning_rate": 5e-06
+   },
+   "val_wer": 0.5166484289510708,
+   "delta_wer": 0.3057683289041738,
+   "verdict": "improved",
+   "val_loss": 0.5289894342422485,
+   "steps": 156,
+   "eligible": true,
+   "note": "eligible"
+  }
+ ],
+ "library_versions": {
+  "torch": "2.14.1",
+  "transformers": "5.18.0",
+  "numpy": "2.5.3",
+  "pydantic": "2.13.5",
+  "PyYAML": "6.0.3",
+  "soundfile": "0.14.0",
+  "scipy": "1.18.1",
+  "pyarrow": "25.0.1",
+  "accelerate": "1.15.0",
+  "safetensors": "0.8.0"
+ },
+ "seed": 42,
+ "code_version": "0.0.0",
+ "generated_at": "2026-10-31T14:56:56",
+ "selector_reason": "Trial 1 (learning_rate 1.58114e-05) is the winner: its Val WER is 0.4157 against 0.8224 for the baseline (improvement +0.4068; The candidate is better than the baseline at the 90% one-sided level (WER difference +0.4068, lower bound +0.3777, 11 groups)). The Test confirms it: Test WER 0.4375 for the winner against 0.8202 for the baseline (improvement +0.3827; The candidate is better than the baseline at the 90% one-sided level (WER difference +0.3827, lower bound +0.3602, 10 groups)).",
+ "warnings": [],
+ "trial_id": 1,
+ "steps": 156,
+ "val_loss": 0.45495355129241943,
+ "test_evaluations": 1
+}

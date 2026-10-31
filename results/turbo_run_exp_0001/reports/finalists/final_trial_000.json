@@ -1,0 +1,11 @@
+{
+ "trial_id": 0,
+ "params": {
+  "learning_rate": 5e-06
+ },
+ "model_dir": "data\\turbo_run\\experiments\\exp_0001\\candidates\\exp_0001_final_trial_000\\exp_0001_final_trial_000_step_00156",
+ "val_loss": 0.5289894342422485,
+ "steps": 156,
+ "best_step": 156,
+ "stopped_reason": "max_steps"
+}

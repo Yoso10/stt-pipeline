@@ -1,0 +1,19 @@
+{
+ "status": "ok",
+ "summary": {
+  "finalists": 2,
+  "best_trial": 1,
+  "best_val_wer": 0.4157,
+  "finalist_results": "[{\"trial\": 1, \"val_wer\": 0.4157, \"val_loss\": 0.45495, \"steps\": 156, \"model\": \"exp_0001_final_trial_001_step_00156\"}, {\"trial\": 0, \"val_wer\": 0.5166, \"val_loss\": 0.52899, \"steps\": 156, \"model\": \"exp_0001_final_trial_000_step_00156\"}]",
+  "val_split": "val",
+  "val_files": 139
+ },
+ "artifacts": [
+  "C:\\Users\\9090\\Desktop\\Work\\stt-pipeline\\data\\turbo_run\\experiments\\exp_0001\\reports\\finalists_report.txt",
+  "data\\turbo_run\\experiments\\exp_0001\\reports\\finalists\\final_trial_001.json",
+  "data\\turbo_run\\experiments\\exp_0001\\reports\\finalists\\final_trial_001.val.json",
+  "data\\turbo_run\\experiments\\exp_0001\\reports\\finalists\\final_trial_000.json",
+  "data\\turbo_run\\experiments\\exp_0001\\reports\\finalists\\final_trial_000.val.json"
+ ],
+ "error": null
+}

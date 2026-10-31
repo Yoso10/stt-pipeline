@@ -1,0 +1,29 @@
+{
+ "status": "ok",
+ "summary": {
+  "verdict": "winner",
+  "winner_trial": 1,
+  "baseline_val_wer": 0.8224,
+  "winner_val_wer": 0.4157,
+  "test_status": "confirmed",
+  "not_confirmed": 0,
+  "entry_id": "model_0001",
+  "entry_kind": "model",
+  "registry_dir": "data\\turbo_run\\registry",
+  "reason": "Trial 1 (learning_rate 1.58114e-05) is the winner: its Val WER is 0.4157 against 0.8224 for the baseline (improvement +0.4068; The candidate is better than the baseline at the 90% one-sided level (WER difference +0.4068, lower bound +0.3777, 11 groups)). The Test confirms it: Test WER 0.4375 for the winner against 0.8202 for the baseline (improvement +0.3827; The candidate is better than the baseline at the 90% one-sided level (WER difference +0.3827, lower bound +0.3602, 10 groups)).",
+  "best_trial": 1,
+  "best_val_wer": 0.4157,
+  "best_val_verdict": "improved",
+  "test_baseline_wer": 0.8202,
+  "test_winner_wer": 0.4375,
+  "export": "hf_safetensors ok"
+ },
+ "artifacts": [
+  "C:\\Users\\9090\\Desktop\\Work\\stt-pipeline\\data\\turbo_run\\experiments\\exp_0001\\reports\\selection.json",
+  "C:\\Users\\9090\\Desktop\\Work\\stt-pipeline\\data\\turbo_run\\experiments\\exp_0001\\reports\\selection_table.csv",
+  "C:\\Users\\9090\\Desktop\\Work\\stt-pipeline\\data\\turbo_run\\experiments\\exp_0001\\reports\\selection_reason.txt",
+  "data\\turbo_run\\registry\\model_0001\\model_card.json",
+  "data\\turbo_run\\registry\\model_0001\\exports.json"
+ ],
+ "error": null
+}

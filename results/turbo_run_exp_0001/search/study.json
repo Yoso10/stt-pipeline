@@ -1,0 +1,140 @@
+{
+ "schema_version": 1,
+ "space": {
+  "parameters": {
+   "learning_rate": {
+    "kind": "log_float",
+    "low": 5e-06,
+    "high": 5e-05,
+    "choices": [],
+    "points": 3
+   }
+  },
+  "strategy": "grid",
+  "seed": 42
+ },
+ "trials": [
+  {
+   "trial_id": 0,
+   "params": {
+    "learning_rate": 5e-06
+   },
+   "status": "complete",
+   "val_loss": 0.6927714943885803,
+   "steps": 156,
+   "seconds": 6655.2660000000615,
+   "model_dir": "data\\turbo_run\\experiments\\exp_0001\\candidates\\exp_0001_trial_000\\exp_0001_trial_000_step_00060",
+   "error": null,
+   "reports": [
+    [
+     20,
+     0.7717733383178711
+    ],
+    [
+     40,
+     0.6976861357688904
+    ],
+    [
+     60,
+     0.6927714943885803
+    ],
+    [
+     80,
+     0.7025444507598877
+    ],
+    [
+     100,
+     0.7203348875045776
+    ],
+    [
+     120,
+     0.7375041842460632
+    ],
+    [
+     140,
+     0.747882604598999
+    ],
+    [
+     156,
+     0.7506101131439209
+    ]
+   ]
+  },
+  {
+   "trial_id": 1,
+   "params": {
+    "learning_rate": 1.5811388e-05
+   },
+   "status": "complete",
+   "val_loss": 0.6844797134399414,
+   "steps": 120,
+   "seconds": 5057.436999999918,
+   "model_dir": "data\\turbo_run\\experiments\\exp_0001\\candidates\\exp_0001_trial_001\\exp_0001_trial_001_step_00020",
+   "error": null,
+   "reports": [
+    [
+     20,
+     0.6844797134399414
+    ],
+    [
+     40,
+     0.7062819600105286
+    ],
+    [
+     60,
+     0.7915061712265015
+    ],
+    [
+     80,
+     0.8356084823608398
+    ],
+    [
+     100,
+     0.8574055433273315
+    ],
+    [
+     120,
+     0.8692325949668884
+    ]
+   ]
+  },
+  {
+   "trial_id": 2,
+   "params": {
+    "learning_rate": 5e-05
+   },
+   "status": "complete",
+   "val_loss": 0.713563859462738,
+   "steps": 120,
+   "seconds": 5140.5,
+   "model_dir": "data\\turbo_run\\experiments\\exp_0001\\candidates\\exp_0001_trial_002\\exp_0001_trial_002_step_00020",
+   "error": null,
+   "reports": [
+    [
+     20,
+     0.713563859462738
+    ],
+    [
+     40,
+     0.8303670883178711
+    ],
+    [
+     60,
+     0.9230392575263977
+    ],
+    [
+     80,
+     0.95188969373703
+    ],
+    [
+     100,
+     0.9476989507675171
+    ],
+    [
+     120,
+     0.9479495286941528
+    ]
+   ]
+  }
+ ]
+}
