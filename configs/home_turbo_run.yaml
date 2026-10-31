@@ -1,0 +1,78 @@
+# How to run: the FULL `run` on THIS (HOME) LAPTOP with the turbo model, CPU only: baseline, search, 2 finalists trained fully, bootstrap against the baseline, the winner chosen, the Test scored ONCE, registry, export.
+#
+#   $env:PYTHONPATH = "src"
+#   .\.venv\Scripts\python.exe -m stt check --config configs\home_turbo_run.yaml
+#   .\.venv\Scripts\python.exe -m stt run   --config configs\home_turbo_run.yaml        (the same command with --experiment exp_NNNN resumes it; see docs\WORK_RUNBOOK.md, "Task 16")
+#
+# It extends configs\data_gmara.yaml (the same data, columns, filter and text rules as configs\home_turbo_full.yaml). Nothing here is written into src, tools or the other configs.
+# What is new against home_turbo_full.yaml: (1) the split is 70 / 15 / 15 so that Val and Test hold more lessons; (2) the whole `run` chain with a small search and 2 finalists; (3) the Test is scored once (select.test_confirmation true).
+# UNTESTED end to end with the turbo model.
+extends: data_gmara.yaml
+
+runtime:
+  device: cpu                       # the CPU (cuda or auto would use a GPU: not for this laptop)
+  seed: 42                          # the seed applied everywhere: split, subsample, search order, shuffling, training
+
+model:
+  path: models/whisper-large-v3-turbo-ivrit   # the turbo model folder on this laptop
+  dtype: float32                    # the exact CPU number format
+
+run:
+  experiments_dir: data/turbo_run/experiments   # NEW folder: every command makes exp_NNNN here; nothing from earlier runs is in it, so no Test marker exists
+registry:
+  dir: data/turbo_run/registry      # outside the experiments folder (a rule of the registry); the winner is registered here
+
+split:
+  mode: grouped_ratio               # whole lessons go to ONE part (a lesson is never in two parts); the seeded greedy fill that keeps the shares close to the ratios
+  ratios: [0.7, 0.15, 0.15]         # Train, Val, Test by duration: more Val and Test than before (was 0.8 / 0.1 / 0.1) so that Val holds enough lessons to rank finalists and to run the bootstrap
+  min_groups_per_split: 10          # the full split must give at least 10 lessons to every part (it does so by a wide margin). The SUBSET that is really used is smaller: its lessons are counted in docs\WORK_RUNBOOK.md, Task 16, and checked in subsample_report.txt after prepare
+
+subsample:
+  enabled: true
+  preset: work_like                 # the same preset as configs\work_like.yaml: one tenth of the audio, chosen by lesson, over Train, Val and Test (about 900 clips in all)
+  val_samples: null                 # a fixed Val slice cannot be combined with this preset: the Val loss uses the whole Val subset
+
+train:
+  freeze_policy: freeze_encoder     # train only the decoder (171.9 million of 808.9 million parameters); the only mode in which the encoder cache is valid
+  cpu_threads: 4                    # the PHYSICAL cores of this laptop
+  hyperparams:
+    learning_rate: 1.0e-5           # the base value; each search trial and finalist replaces it with its own value from search.parameters
+    batch_size: 4                   # clips per forward pass
+    grad_accum_steps: 4             # 4 x 4 = 16 clips per optimizer step
+    max_steps: 156                  # = 4 epochs of the real Train subset: 4 x ceil(619 / 16) = 4 x 39 (owner decision; it was 2 epochs = 78). ONE value for the search trials AND the finalists: there is no separate key
+    warmup_steps: 5                 # min(5, 156 // 20): the learning rate climbs from 0 for these steps
+  eval_every_steps: 20              # a Val-loss point every 20 steps: 8 points in 156 steps (20, 40, ... 140, and the end). Val loss picks the best checkpoint and ranks the search trials
+  log_every_steps: 5                # a line in metrics.csv every 5 steps (train loss, learning rate, seconds per step)
+  save_every_steps: 20              # a checkpoint every 20 steps (each about 4.6 GB; only the latest and the best are kept). A stopped training loses at most 20 steps (about 9 minutes)
+  save_optimizer_state: true        # true: a stopped training can be resumed
+
+features:
+  encoder_cache:
+    enabled: true                   # ON: the frozen encoder runs once per clip; its output is shared by the search trials, the finalists and every scoring (same results, far faster)
+    dir: data/turbo_run/encoder_cache  # about 3.84 MB per clip in float16
+    dtype: float16
+
+eval:
+  batch_size: 2                     # clips decoded together
+
+search:
+  strategy: grid                    # the values are taken from a fixed grid, in order (the shipped default)
+  n_trials: 3                       # three screening trials: the fewest that still LEAVE A CHOICE when 2 finalists are kept (with 2 trials both would be finalists and the search would rank nothing)
+  parameters:
+    learning_rate: {kind: log_float, low: 5.0e-6, high: 5.0e-5, points: 3}   # 5e-6, 1.58e-5, 5e-5. Naming only this key replaces the default space (which also tries grad_accum_steps)
+  pruning:
+    enabled: false                  # no trial is stopped early: with a few Val-loss points pruning could cut a good one
+  parallel_trials: 1                # one trial at a time (two at once would halve the threads of each and double the RAM)
+  finalists:
+    k: 2                            # the 2 best trials by Val loss are retrained on the FULL Train subset and scored by WER on Val
+  screening:
+    preset: tiny                    # the search trains on a 30-minute slice of Train (about 60 clips) and uses the whole Val subset for the Val loss
+
+select:
+  min_verdict: no_clear_difference  # a finalist is ELIGIBLE to win when its Val comparison with the baseline is at least "no clear difference" (the default "improved" demands proof). This guarantees a winner, hence a Test number, so the whole pipeline can be seen end to end. It does NOT make the result look better: the report still shows the bootstrap verdict, and the Test verdict (confirmed / not confirmed) stays honest
+  test_confirmation: true           # the Test is scored ONCE, for the winner and the baseline, after the winner is chosen on Val; the program refuses a second scoring
+
+progress:
+  interval_seconds: 30              # a progress line at most every 30 seconds
+report:
+  target_relative_wer_reduction: 0.10   # the aim: a Val WER at least 10% below the baseline of the same Val set
