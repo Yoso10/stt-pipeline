@@ -98,10 +98,14 @@ Train/Val/Test are split by group (lesson) so no group is in two parts. All choi
 | Running it alone, step by step; what each number means; failures | `docs/WORK_RUNBOOK.md`, `docs/USER_GUIDE.md`, `docs/RUNBOOK.md` |
 | A short guide for an operator who does not know the code | `docs/OPERATOR_GUIDE.md` |
 | What a finished run gives you; how to read and present the report | `docs/WHAT_YOU_GET.md` |
+| The finished run exp_0001 explained in plain Hebrew (report section by section, honest wording, what is not proven) | `docs/REPORT_EXPLAINED_exp_0001.md` |
+| Where the remaining errors of exp_0001 are (measured vs hypothesis, worst and best clips) | `docs/ERROR_ANALYSIS_exp_0001.md` |
 | What each component does | `docs/COMPONENTS.md`, `docs/COMPONENT_GUIDE.md` |
 | Every config key | `docs/CONFIG_REFERENCE.md` |
 | Preparing a new dataset | `docs/DATA_ONBOARDING.md` |
 | Something failed | `docs/TROUBLESHOOTING.md` |
 | Decisions, open issues, requirements, build order | `docs/DECISIONS.md`, `docs/OPEN_ISSUES.md`, `docs/PRD.md`, `docs/BUILD_ORDER.md` |
+
+Results: `results\` holds the small result files of the finished run (`results\turbo_run_exp_0001\`, open its `reports\report.html`) and of the earlier experiments (index: `results\README.txt`); model weights and the encoder cache are not in git.
 
 Folders: `src\stt\` code, `tools\` scripts, `configs\` settings, `docs\` documents, `tests\` tests (`python -m unittest discover -s tests`, about 10 minutes, offline).
