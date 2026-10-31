@@ -287,6 +287,10 @@ class ReportBuilder:
             if not any(m.val_loss is not None for h in data.final_histories.values() for m in h):
                 out += '<p class="na">These histories have no Val loss: only the training loss is drawn.</p>'
             out += self._noise_note(data, [m.val_loss for h in data.final_histories.values() for m in h])
+            for trial in sorted(data.final_histories):  # one chart, the best-checkpoint mark and the convergence verdict for EACH finalist, the same as the `-Step full` report
+                tag = f"trial {trial}" + (" (winner)" if trial == winner else "")
+                missing = f"Not available: no loss values were found in metrics/final_trial_{trial:03d}/metrics.csv."
+                out += f"<h4>Finalist {tag}: did the training converge?</h4>" + convergence.loss_curve_html(data.final_histories[trial], cap, warnings, f"Val loss and training loss, {tag}", missing, f"The training-loss curve of {tag}")
         if data.search_histories:
             series = []
             for i, trial in enumerate(sorted(data.search_histories)):
@@ -465,18 +469,23 @@ class ReportBuilder:
         if result is None or not result.review.entries:
             return self._na("the listening list", "the review list inside the Val result of the winner or the baseline")
         folder = None if data.settings.absolute_audio_paths else data.run_info.data_folder
+        base = data.baseline_val  # the untrained model's text beside the model's, when the listed model is not the baseline itself and the baseline kept its per-file results
+        baseline_text = {f.sample_id: f.hypothesis for f in base.files} if base is not None and base is not result else {}
         rows = []
         shortened = 0
         for e in result.review.entries:
             shown = relative_to_folder(e.audio_path, folder)
             shortened += shown != e.audio_path.as_posix()
-            rows.append([_e(e.reason), _e(e.sample_id), _num(e.wer, 2), _hebrew(e.reference), _hebrew(e.hypothesis), _hebrew(e.diff), _link(e.audio_path, shown)])
-        text = f"<p>Files of {self._model_label(data)} on {_e(result.split_name)} to listen to (worst first, then random ones). Differences: <code>[a-&gt;b]</code> replaced, <code>[-a-]</code> missing, <code>[+b+]</code> extra. No audio is embedded: open the file path.</p>"
+            row = [_e(e.reason), _e(e.sample_id), _num(e.wer, 2), _hebrew(e.reference)]
+            if baseline_text:
+                row.append(_hebrew(baseline_text[e.sample_id]) if e.sample_id in baseline_text else "-")
+            rows.append(row + [_hebrew(e.hypothesis), _hebrew(e.diff), _link(e.audio_path, shown)])
+        text = f"<p>Files of {self._model_label(data)} on {_e(result.split_name)} to listen to (worst first, then random ones). Differences: <code>[a-&gt;b]</code> replaced, <code>[-a-]</code> missing, <code>[+b+]</code> extra. No audio is embedded: open the file path." + (" Baseline output = what the untrained model wrote for the same file.</p>" if baseline_text else "</p>")
         where = (
             f"<p class='small'>Audio paths are shown relative to the data folder <code>{_e(folder)}</code> (the links point at the real files; report.absolute_audio_paths = true shows the full paths).</p>" if folder and shortened
             else "<p class='small'>Audio paths are shown in full.</p>"
         )
-        return text + _table(["why", "file", "WER", "reference", "model output", "differences", "audio file"], rows, numeric=(2,)) + where, True
+        return text + _table(["why", "file", "WER", "reference", *(["baseline output"] if baseline_text else []), "model output", "differences", "audio file"], rows, numeric=(2,)) + where, True
 
     # ---- (k) run information --------------------------------------------------------------------------------------------------
     def _run_info(self, data: ReportData) -> tuple[str, bool]:

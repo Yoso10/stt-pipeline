@@ -576,5 +576,47 @@ class AudioPathTests(unittest.TestCase):
         self.assertEqual(relative_to_folder(Path("data/extracted/daf_yomi"), "data/extracted/daf_yomi"), "data/extracted/daf_yomi")  # nothing left to show
 
 
+class RunReportFinalistCurveTests(unittest.TestCase):
+    """The `run` report shows, for EACH retrained finalist, the loss chart with the best-checkpoint mark and the convergence verdict of the `-Step full` report (Task 16c, DECISIONS 91)."""
+
+    def test_each_finalist_gets_its_own_chart_the_best_checkpoint_mark_and_the_verdict_in_the_words_of_the_full_report(self) -> None:
+        from stt.reportbuilder.convergence import verdict_of
+
+        improving = history([2.0, 1.5, 1.2], [2.2, 1.6, 1.3])
+        overfit = history([1.0, 0.9, 1.0, 1.1, 1.2], [1.5, 1.3, 1.1, 1.0, 0.9])
+        html = build(replace(full_data(), final_histories={1: improving, 2: overfit}))
+        self.assertIn("Finalist trial 1 (winner): did the training converge?", html)
+        self.assertIn("Finalist trial 2: did the training converge?", html)
+        self.assertIn("best checkpoint: step 20", html)  # trial 1: the lowest Val loss is the last point, step 20
+        self.assertIn("best checkpoint: step 10", html)  # trial 2: the lowest Val loss is at step 10
+        self.assertIn("Still improving at the end", html)
+        self.assertIn("Overfitting: the Val loss rose after step 10", html)
+        for history_ in (improving, overfit):
+            self.assertIn(verdict_of(history_).english, html)  # the very sentence of the `-Step full` report
+
+    def test_a_flat_finalist_is_a_plateau_and_too_few_points_is_said(self) -> None:
+        flat = history([1.0, 0.5, 0.4999, 0.4998], [1.1, 0.6, 0.55, 0.5])
+        one_point = history([None, 1.0, None], [1.1, 1.0, 0.9])
+        html = build(replace(full_data(), final_histories={1: flat, 2: one_point}))
+        self.assertIn("Plateau: the Val loss stopped falling", html)
+        self.assertIn("Not enough points to judge: only 1 Val-loss point(s)", html)
+
+    def test_a_history_with_training_loss_only_says_there_are_no_val_points(self) -> None:
+        html = build(replace(full_data(), final_histories={1: history([None, None, None], [2.0, 1.5, 1.2])}))
+        self.assertIn("Not enough points to judge: only 0 Val-loss point(s)", html)
+
+    def test_the_listening_list_shows_the_baseline_text_beside_the_models_text(self) -> None:
+        base = result("baseline", [replace(f, hypothesis="טקסט של הבסיס") for f in files_with([3] * 40)])
+        html = build(replace(full_data(), baseline_val=base))
+        listening = html.split("Listening list")[1]
+        self.assertIn("baseline output", listening)
+        self.assertIn("טקסט של הבסיס", listening)
+        self.assertIn("Baseline output = what the untrained model wrote", listening)
+
+    def test_a_retained_baseline_has_no_baseline_column_because_it_is_the_listed_model(self) -> None:
+        html = build(full_data(winner=False))
+        self.assertNotIn("baseline output", html.split("Listening list")[1])
+
+
 if __name__ == "__main__":
     unittest.main()

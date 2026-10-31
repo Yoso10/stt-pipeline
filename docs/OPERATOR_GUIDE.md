@@ -32,9 +32,25 @@ Search the copy for `<<< FILL IN`. Never edit the original `turbo_full.yaml`.
 | 3c | continue: **the exact same command as #2** | finished steps are skipped, the training continues from its last checkpoint, cached clips are not recomputed | seconds to start | `Resuming from ... (step N)` | if it says `config differs` (exit 2): you changed a setting; restore it |
 | 4 | `Start-Process (Get-ChildItem <your run.experiments_dir> -Recurse -Filter report.html \| Sort-Object LastWriteTime \| Select-Object -Last 1).FullName` | opens the newest report in the browser. The folder with all results is your `run.experiments_dir` (in the template `data\work_cpu\experiments`; the home file uses `data\turbo_full\experiments`); the report itself is `exp_NNNN\reports\report.html` | seconds | a page with a coloured verdict line | no page: run `.\tools\run_work.ps1 -Step report -Config ... -ExperimentsDir ... -Experiment exp_NNNN` |
 | 5 | `.\tools\run_work.ps1 -Step final-test -Config configs\my_turbo_full.yaml -Experiment exp_NNNN` (exp_NNNN = the TRAINING experiment; `full_run_state.json` lists it as `train`; add `-ExperimentsDir` if the yaml's `run.experiments_dir` is not the script default `data\work_cpu\experiments`) | scores the sealed Test clips ONCE for the baseline and the trained model; then rebuild the report with `-Step report -Experiment exp_NNNN` | roughly half an hour for about 100 clips (ESTIMATED) | `test_result.json` appears and the report gains a "Test: CONFIRMED / NOT CONFIRMED" block | a second call is refused with exit code 3: that is the rule, not a fault |
-| 6 | no simple command: the trained model is already a normal folder `exp_NNNN\candidates\exp_NNNN_trial_001\exp_NNNN_trial_001_step_NNNNN\`; copy it as it is | the registry and `export` belong to the advanced `python -m stt run` path (`registry`, `export model_0001`) | | | advanced; see `docs\RUNBOOK.md` and `docs\WORK_RUNBOOK.md` ("the older operator guide") |
+| 6 | no simple command: the trained model is already a normal folder `exp_NNNN\candidates\exp_NNNN_trial_001\exp_NNNN_trial_001_step_NNNNN\`; copy it as it is | the registry and `export` belong to the advanced `python -m stt run` path (`registry`, `export model_0001`) | | | advanced; see `docs\RUNBOOK.md` and `docs\WORK_RUNBOOK.md` ("the older operator guide"). Verified on a real `run` (exp_0001): the registered model is `<registry.dir>\model_0001\model\`, see the next section |
 
 Use `-Dry` at the end of command 2 to print the plan without running anything.
+
+## The other path: the whole pipeline with `python -m stt run` (checked on a real turbo run, exp_0001, 2026-10-31)
+
+Not the commands above: this path trains 3 search trials and 2 finalists, chooses the winner on Val, scores the Test ONCE, registers and exports the model. It took 13 h 25 min on the home laptop. The differences from the table above, all seen on the real run:
+
+| Item | In the table above (`run_work.ps1 -Step full`) | In `python -m stt run` |
+|---|---|---|
+| Start | command 2 | `$env:PYTHONPATH = "src"` then `.\.venv\Scripts\python.exe -m stt run --config configs\home_turbo_run.yaml`; the same command with `--experiment exp_0001` resumes |
+| End of the run | prints `DONE. OPEN THE REPORT: <path>` | prints a `VERDICT:` line and does NOT write `report.html` |
+| The report (command 4 needs it first) | already written | `.\.venv\Scripts\python.exe -m stt report --experiment exp_0001 --config configs\home_turbo_run.yaml`, then open `<run.experiments_dir>\exp_0001\reports\report.html` |
+| Loss files | `metrics\trial_001\metrics.csv` (see the note below) | search trials `metrics\trial_000..002\metrics.csv`, finalists `metrics\final_trial_000..001\metrics.csv` |
+| The trained model | `candidates\exp_NNNN_trial_001\...step_NNNNN\` | `<registry.dir>\model_0001\model\` (the folder to copy; the candidate folder is moved there) |
+| The Test (command 5) | a separate step, `final-test` | done inside the run; do NOT run `final-test` afterwards (the marker `reports\test_once.json` exists; that a second look is refused with exit code 3 is the documented rule, UNTESTED on this run). Files: `reports\test_result_baseline.json`, `reports\test_result_trial_<N>.json` |
+| What to send for help | the table below | also `reports\selection.json`, `reports\search_trials.json`, `reports\finalists_report.txt` and the metrics files; not `candidates\`, `registry\` or the cache |
+
+Note on names (unverified, tools were not changed): `tools\run_work.ps1 -Step train` prints `LOOK AT: ...\metrics\trial_000\metrics.csv`, while this guide and `docs\WORK_RUNBOOK.md` say `trial_001` for the single `train` command (an earlier `train` experiment on this laptop, `data\part6_tmp\experiments\exp_0001`, has `trial_001`). If one name is not there, list the folder: `Get-ChildItem <exp>\metrics`.
 
 ## If you see this, do this
 

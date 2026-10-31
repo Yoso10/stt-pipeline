@@ -464,6 +464,262 @@ Get-Content "$($run.FullName)\metrics\trial_001\metrics.csv" -Tail 4        # on
 - **Safe:** this task changed only `README.md` and `docs\WORK_RUNBOOK.md` (documents). The code, the configs and the tools that the work run uses are untouched; nothing needs to be pulled. Pull later, after the run ends, and only if you want the new text.
 - **UNTESTED:** the sample lines marked FORMAT; the timeline; the first-hour pauses of the second encoder pass; the self-check with the real turbo model on 3 Val clips; the work-machine commands in 13d (each is read-only but none was run on that machine); `inspect_audio.py` on CSV data (it reads parquet only); everything listed in 12g.
 
+## Task 16: the full `run` (search, 2 finalists, bootstrap, Test once) with the turbo model on THIS laptop
+
+Written 2026-10-31. First version (2026-10-31): docs and one new config only. Task 16c (same day) then changed 2 files in `src\stteportbuilder` (DECISIONS 91; see 16i), the config and the numbers below; nothing in `tools` or in another config. The training has NOT been started by the agent. Written for the owner. The config is `configs\home_turbo_run.yaml` (new; `home_turbo_full.yaml` and `turbo_full.yaml` are untouched).
+
+### 16a. The new split (70 / 15 / 15) and what I counted
+
+A scratch `prepare` (into the agent's scratch folder, not into `data`) with `home_turbo_run.yaml`:
+
+| Part | Full split (clips / lessons / hours) | The subset that is used (preset `work_like`) clips / lessons / minutes |
+|---|---|---|
+| Train | 6,102 / 496 / 50.66 h (ratio 0.700) | **619** / **51** / 309.0 |
+| Val | 1,312 / 108 / 10.89 h (ratio 0.150) | **139** / **11** / 69.2 |
+| Test | 1,309 / 106 / 10.87 h (ratio 0.150) | **131** / **10** / 65.3 |
+
+- **Split fingerprint `e5889fa9e5e85a00`; it DIFFERS from `5342b8562205736e`** (the old 80/10/10 split). The data fingerprint is the same (`349a08f9a17b1400`: same 8,723 clips).
+- **The minimum of 10 lessons is met** in Val (11) and Test (10), so no ratio change is proposed. **Test has exactly 10: there is no margin.** The result is deterministic (seed 42), so it will not drop below 10 by chance, but if you change a ratio, the seed or the data, count again (`subsample_report.txt` after `prepare`). `split.min_groups_per_split: 10` in the yaml guards the FULL split only; the subset's lessons are NOT guarded by any key, so read `subsample_report.txt` after prepare.
+- **Overlap with the old split, counted in code (read-only):** of the 131 new Test clips, **28 (2 of the 10 lessons) were in the old Test** that the whisper-tiny rehearsal scored once; 89 were in the old Train or Val (the tiny rehearsal trained on them); also 39 new Train clips and 30 new Val clips were in the old Test. So the new Test is not independent of the rehearsal's Test.
+- **No turbo experiment has scored any Test.** All 10 `test_once.json` files on disk (`part5_tmp`, `part8_tmp`, `part9_tmp`, `part11_tmp`, `phasec_tmp`, `phasee_tmp`, `rehearsal_run`) belong to tiny models (`tiny_whisper` / `whisper-tiny`); no `test_split_scored.json` exists anywhere; `data\turbo_run` does not exist yet; no turbo model was ever trained on these files.
+
+### 16b. What the config does, and my choices that you did not specify
+
+Steps (ONE value serves the search trials and the finalists; `train.hyperparams.max_steps` is the only step key, a search trial trains for at most that many steps):
+- **Finalists (UPDATED in Task 16c: 4 epochs, owner decision):** `max_steps = epochs x ceil(Train / 16) = 4 x ceil(619 / 16) = 4 x 39 = 156` steps (16 clips per step), **4.0 epochs**, a Val-loss point every **20** steps (20, 40, ... 140 and the end of training: 8 points), warmup `min(5, 156 // 20) = 5`, a checkpoint every 20 steps. (The first version of this section used 2 epochs = 78 steps.)
+- **Search trials:** the same 156 steps, but on the **screening slice**: the preset `tiny` = 30 minutes of Train, about 60 clips (rehearsal: 61), so a trial is about **40 passes** over 60 clips, and the Val loss is measured on the whole Val subset (139 clips). Each trial's number is its BEST Val loss over its 8 evaluations, so the later overfitting steps do not worsen it; they mostly cost time. Longer trials are, if anything, fairer to the small learning rates (which reach their minimum later). The search is still a rough screen (UNTESTED with turbo). Their cache is the same as the finalists' (the 60 clips are part of Train).
+- **n_trials 3** (grid, 3 learning rates: 5e-6, 1.58e-5, 5e-5). With 2 finalists the smallest budget that still LEAVES A CHOICE is 3 (with 2 trials both would be finalists and nothing would be ranked). No search change can shorten a trial without a code change (one `max_steps`).
+
+My choices that you did not specify:
+
+| Choice | Value | Why |
+|---|---|---|
+| search.strategy / parameters | grid; only learning_rate, 5e-6 to 5e-5, 3 points | the shipped defaults; naming only learning_rate drops the default second parameter (grad_accum_steps) so 3 trials cover 3 learning rates |
+| search.pruning | off | with 4 Val points pruning could cut a good trial |
+| search.parallel_trials | 1 | two at once would halve the threads and double RAM |
+| search.screening.preset | tiny (default) | smallest screening; cost of a trial stays the 78 steps |
+| learning_rate base / batch / accumulation | 1e-5 / 4 / 4 | the values of `home_turbo_full.yaml` |
+| eval_every / save_every / log_every | 20 / 20 / 5 | about 8 Val-loss points in 156 steps; saves aligned with the evaluations |
+| save_optimizer_state | true | needed to resume a stopped training |
+| eval.batch_size | 2 | as before |
+| cpu_threads | 4 | the physical cores |
+| split.min_groups_per_split | 10 | your rule, for the full split |
+| select.min_verdict | **no_clear_difference** (APPLIED in Task 16c, owner decision) | guarantees a winner, hence a Test number |
+| registry.dir | data\turbo_run\registry | outside the experiments folder (a rule) |
+| run.prevent_sleep | left at the default true | the program keeps Windows awake while `run` is active |
+
+**Applied in Task 16c (owner decision): `select.min_verdict: no_clear_difference`.** A finalist is now eligible when its Val comparison with the baseline is at least "no clear difference"; the best eligible one wins and the Test is scored once for it and the baseline, so you get a Test number whatever the Val proof says. It does not flatter the result: the report still prints the bootstrap verdict (`improved` / `no clear difference` / `worse`), the top line says `No proven improvement` when the winner is not proven, and the Test says CONFIRMED or NOT confirmed. If every finalist is `worse`, the baseline is still retained and the Test is not scored.
+
+`check` on the config: "Everything checked is fine." `config-docs` (written to a scratch file, not over `docs\CONFIG_REFERENCE.md`): **188 keys, unchanged**. There is **no dry run for `run`** (`-Dry` belongs to `run_work.ps1`, which does not run `run`). At the start of `run` the program prints `PLAN: ...` lines only if a `benchmark` experiment with the same model and thread count is in the experiments folder; a new folder has none, so it prints "no benchmark numbers ... the run goes on without a planned time" (optional: `python -m stt benchmark --config configs\home_turbo_run.yaml` first; CPU-heavy, minutes; it makes `exp_0001`, then the run is `exp_0002`).
+
+### 16c. Estimates (each line: M = measured on this laptop, E = estimated by scaling)
+
+Clips: Val 139, Test 131, Train 619 (60 of them are the screening slice). Constants: encoder 14.8 s/clip (E, from 8 clips; supported by M: the baseline of 101 Val clips took 1681 s = 16.6 s/clip with decoding, no cache), training 26.7 s/step (E, from a 4-clip step x 4), Val loss 0.67 s/clip (E), decoding 2.9 s/clip (E).
+
+| # | Part | Calculation | Time | Basis |
+|---|---|---|---|---|
+| 1 | prepare | reads 8,723 rows | 1 to 5 min | M (73 s in work_like, a scratch prepare today took about a minute) |
+| 2 | baseline: encoder pass Val | 139 x 14.8 s | 34 min | E |
+| 2b | baseline decode on Val | 139 x 2.9 s | 7 min | E |
+| 3 | search: encoder pass of the 60 screening clips | 61 x 14.8 s | 15 min | E |
+| 3b | each search trial (3) | load 1.5 + 156 x 26.7 s (69 min) + 8 Val-loss passes x 93 s (12 min) + about 8 checkpoint writes of 4.6 GB and the model folder (8 to 16 min, not timed) | about **95 min** each (88 to 105), **4.75 h** for 3; if early stopping fires at step 140 (see 16c-2) about 7 min less each | E |
+| 4 | finalists: encoder pass of the other 558 Train clips (once) | 558 x 14.8 s | 2 h 18 min | E |
+| 4b | each finalist (2) | the same 95 min + Val decode 139 x 2.9 s (7 min) | about 102 min each, **3 h 24 min** for 2 | E |
+| 5 | Test: encoder pass | 131 x 14.8 s | 32 min | E |
+| 5b | Test decode, winner and baseline | 2 x 131 x 2.9 s | 13 min | E |
+| 5c | register and export (copies the 3.2 GB model) | | 2 to 5 min | E |
+| 6 | report (`stt report`, separate) | | 2 to 5 min | E |
+
+**Total about 12.4 hours (range 11.5 to 13.5)** with 156 steps (it was 8.7 h with 78 steps: +3.7 h). The four encoder passes (889 clips, 3.65 h) happen once; a repeat on the same files skips them. The total assumes that a finalist is eligible (with `no_clear_difference` almost always); if every finalist is worse than the baseline, part 5 is skipped (about 0.8 h less).
+
+Clock times: start + cumulative: prepare done **+0:03**; baseline done **+0:46**; search done **+5:46**; finalists done **+11:28**; Test and registry done **+12:18**; report **+12:23**. Formula: `(Get-Date $start).AddHours(12.4).ToString('ddd HH:mm')`; at any time: finish = now + remaining of the current stage + the stages after it (table above).
+
+Disk (GiB; a trained folder = the 3.1 GiB model + checkpoints at 4.3 GiB each; M: one trial folder measured 7.4 GiB with ONE checkpoint, i.e. the latest is also the best; the worst case keeps TWO checkpoints, the latest and a different best):
+
+| Item | Normal | Worst case |
+|---|---|---|
+| 5 trainings (3 trials + 2 finalists; unchanged by the 156 steps: only the latest and the best checkpoint are kept) | 5 x 7.4 = 37.0 | 5 x 11.7 = 58.5 (+4.3 for a moment while a new checkpoint is written next to the other two: E, not verified) |
+| encoder cache (889 clips x 3.84 MB) | 3.2 | 3.2 |
+| registry copy of the winner | 3.1 | 3.1 |
+| reports, logs, baseline | 0.1 | 0.1 |
+| **Total** | **about 43.4** | **about 64.9** |
+| Free now | **49.5 GiB** (53.1 GB) | **49.5 GiB** |
+| Verdict | fits with about 6 GiB to spare | **does NOT fit** |
+
+Nothing is deleted by the program during the run (all trial folders stay). Propose: have **70 GiB or more** free before the start (free 21 GiB more; your cleanup earlier gave 92 GiB), or accept the risk of a full disk in the last hours: the run stops with exit code 4 and the same command (with `--experiment`) continues after you free space. Peak RAM: **6.3 GiB** (M, one 4-clip training step) plus Windows; free RAM now **0.8 GB** (see 16d).
+
+### 16d. Machine report (2026-10-31)
+
+| Item | Value |
+|---|---|
+| CPU | 11th Gen Intel Core i5-1135G7 @ 2.40 GHz: 4 physical cores, 8 threads |
+| RAM | 16.9 GB total; **0.8 GB available now** (`probe_env` said 1.06 GB free) |
+| Disk | 53.1 GB = **49.5 GiB free** on C: |
+| Python / torch | 3.12.14 / 2.14.1+cpu (no CUDA) |
+| Power plan | Balanced; AC sleep, AC hibernate, display = never; battery 100%, charging; hibernate on battery = 4 h; lid action not readable here; Windows Update service stopped |
+| Turbo model folder | OK: passes the model-folder check |
+
+Biggest RAM users now: **Edge 7.6 GB**, Chrome 1.4 GB, VS Code 1.2 GB, svchost 0.8 GB, WebView2 0.6 GB, Claude 0.3 GB, Defender 0.3 GB, Notion 0.3 GB.
+
+**Verdict: the laptop CAN run the turbo `run`, but NOT as it is right now.** Two conditions: (1) RAM: close Edge, Chrome, Notion and every other program until the counter shows 9 or more (`(Get-Counter '\Memory\Available MBytes').CounterSamples.CookedValue / 1024`); a restart is the surest way; start from a normal PowerShell window, not from VS Code; (2) disk: the normal case fits (6 GiB spare), the worst case does not; free to 70 GiB or more.
+
+**Using the laptop during the run:** the run uses all 4 physical cores and 6.3 GiB of RAM for about 9 hours. You can leave it alone, or do light work: one document, a text editor, a few light browser tabs (keep free RAM above 3 GB at all times). Avoid: video calls, many tabs, Edge or Chrome with video, other Python or model work, Docker, builds, antivirus scans, large copies. Anything heavy slows the run (more minutes per step) or, with RAM below 1 GB, makes Windows swap or the run fail with exit code 4 (out of memory; the same command continues). Overnight: yes, with AC connected, sleep and hibernate off (they are on AC; the program also blocks sleep), the lid left open (the lid action was not readable: set it with `powercfg /setacvalueindex SCHEME_CURRENT SUB_BUTTONS LIDACTION 0` then `powercfg /setactive SCHEME_CURRENT`, a proposal), Windows Update paused for a week (Settings -> Windows Update -> Pause), no restart, and the disk condition met. Put the laptop on a hard surface (heat slows the CPU). All fixes are proposals; I changed nothing on the system.
+
+### 16e. Report check (from the code, nothing run)
+
+`run` does NOT write `report.html`. The page is built by the separate command `python -m stt report --experiment exp_NNNN --config configs\home_turbo_run.yaml` (it reads stored files, recomputes nothing, refuses while the run holds the experiment). The rehearsal's report was made that way.
+
+| Wanted in the report | In the `run` report? |
+|---|---|
+| Train-loss and Val-loss curves per finalist | **Yes**: "Training curves", "Retrained finalists: Val loss (solid) and training loss (dashed)", one colour per finalist, the winner marked; plus the Val loss of each search trial. Source: `metrics\final_trial_00T\metrics.csv` and `metrics\trial_00T\metrics.csv` |
+| Best-checkpoint mark (green ring) | **Yes since Task 16c (DECISIONS 91)**: one chart per finalist with the mark `best checkpoint: step N`, the same chart as the `-Step full` report. (Before: no.) |
+| Verdict "still improving / plateau / overfitting" | **Yes since Task 16c**: under each finalist's chart, the same sentence as the `-Step full` report (computed from the Val-loss points); the hints `overfitting`, `no_learning`, `unstable_training` stay as advice |
+| Finalists table (WER, CER, difference, interval, bootstrap verdict, Val loss, steps, eligible / WINNER) | **Yes** (+ a bar chart and an interval chart) |
+| Bootstrap verdicts | **Yes** (table, top paragraph, Test paragraph) |
+| Test result | **Yes**: "Test confirmation (looked at once): CONFIRMED / NOT confirmed", Test WER of baseline and winner, and the bootstrap sentence; only when a finalist won |
+| Best / worst clips | **Partly**: the "Listening list" of the winner on Val (worst first, then random ones) with reference, **baseline output (new in Task 16c)**, model output and differences. The 15-worst / 15-best table is only in the `-Step full` report |
+| Also in the page | WER histogram, WER by lesson, search table, correlations with clip attributes, hints, run information, history of registered runs |
+
+**The change proposed earlier was APPROVED and made in Task 16c** (DECISIONS 91; `convergence.py`, `builder.py`, 5 new tests): in `_curves` each finalist gets its chart with the best-checkpoint mark and the verdict, through the existing `convergence.verdict_of`; no key, no dependency. Source of the curves unchanged: `metrics\final_trial_00T\metrics.csv`.
+
+Where the loss histories are: `data\turbo_run\experiments\exp_NNNN\metrics\final_trial_001\metrics.csv` and `final_trial_002` (the finalists), `trial_000` to `trial_002` (the search trials). Open the report: see 16f(4).
+
+### 16f. The commands (PowerShell, copy and paste)
+
+(1) **Start** (a normal PowerShell window; nothing else open). `run_work.ps1` has no `run` step, so the Python command is used:
+
+```
+cd C:\Users\9090\Desktop\Work\stt-pipeline
+$env:PYTHONPATH = "src"
+.\.venv\Scripts\python.exe -m stt check --config configs\home_turbo_run.yaml
+$start = Get-Date; "START: $start"
+.\.venv\Scripts\python.exe -m stt run --config configs\home_turbo_run.yaml
+```
+
+The terminal shows the log lines (they also go to `logs\run.log`); the only thing on stdout is a JSON summary at the end. The first experiment is `exp_0001` (`exp_0002` if you ran `benchmark` first).
+
+(2) **Watch** (second window; read-only):
+
+```
+cd C:\Users\9090\Desktop\Work\stt-pipeline
+$dir = 'data\turbo_run\experiments'
+$run = Get-ChildItem $dir -Directory -Filter 'exp_*' | Sort-Object Name | Select-Object -Last 1; $run.Name
+Get-Content "$($run.FullName)\logs\run.log" -Tail 20 -Wait                                   # live; Ctrl+C stops only the watching
+Get-Content "$($run.FullName)\logs\run.log" | Select-String 'Stage |Trial |Finalist|PROGRESS|Search progress|Encoder cache|step [0-9]+ of|VERDICT' | Select-Object -Last 5
+Get-ChildItem "$($run.FullName)\metrics" -Directory | Sort-Object LastWriteTime | Select-Object -Last 1 | ForEach-Object { Get-Content "$($_.FullName)\metrics.csv" -Tail 4 }   # step, train_loss, val_loss of the training that is running now
+Get-Content "$($run.FullName)\status.json"                                                    # which stages are ok
+(Get-Counter '\Memory\Available MBytes').CounterSamples.CookedValue / 1024; (Get-PSDrive C).Free / 1GB     # free RAM and disk, GB
+```
+
+(3) **Resume** after Ctrl+C, a crash, a power loss, out of memory or a full disk: fix the cause, then the SAME config with the experiment number (without `--experiment` a NEW experiment would start and redo everything):
+
+```
+.\.venv\Scripts\python.exe -m stt run --config configs\home_turbo_run.yaml --experiment exp_0001
+```
+
+Finished stages are skipped; an interrupted trial or finalist continues from its last complete checkpoint; cached clips are not recomputed; a finished Test result is kept, but a Test look that was started and did not finish is NOT repeated (it fails with `TestAlreadyEvaluatedError`): do not press Ctrl+C during the Test scoring unless you must. Ctrl+C once = a safe stop (exit code 130). The config must not change.
+
+(4) **Report, then open it** (after `VERDICT:` and `Registered as model_0001` appear):
+
+```
+.\.venv\Scripts\python.exe -m stt report --experiment exp_0001 --config configs\home_turbo_run.yaml
+Start-Process data\turbo_run\experiments\exp_0001\reports\report.html
+```
+
+(5) **What the console shows.** REAL = copied from the whisper-tiny rehearsal log of this laptop (`data\rehearsal_run`, numbers differ); FORMAT = from the code, example numbers.
+
+| Stage | Line |
+|---|---|
+| prepare (REAL) | `Stage prepare starts.` ... `Stage prepare finished.` |
+| plan (REAL, only with a benchmark) | `PLAN: planned time of `python -m stt run` with the current settings: about 37 min (from the benchmark of exp_0001: ...)` then `PLAN:      3 min  baseline on Val (101 clips, WER)` ... |
+| baseline (REAL) | `Stage evaluate starts.` `Evaluating the baseline model (whisper-large-v3-turbo-ivrit) on 139 files of 'val'.` |
+| encoder pass (FORMAT) | `Encoder cache (val): 139 of 139 clips are missing, about 0.53 GB in ...; computing them once.` then every 5%: `Encoder cache: 7 of 139 clips done, elapsed 104 s, remaining about 1960 s.` and `Encoder cache self-check passed on 3 clips (largest relative loss difference ...)` |
+| baseline scoring (REAL format) | `PROGRESS WER scoring of the baseline on 'val': clip 8 of 139 (5.8%), elapsed 0:00:23, remaining about 0:06:40` then `val (eval_version 1, model whisper-large-v3-turbo-ivrit): 139 files, ... WER 0.8, ... CER ...` |
+| search (REAL) | `Stage search starts.` `Search (grid, up to 3 trials, 1 parallel) on 61 Train and 139 Val samples.` `Trial 0 with {'learning_rate': 5e-06}: 61 train and 139 val examples, 4 thread(s).` then training lines (below) and `Search progress: trial 1 of 3 finished (33.3%), elapsed 0:50:00, remaining about 1:40:00 (...). Trial 0 complete {'learning_rate': 5e-06} (Val loss 1.77).` |
+| training step (REAL format) | `[exp_0001_trial_000] step 19 of 78 (24.4%) (epoch 0.49) train_loss 4.1 val_loss 2.0 lr 9.1e-06 grad_norm 12.0 26.7 s/step elapsed 0:08:27 remaining 0:26:15` (`val_loss -` between the Val points) |
+| training end (REAL) | `Run ended (max_steps). Model of step 78 saved in ...\candidates\exp_0001_trial_000\exp_0001_trial_000_step_00078 (pipeline_model_info.json).` |
+| finalists (REAL) | `Stage finalists starts.` `Retraining 2 finalist(s) on 619 Train samples (Val loss on 139 samples, WER on the 139 samples of 'val').` `PROGRESS finalists: starting finalist 1 of 2 (0.0% done), ... remaining unknown until the first finalist is finished (trial 2: retraining, then its WER scoring on 'val')` `Finalist trial 2 with {...}: 619 train and 139 val examples.` `Evaluating the finalist trial 2 model (...) on 139 files of 'val'.` |
+| selection and Test (REAL) | `Stage select_and_register starts.` `Evaluating the Test, finalist trial 2 model (...) on 131 files of 'test'.` `Evaluating the Test, baseline model (whisper-large-v3-turbo-ivrit) on 131 files of 'test'.` `Exported model_0001 with hf_safetensors: ok.` |
+| end (REAL) | `VERDICT: winner. Trial 2 (learning_rate ...) is the winner: its Val WER is ... against ... for the baseline (improvement +...; The candidate is better than the baseline at the 90% one-sided level ...)` `Test: confirmed. Registered as model_0001 in data\turbo_run\registry.` `Relative reduction of the Val WER against the baseline: ...% (target: 10%): reached / not reached`; or `baseline retained` when no finalist is proven. In the rehearsal, a trial that fails (a `PermissionError` on the final rename, antivirus) was recorded as `failed` and the search went on |
+
+### 16g. Result files, and how to take them to another machine
+
+Results are never in git. `run` leaves, in `data\turbo_run\experiments\exp_NNNN\`:
+
+| Small (copy out; text/JSON/CSV) | Large (do NOT copy) |
+|---|---|
+| `config_full.yaml`, `config_diff.yaml`, `run_info.json`, `status.json`, `logs\run.log` | `candidates\...` (5 trained folders, each about 3.1 GiB model + about 4.3 GiB checkpoints) |
+| `metrics\*\metrics.csv` (the loss histories), `search\study.json`, `search\*.params.json` | `data\turbo_run\encoder_cache\` (3.4 GB) |
+| `reports\`: `report.html` (after `stt report`), `load_report.txt`, `filter_report.txt`, `split_report.txt`, `subsample_report.txt`, `text_report.txt`, `rejected.csv`, `search_report.txt`, `search_screening.txt`, `search_trials.json`, `finalists_report.txt`, `finalists\*.json`, `eval_result_baseline.json`, `evaluation_baseline.json`, `predictions_baseline.csv`, `review_baseline.txt`, `selection.json`, `selection_reason.txt`, `selection_table.csv`, `test_once.json`, `test_result_*.json`, `stage_results\*.json` | the registry model folder `data\turbo_run\registry\model_0001\model\` (3.2 GB; the card, `MODEL_CARD.md`, `SHA256SUMS`, `exports.json`, `review_list.txt`, `index.csv` next to it are small) |
+
+The reports contain sentences of your data; the zip below is for your own use.
+
+**Gather ONLY the small files into one zip** (PowerShell 5.1; set `$exp` to the experiment; writes the zip to your Desktop; excludes folders named candidates / checkpoints / model / encoder_cache, model and audio extensions, and any file of 20 MB or more; tested today on the rehearsal folder: 59 files, 398 KB, 0 forbidden entries):
+
+```
+cd C:\Users\9090\Desktop\Work\stt-pipeline
+$exp = 'data\turbo_run\experiments\exp_0001'; $reg = 'data\turbo_run\registry'; $zip = "$env:USERPROFILE\Desktop\results_$(Split-Path $exp -Leaf).zip"
+Remove-Item $zip -ErrorAction SilentlyContinue
+$skipDir = '\\(candidates|checkpoints|model|encoder_cache)\\'; $skipExt = '.safetensors','.bin','.pt','.pth','.npy','.wav','.mp3','.flac','.ogg','.onnx','.gguf'
+$files = @(); foreach ($root in @($exp, $reg)) { if (Test-Path $root) { $base = (Resolve-Path $root).Path; $files += Get-ChildItem $root -Recurse -File | Where-Object { ($_.FullName.Substring($base.Length) -notmatch $skipDir) -and ($skipExt -notcontains $_.Extension.ToLower()) -and ($_.Length -lt 20MB) } | ForEach-Object { [pscustomobject]@{ Path = $_.FullName; Entry = ((Split-Path $root -Leaf) + '/' + $_.FullName.Substring($base.Length + 1).Replace('\', '/')) } } } }
+Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
+$za = [System.IO.Compression.ZipFile]::Open($zip, 'Create'); foreach ($f in $files) { [void][System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($za, $f.Path, $f.Entry) }; $za.Dispose()
+"files: $($files.Count); zip: {0:N1} KB; SHA-256: {1}" -f ((Get-Item $zip).Length/1KB), (Get-FileHash $zip -Algorithm SHA256).Hash
+```
+
+On the other machine check with `Get-FileHash <zip> -Algorithm SHA256` against the printed value. Run it after the run has ended (the log is still being written before).
+
+**Did the run finish or stop, and which experiment was it?** Read-only:
+
+```
+$env:PYTHONPATH = "src"; .\.venv\Scripts\python.exe -m stt.runmanager list --dir data\turbo_run\experiments      # exp_0001  completed|running|failed|stopped
+Get-Content data\turbo_run\experiments\exp_0001\status.json                                                   # "status" and each stage: ok / failed, and "reason"
+Select-String 'VERDICT|Registered as|Run ended|ERROR' data\turbo_run\experiments\exp_0001\logs\run.log | Select-Object -Last 4
+Test-Path data\turbo_run\experiments\exp_0001\run.lock       # True while a run holds it (a stale lock is renamed run.lock.stale_...)
+```
+
+`status` `completed` with all five stages `ok` = finished (also when the verdict is `baseline_retained`); `stopped` = Ctrl+C (resume with `--experiment`); `failed` = read `reason`; the exit code is 0 / 130 / 2 to 5 as in the exit-code table.
+
+### 16h. UNTESTED
+
+The whole `run` with the turbo model (every number in 16c is an estimate); the search on 60 clips with turbo (and whether its ranking means anything); the 5 trainings' checkpoint writes at this disk size, and the worst-case disk figure; the resume of a turbo trial or finalist after Ctrl+C; the Test scoring, the registry copy and the automatic export with a 3.2 GB model; the `PLAN` lines (no benchmark in the new folder); the `FORMAT` console lines; the lid action; Defender's effect on 5 trainings; the zip command on a real turbo experiment (it was tested on the rehearsal folder); the proposed report change (not made).
+
+### 16i. Task 16c: what changed after the owner's two decisions (this block overrides the older numbers above)
+
+**What is final now** (`configs\home_turbo_run.yaml`; `check`: "Everything checked is fine."; `config-docs`: 188 keys, unchanged):
+
+| Setting | Final value |
+|---|---|
+| split | 70 / 15 / 15, grouped_ratio, seed 42; subset 619 / 139 / 131 clips, 51 / 11 / 10 lessons |
+| search | grid, `n_trials` 3, learning rate 5e-6 / 1.58e-5 / 5e-5, `finalists.k` 2, no pruning |
+| steps | `max_steps` 156 (4 epochs), `eval_every_steps` 20, `save_every_steps` 20, `warmup_steps` 5 |
+| selection | `min_verdict: no_clear_difference`, `test_confirmation: true` |
+| cache, device | encoder cache on (float16) in `data\turbo_run\encoder_cache`, cpu, 4 threads |
+
+**16c-1. Cost of 4 epochs (E = estimated).** One training: 156 x 26.7 s = 69 min, 8 Val-loss passes x 93 s = 12 min, about 8 checkpoint writes of 4.6 GB plus the model folder = 8 to 16 min, load 1.5 min: about **95 min** (it was about 50). Trials: 3 x 95 = 4.75 h (it was 2.5 h); finalists with their Val decode: 2 x 102 = 3.4 h (it was 1.9 h). **Added: about 3.7 h; new total about 12.4 h (range 11.5 to 13.5).** Disk: unchanged in the steady state, because only the latest and the best checkpoint are kept per training: 43.4 GiB normal, 64.9 GiB worst case, free now 49.5 GiB (the same advice: 70 GiB or more free). More writes: about 8 checkpoint writes per training instead of 4 (about 184 GB written in all instead of about 92 GB, E).
+
+**16c-2. Early stopping (existing settings: patience 5 evaluations, no minimum improvement).** The counter counts evaluations in a row without a new lowest Val loss; at 5 the training stops, saves, and the model folder is built from the BEST checkpoint (`stopped_reason: early_stopping`, the stage is `ok`). There are 8 evaluations (steps 20, 40, ..., 140 and 156). It can fire only if the lowest Val loss was at step 20 or 40, and then it stops at step 140, saving 16 steps (about 7 minutes). Likely on the 60-clip search slice (40 passes overfit), unlikely for a finalist. So it shortens the search by at most about 20 minutes in all; it does not cut the cost in a useful way.
+
+**16c-3. Does 156 steps on the 60-clip slice make the search ranking worse?** Not in the number that ranks: each trial's Val loss is its best over its evaluations, so later overfitting does not lower the score, and a low learning rate now has time to reach its minimum, which is fairer to it. But the ranking still measures "which rate fits 60 clips best", not "which rate is best for 619 clips x 4 epochs", and the extra 78 steps cost about 2.2 h of the search for little information. **A shorter search than the finalists WITHOUT a new key is not possible:** `max_steps` is one key for both. Existing keys that act only on the search are no good here: `search.pruning` (a median rule that stops a clearly worse trial; with 3 trials it hardly acts), `search.time_budget_minutes` (a trial stopped by the budget is recorded as failed, not as a result). `train.early_stopping.patience` would act on the finalists too. I left everything as it is; a separate `search.max_steps` would be a NEW key (ask first).
+
+**16c-4. The report (DECISIONS 91).** The `run` report now has, for each finalist, its loss chart with the green best-checkpoint mark and the convergence sentence (still improving / plateau / overfitting / too few points), and the winner's listening list has the baseline output beside the model output. Tests: 5 new in `tests\test_reportbuilder.py`; the whole suite result is in the report of Task 16c.
+
+**16c-5. The final run-start block** (a normal PowerShell window, nothing else open; free RAM above 9 GB and free disk above 70 GiB first):
+
+```
+cd C:\Users\9090\Desktop\Work\stt-pipeline
+$env:PYTHONPATH = "src"
+(Get-Counter '\Memory\Available MBytes').CounterSamples.CookedValue / 1024        # want 9 or more (GB)
+(Get-PSDrive C).Free / 1GB                                                         # want 70 or more (GiB)
+.\.venv\Scripts\python.exe -m stt check --config configs\home_turbo_run.yaml        # must end with: Everything checked is fine.
+$start = Get-Date; "START: $start   expected end about: $($start.AddHours(12.4).ToString('ddd HH:mm'))"
+.\.venv\Scripts\python.exe -m stt run --config configs\home_turbo_run.yaml
+```
+
+Watch (second window): the block (2) of 16f. **Resume** after any stop (same config, with the experiment number): `.\.venv\Scripts\python.exe -m stt run --config configs\home_turbo_run.yaml --experiment exp_0001`. **Report and open it** (after `VERDICT:` appears; the run does not write it): `.\.venv\Scripts\python.exe -m stt report --experiment exp_0001 --config configs\home_turbo_run.yaml` then `Start-Process data\turbo_run\experiments\exp_0001\reports\report.html`. The first experiment is `exp_0001` unless you run `benchmark` first (then the run is `exp_0002`; use the number the screen prints: `The experiment is in: ...`).
+
+**UNTESTED (added):** the 156-step trainings, the 8-checkpoint cadence and its write time, the early-stopping behaviour in a turbo run, the new report sections on a real turbo run (they were tested on tiny synthetic data), the 12.4 h estimate.
+
 ## How to run (the short version): what I type
 
 Four things, in this order (UNTESTED on the work machine; the same steps ran on the home laptop with the tiny model and, in parts, with the turbo model):

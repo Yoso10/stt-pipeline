@@ -2,7 +2,7 @@
 
 ## How to run (this is a reading guide, nothing to run)
 
-Written for: the owner, to present the result to colleagues who do not know the code. Read it next to a finished `report.html` (the path is printed on the last line of the run: `DONE. OPEN THE REPORT: ...`). Everything below comes from the report generator (`src/stt/reportbuilder/convergence.py`, `builder.py`), the run script and the stored files of earlier experiments on this laptop. No finished turbo `full` run existed on disk when this was written, so the report layout for that path is read from the code, not from a real page: **UNTESTED against a real turbo report**. The numbers in the examples are placeholders or come from the whisper-tiny rehearsal, and are marked.
+Written for: the owner, to present the result to colleagues who do not know the code. Read it next to a finished `report.html` (the path is printed on the last line of the run: `DONE. OPEN THE REPORT: ...`). Everything below comes from the report generator (`src/stt/reportbuilder/convergence.py`, `builder.py`), the run script and the stored files of earlier experiments on this laptop. There are TWO paths and they leave different files and different report pages: (a) the script path `run_work.ps1 -Step full` (sections 2 and 3 below; its layout is read from the code, **UNTESTED against a real turbo `full` report**), and (b) the command `python -m stt run` (section 2b and 3b below; **checked against a real turbo run, `exp_0001`, on 2026-10-31**; walk-through with its real numbers: `docs\REPORT_EXPLAINED_exp_0001.md`, `docs\ERROR_ANALYSIS_exp_0001.md`). The numbers in the examples of sections 3 to 6 are placeholders or come from the whisper-tiny rehearsal, and are marked.
 
 ## 1. In five lines
 
@@ -36,6 +36,28 @@ A `full` run makes two experiment folders under `run.experiments_dir`: the BASEL
 
 Note: reports contain clip texts (Hebrew sentences from your data). "Small" means small in size; if the data are confidential, share numbers only.
 
+## 2b. The files of a `python -m stt run` (checked on exp_0001)
+
+One experiment folder (`<run.experiments_dir>\exp_0001`, here `data\turbo_run\experiments`), no `full_run_state.json`, no `exp_A`/`exp_B`. It was 46.4 GB, 175 files, and finished in 13 h 25 min (the estimate was 12.4 h). The `run` command does NOT write `report.html`: run `python -m stt report --experiment exp_0001 --config <yaml>` after the `VERDICT:` line (it only reads files).
+
+| Where (inside `exp_0001`) | What it is | Size |
+|---|---|---|
+| `status.json`, `run_info.json`, `config_full.yaml`, `config_diff.yaml`, `logs\run.log` | state of the 5 stages (`prepare`, `evaluate`, `search`, `finalists`, `select_and_register`), versions and seed, exact settings, the log | small |
+| `metrics\trial_000..002\metrics.csv` | loss by step of the 3 SEARCH trials (numbers start at 000) | small |
+| `metrics\final_trial_000..001\metrics.csv` | loss by step of the 2 retrained finalists | small |
+| `search\study.json`, `search\*.params.json` | the search state and each trial's parameters | small |
+| `reports\selection.json`, `selection_table.csv`, `selection_reason.txt` | the winner, the table, the reason with the intervals | small |
+| `reports\search_trials.json`, `search_report.txt`, `search_screening.txt`, `finalists_report.txt` | the search and the finalists | small |
+| `reports\evaluation_baseline.json`, `eval_result_baseline.json`, `predictions_baseline.csv`, `review_baseline.txt` | the baseline on Val (the last three contain text of the data) | small |
+| `reports\finalists\final_trial_00N.json`, `.val.json`, `predictions_final_trial_00N.csv`, `review_final_trial_00N.txt` | each finalist on Val (the trained scores are HERE; there is no `evaluation_trained.json`, `predictions_trained.csv` or `comparison.json` in a `run`) | small |
+| `reports\test_result_baseline.json`, `test_result_trial_<N>.json`, `test_once.json` | the Test, scored once for the baseline and the winner (not `test_result.json`); `test_once.json` is the "already looked" marker INSIDE the experiment (there is no `test_split_scored.json` in the experiments folder) | small |
+| `reports\report.html` | the report, written by `python -m stt report` | small |
+| `candidates\exp_0001_trial_00N\`, `candidates\exp_0001_final_trial_00N\` | model folders and checkpoints. The WINNER's model folder is MOVED out of here into the registry; only its `checkpoints\checkpoint-156` stays | LARGE (checkpoint 4.29 GB each) |
+| `<registry.dir>\model_0001\model\` | THE TRAINED MODEL, the folder to use or copy (12 files, `model.safetensors` 3.24 GB), with `MODEL_CARD.md`, `exports.json`, `SHA256SUMS` | LARGE (3.0 GB) |
+| `<features.encoder_cache.dir>` | the cached encoder outputs (here 3.18 GB, 889 clips) | LARGE |
+
+The encoder cache key holds the audio file's absolute path, size and modification time, so a copied cache does NOT work on another machine or path (the clips would be recomputed).
+
 ## 3. The report, section by section
 
 The page opens with a coloured verdict line, then the sections below in this order. Each row has a sentence you can say out loud. Replace the words in `[brackets]` with the numbers on your page.
@@ -54,7 +76,13 @@ The page opens with a coloured verdict line, then the sections below in this ord
 | **15 worst / 15 best Val clips** | For each: label, what the untouched model wrote, what the trained model wrote, WER before and after | "Here is one sentence the old model got wrong and the new one gets right." Read the worst ones too: they often reveal wrong labels. |
 | **Final Test block** (only after `final-test`) | Same table, on the Test clips, marked CONFIRMED or NOT CONFIRMED | "Only after we decided, we opened the sealed Test once: WER [0.84] to [0.72]: [confirmed]." |
 | **Run information** | fingerprints of data, split and settings; code version | "Anyone can check it was the same data and settings." |
-| Sections that appear in other report types (search, finalists, learning curve, groups, hints, listening list) | Built for the `run` and `search` commands; may be absent in a `full` report (code, UNTESTED) | If a section says "not available in this run", it is normal. |
+| Sections that appear in other report types (search, finalists, learning curve, groups, hints, listening list) | Built for the `run` and `search` commands (they exist in the real `run` report, see 3b); may be absent in a `full` report (code, UNTESTED) | If a section says "not available in this run", it is normal. |
+
+### 3b. The report of a `python -m stt run` (the real exp_0001 page, in its real order)
+
+Title `exp_0001`; a verdict banner ("Proven improvement ..."); the line `WINNER: trial 1 (learning_rate = ...)` with the Val and Test numbers; "Relative reduction ... (target: 10%): reached"; the reason paragraph; then the sections: **History** (one row per registered model; the dashed line is the target Val WER, 10% below the baseline) - **Finalists compared with the baseline** (table: WER, CER, difference, interval, verdict, Val loss, steps, eligible) - **WER of the baseline and the finalists** (two charts) - **Training curves** (finalists' Val and training loss; per finalist "did the training converge?" with the best-checkpoint ring and the sentence Still improving / Plateau / Overfitting; search trials' Val loss) - **Distribution of the per-file WER** - **WER by group (lesson)** - **The search** (table of trials and a chart) with the **rank correlation** (indicative only with few points) - **Learning curve** ("Not available" unless `learning-curve` was run) - **Per-file errors and file attributes** - **Diagnosis hints** ("No rule fired" is not proof of health) - **Listening list** (10 worst, then 20 random; baseline output beside model output) - **Run information** (seed, search time, fingerprints, "How often this Test set has been evaluated").
+
+What this page does NOT have (checked in the HTML): the green 0.10 to 0.30 band (only the target line of the History chart), a separate "Final Test" table or per-clip Test lists (the Test appears in the banner, the WINNER paragraph and the reason), the "What to change next" box, the `Training:` summary sentence of the `full` page, a table of empty and length-capped outputs. Planned time is "not available" unless `benchmark` was run.
 
 Words used in the report:
 
@@ -86,10 +114,12 @@ Words used in the report:
 | Small data | the 900-clip subset is a tenth of the audio; the Val has about 100 clips from [7] lessons, so the WER moves by a few points if other lessons were chosen |
 | One run | one seed, one learning rate, one number of epochs. A different seed could give a somewhat different number (the same seed gives the same result on the same machine) |
 | Val was used for choices | when to stop and which run to keep were chosen on Val, so the Val gain is slightly optimistic; this is why the Test exists |
-| Test was seen before in a rehearsal | the whisper-tiny rehearsal scored the same 97 Test clips once (see `docs\WORK_RUNBOOK.md`, 12b); no turbo model saw them, but the Test is not strictly untouched |
+| Test was seen before in a rehearsal | the whisper-tiny rehearsal scored the same 97 Test clips once (see `docs\WORK_RUNBOOK.md`, 12b); no turbo model saw them, but the Test is not strictly untouched. This applies to the 80/10/10 split of the `full` path; the 70/15/15 split of `exp_0001` is a different Test set and its overlap with the rehearsal was not rechecked here |
+| Speakers | `split_report.txt` of exp_0001 says "speakers: not checked": the Test may share speakers with Train |
 | Same kind of audio only | the result says nothing about other speakers, microphones or topics than your data |
 | WER is not meaning | a lower WER does not mean every sentence is usable; read the clip tables |
-| The report's time/size estimates | ESTIMATED, not measured, until a full turbo run has been done (UNTESTED) |
+| The report's time/size estimates | ESTIMATED. The first real `run` took 13 h 25 min against an estimate of 12.4 h (the two finalists took 6 h 37 min, estimate 3.4 h). Per stage: baseline 55 min (estimate 46), search 5 h 06 (4.75 h), finalists 6 h 37 (3.4 h). The script path (`full`) has still not been timed (UNTESTED) |
+| The absolute target band | Test WER 0.4375 of exp_0001 is 0.1375 above the upper edge 0.30 of the 0.10 to 0.30 band: the relative target (10% fewer errors) was reached, the absolute band was not |
 
 ## 6. One-slide template (fill from the report)
 

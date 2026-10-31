@@ -216,21 +216,22 @@ def summary_html(data: ReportData) -> str:
     )
 
 
-def trained_html(data: ReportData, warnings: list[str]) -> str:
-    """The section "Did the training converge?": the chart, the verdict, baseline against trained, and the box "what to change next"."""
-    run = data.trained_run
-    assert run is not None
-    val, train = val_points(run.history), train_points(run.history)
-    cap = data.settings.max_points_per_chart
+def loss_curve_html(history: Sequence[StepMetrics], cap: int, warnings: list[str], title: str, missing: str, thinned_label: str = "The training-loss curve") -> str:
+    """The loss chart of ONE training (Val loss, training loss, the green mark at the best checkpoint), its caption and the convergence verdict sentence (still improving / plateau / overfitting / too few points).
+
+    Used by the `-Step full` report (`trained_html`) and, for every retrained finalist, by the `run` report, so both say the same thing in the same words. `cap` is
+    `report.max_points_per_chart`; `missing` is the sentence shown when the history has no loss value at all; `thinned_label` names the curve in the thinning warning.
+    """
+    val, train = val_points(history), train_points(history)
     if len(train) > cap:
         stride = math.ceil(len(train) / cap)
         train = train[::stride] + ([train[-1]] if train[-1] not in train[::stride] else [])
-        warnings.append(f"The training-loss curve was thinned to about {cap} points.")
+        warnings.append(f"{thinned_label} was thinned to about {cap} points.")
     best = min(val, key=lambda p: (p[1], p[0])) if val else None
     out = ""
     if val or train:
         out += svg.loss_chart(
-            "Val loss and training loss against the step (one chart)",
+            title,
             [(float(s), v) for s, v in val],
             [(float(s), v) for s, v in train],
             None if best is None else (float(best[0]), best[1]),
@@ -243,10 +244,20 @@ def trained_html(data: ReportData, warnings: list[str]) -> str:
             "הקו הכחול המלא עם הנקודות הגדולות = ההפסד ב-Val בכל בדיקה. הקו הכתום המקווקו = הפסד האימון. העיגול והקו הירוקים מסמנים את נקודת השמירה הטובה ביותר (ההפסד הנמוך ביותר ב-Val): זה המודל שנשמר.",
         )
     else:
-        out += '<p class="na">Not available in this run: no loss values were found in metrics/trial_NNN/metrics.csv.</p>'
-    verdict = verdict_of(run.history)
+        out += f'<p class="na">{_e(missing)}</p>'
+    verdict = verdict_of(history)
     css = {"improving": "unproven", "plateau": "unproven", "overfitting": "retained", "too_few_points": "retained"}[verdict.kind]
     out += f'<p class="vline {css}" lang="en"><b>{_e(verdict.english)}</b></p>{_he(verdict.hebrew)}'
+    return out
+
+
+def trained_html(data: ReportData, warnings: list[str]) -> str:
+    """The section "Did the training converge?": the chart, the verdict, baseline against trained, and the box "what to change next"."""
+    run = data.trained_run
+    assert run is not None
+    cap = data.settings.max_points_per_chart
+    out = loss_curve_html(run.history, cap, warnings, "Val loss and training loss against the step (one chart)", "Not available in this run: no loss values were found in metrics/trial_NNN/metrics.csv.")
+    verdict = verdict_of(run.history)  # the same verdict the helper printed; "what to change next" below needs it
     # baseline against trained
     reduction = relative_reduction(run.baseline.wer, run.trained.wer)
     low, high = ABSOLUTE_WER_TARGET_BAND
