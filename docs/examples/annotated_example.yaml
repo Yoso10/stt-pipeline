@@ -1,0 +1,76 @@
+# How to run: this file is a READING EXAMPLE, not a ready config. Copy it, change the paths and the column names, then check it without running anything:
+#     Copy-Item docs\examples\annotated_example.yaml configs\my_example.yaml      (then fix the extends line, see below)
+#     $env:PYTHONPATH = "src"
+#     python -m stt check --config configs\my_example.yaml
+# Example output (last line): "Everything checked is fine." (exit code 0), or "N problem(s) found" (exit code 2).
+# Every key below is a real key (see docs\CONFIG_REFERENCE.md). One comment per key: what it does, the default, when to change it.
+# `extends` is relative to THIS file. This file lives in docs\examples\, so the base is ..\..\configs\base.yaml.
+# If you copy the file into configs\, write:  extends: base.yaml
+# Only the values that DIFFER from the defaults need to be written; the rest is taken from the code. Docs: docs\YAML_GUIDE.md.
+extends: ../../configs/base.yaml   # base.yaml holds only runtime.online and runtime.seed. Maps are merged with it, lists are replaced.
+
+runtime:
+  seed: 42            # default 42. One seed for the split, the sample choice, the search order and the training. Change only on purpose.
+  online: false       # default false. Keep false on the closed machine: no network is ever used.
+  device: cpu         # default cpu. cpu | cuda | auto. cuda without a GPU stops the run (exit 2).
+
+data:
+  source:
+    type: csv                      # REQUIRED, no default. csv (a folder with manifest.csv) | hf_parquet (then data.extract.dir is also required)
+    path: 'D:\stt\data\my_set'     # REQUIRED, no default. The folder must exist. Single quotes keep the backslashes.
+  columns:
+    id: id                         # default none. Optional unique id column; without it the audio path is the id.
+    audio: audio_path              # REQUIRED, no default. The manifest column with the audio file path.
+    text: transcript               # REQUIRED, no default. The manifest column with the transcript.
+    group: lesson_id               # default none. Clips of one group never go to different parts. Without it, data.group_fallback decides.
+  group_fallback: fail             # default fail. Without a group column: fail stops prepare (exit 3). Do not change it just to get past the error (leakage).
+  max_rejected_ratio: 0.05         # default 0.05. More rejected clips than this stops the run (exit 3).
+
+split:
+  mode: grouped_ratio              # default grouped_ratio. predefined | grouped_ratio | hash_group | time_block.
+  ratios: [0.8, 0.1, 0.1]          # default [0.8, 0.1, 0.1] = Train, Val, Test (split.names). Must sum to 1, one per name.
+  min_samples_per_split: 30        # default 30. The gate. A part with fewer clips stops prepare (exit 3). Lower it only for a mechanics test.
+  min_groups_per_split: 2          # default 2. The gate on lessons per part. Same advice.
+
+filter:
+  mode: apply                      # default report (counts what WOULD be removed, removes nothing). apply removes, for example clips longer than 30 s.
+
+subsample:                         # for a rehearsal only. Remove this block (or set enabled: false) for the real run.
+  enabled: true                    # default false. Off = all the data.
+  preset: tiny                     # default none. Built in: smoke (20 clips) | tiny (30 min of Train) | work_like (10%, by lesson, all parts) | half | full.
+
+model:
+  path: 'D:\stt\models\base_model' # REQUIRED, no default. A local model folder, never a hub name. The folder must exist.
+
+train:
+  freeze_policy: none              # default none (train everything). freeze_encoder trains the decoder only (needed for the encoder cache).
+  hyperparams:
+    learning_rate: 1.0e-5          # default 1e-5. Peak learning rate. Searched when search.parameters names it.
+    max_steps: 500                 # default 100. Training length. NOT searchable (the search cannot change max_steps or seed).
+    batch_size: 4                  # default 4. Clips per forward pass.
+    grad_accum_steps: 4            # default 4. Passes added up per optimizer step.
+  eval_every_steps: 50             # default 50. A Val-loss point every N steps; it picks the best checkpoint.
+
+eval:
+  generation:
+    num_beams: 1                   # default 1 (greedy). A decoding-only change: it needs no new training, only a new `evaluate`.
+
+search:
+  strategy: grid                   # default grid. grid | optuna_tpe.
+  n_trials: 6                      # default 6. Trials in all (screening runs on a small slice).
+  parameters:                      # default: learning_rate (log, 5e-6 to 5e-5) and grad_accum_steps (2 or 4). Naming this key REPLACES the default space (so grad_accum_steps is no longer searched). Between two YAML files (extends) maps merge key by key.
+    learning_rate: {kind: log_float, low: 5.0e-6, high: 5.0e-5, points: 3}   # kind: log_float | float | int | categorical
+  finalists:
+    k: 3                           # default 3. The best k trials are retrained on the full Train and scored by WER on Val.
+  screening:
+    preset: tiny                   # default tiny. The Subsampler preset the search trains on. full = the whole Train (then the finalists repeat the same training).
+
+select:
+  min_verdict: improved            # default improved. The lowest Val verdict that makes a finalist eligible: improved | no_clear_difference.
+  tie_epsilon: 0.001               # default 0.001. Val WERs closer than this are a tie; the lower Val loss wins.
+  test_confirmation: true          # default true. The Test is scored (once per model, per experiment). false = the Test is never opened (test_status not_evaluated).
+
+run:
+  experiments_dir: 'D:\stt\experiments'   # default experiments. Every command makes exp_NNNN here.
+registry:
+  dir: 'D:\stt\registry'           # default registry. Must lie OUTSIDE run.experiments_dir (checked before `run` starts).
