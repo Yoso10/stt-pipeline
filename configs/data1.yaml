@@ -1,0 +1,24 @@
+# How to run: the config for the small sample pack (about 400 clips, 80 lessons) on the CLOSED CPU machine, turbo model. Run everything from the repo root.
+#   The pack folder `data1` of the repo is RENAMED to `data` on the closed machine (see the instructions in the task report); this file therefore says `data`.
+#   $env:PYTHONPATH = "src"
+#   python -m stt check --config configs\data1.yaml          (checks the config, the model folder and the data folder; changes nothing)
+#   python -m stt run   --config configs\data1.yaml          (the whole pipeline)
+# At home, where the folder is still called data1:  add  --set data.source.path=data1  to every command.
+# It extends configs\work_cpu.yaml (relative to this file), so every other value is the shipped one: CPU, frozen encoder, encoder cache, filter apply, split 0.8/0.1/0.1, a small search.
+# Exploration runs can add  --set select.test_confirmation=false  (work_cpu.yaml already sets it false; nothing is set here for select.*).
+# Not changed here, on purpose (see the report): train.cpu_threads (4 is a placeholder: set the physical cores with --set train.cpu_threads=N) and train.hyperparams.max_steps (100).
+extends: work_cpu.yaml
+
+data:
+  source:
+    type: csv                       # the pack is a folder with manifest.csv and the audio files
+    path: data                      # the folder name on the closed machine; relative to the folder you run from (the repo root); the folder must exist
+  columns:
+    id: id                          # the original clip id (eval_NNNNNN / train_NNNNNN), unique; without it the audio path would be the id
+    audio: audio                    # the manifest column with the audio path, relative to the folder of manifest.csv (audio/<id>.mp3)
+    text: transcript                # the manifest column with the transcript (it keeps the <|seconds|> timestamps, which the text rules strip)
+    group: meta_entry_id            # the lesson id: clips of one lesson never go to different parts (80 lessons in the pack)
+    split: source_split             # the original source split name (eval / train), kept for the reports; the split itself is made by split.mode
+
+model:
+  path: models/whisper-large-v3-turbo-ivrit   # the turbo model folder on the closed machine, relative to the repo root (the same value as in work_cpu.yaml)

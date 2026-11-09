@@ -1,0 +1,18 @@
+{
+ "audio_bytes_total": 36087296,
+ "clips": 400,
+ "created": "2026-11-09",
+ "eligible_rows": 8723,
+ "group_column": "meta_entry_id",
+ "groups": 80,
+ "max_seconds": 30.0,
+ "per_group": 5,
+ "rejected_file": "rejected.csv",
+ "seed": 42,
+ "source_manifest": "data/extracted/daf_yomi/manifest.csv",
+ "source_rows": 8723,
+ "source_split_counts": {
+  "eval": 9,
+  "train": 391
+ }
+}
